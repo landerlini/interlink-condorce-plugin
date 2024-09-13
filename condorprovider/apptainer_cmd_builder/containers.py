@@ -1,4 +1,3 @@
-from dnf.yum.misc import re_full_search_needed
 from pydantic import BaseModel, Field
 import os.path
 from typing import Dict, List, Literal, Union

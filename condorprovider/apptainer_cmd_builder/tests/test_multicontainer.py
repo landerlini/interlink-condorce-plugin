@@ -1,8 +1,5 @@
 import textwrap
 
-from sepolgen.interfaces import type_rule_extract_params
-
-from condorprovider.apptainer_cmd_builder.volumes import ScratchArea
 from condorprovider.utils import generate_uid
 from condorprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerSpec, volumes
 from condorprovider.apptainer_cmd_builder.tests._boilerplate import container_output

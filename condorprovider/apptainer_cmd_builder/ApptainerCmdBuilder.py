@@ -1,16 +1,14 @@
 import os.path
 
-from idna.idnadata import scripts
 from pydantic import BaseModel, Field
 from typing import Dict, List, Literal, Union
-from pathlib import Path
 from . import version
 import textwrap
 
 from . import configuration as cfg
 from .volumes import BaseVolume
 from .containers import ContainerSpec
-from ..utils import generate_uid, embed_ascii_file, embed_binary_file
+from ..utils import generate_uid
 
 class ApptainerCmdBuilder(BaseModel, extra='forbid'):
     uid: str = Field(
