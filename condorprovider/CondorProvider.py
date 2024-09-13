@@ -1,4 +1,12 @@
 from . import configuration as cfg
+from typing import Union, Collection
+import logging
+import uuid
+from pprint import pformat
+
+from fastapi import HTTPException
+import interlink
+
 
 class CondorProvider(interlink.provider.Provider):
     def __init__(self):
@@ -57,17 +65,17 @@ class CondorProvider(interlink.provider.Provider):
         """
         Return True if the job.spec.suspend is true. If true, kueue scheduled the job.
         """
-        async with kubernetes_api('batch', ignored_statuses=[404]) as k8s:
-            job = await k8s.read_namespaced_job(
-                namespace=cfg.NAMESPACE,
-                name=job_name
-            )
+        # async with kubernetes_api('batch', ignored_statuses=[404]) as k8s:
+        #     job = await k8s.read_namespaced_job(
+        #         namespace=cfg.NAMESPACE,
+        #         name=job_name
+        #     )
 
-            logging.getLogger("is_job_suspended").debug(
-                f"job.spec.suspend: {job.spec.suspend} (boolean: {job.spec.suspend == True})"
-            )
+        #     logging.getLogger("is_job_suspended").debug(
+        #         f"job.spec.suspend: {job.spec.suspend} (boolean: {job.spec.suspend == True})"
+        #     )
 
-            return job.spec.suspend
+        #     return job.spec.suspend
 
 
     async def get_pod_status(self, pod: interlink.PodRequest) -> Union[interlink.PodStatus, None]:

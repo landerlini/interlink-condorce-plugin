@@ -5,12 +5,14 @@ RUN dnf install -y \
   git \
   python3 \
   python3-pip \
-  oidc-agent
+  oidc-agent \
+  epel-release apptainer
 
 RUN pip install \
   "uvicorn[standard]" \
   "fastapi" \
   "pyyaml" \
   "jinja2" \
+  "pytest" \
   "git+https://github.com/intertwin-eu/interLink.git#egg=interlink&subdirectory=example"
 
