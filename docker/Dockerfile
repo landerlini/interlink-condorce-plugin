@@ -14,5 +14,6 @@ RUN pip install \
   "pyyaml" \
   "jinja2" \
   "pytest" \
+  "kubernetes" \
   "git+https://github.com/intertwin-eu/interLink.git#egg=interlink&subdirectory=example"
 

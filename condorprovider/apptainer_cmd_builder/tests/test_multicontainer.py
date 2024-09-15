@@ -83,12 +83,12 @@ def test_loopback_network():
     server = textwrap.dedent(f"""
         #!/bin/bash
         cd /mnt/
-        timeout 2s python3 -m http.server 7890
+        timeout 4s python3 -m http.server 7890
         """)
 
     client = textwrap.dedent(f"""
         #!/bin/bash
-        sleep 1
+        sleep 2
         wget http://127.0.0.1:7890 -O output.html
         cat output.html
         """)

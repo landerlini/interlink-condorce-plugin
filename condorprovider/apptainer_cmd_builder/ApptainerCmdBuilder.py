@@ -83,7 +83,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         return '\n'.join([volume.finalize() for volume in self.volumes])
 
     def dump(self):
-        script = textwrap.dedent(f"""
+        script = textwrap.dedent("""
         #!/bin/sh
         
         ################################################################################
@@ -94,7 +94,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         mkdir -p %(workdir)s
         cd %(workdir)s
         
-        export APPTAINER_CACHEDIR=/cache/apptainer
+        export APPTAINER_CACHEDIR=%(apptainer_cachedir)s
         export SINGULARITY_CACHEDIR=$APPTAINER_CACHEDIR
         mkdir -p $APPTAINER_CACHEDIR
         
@@ -124,6 +124,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
             version=version,
             docs=''.join(["## " + line for line in self.description.splitlines()]),
             workdir=self.workdir,
+            apptainer_cachedir=cfg.APPTAINER_CACHEDIR,
             environment_files=self.build_environment_files(),
             volume_files=self.build_volume_files(),
             exec_init_containers=self.exec_init_containers(),

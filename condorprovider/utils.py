@@ -1,8 +1,11 @@
 import random
+import json
 import os.path
 import string
 import textwrap
 from base64 import b64encode
+
+from kubernetes.client.api_client import ApiClient as K8sApiClient
 
 def generate_uid(length: int = 16, allow_uppercase: bool = False) -> str:
     """
@@ -74,5 +77,30 @@ def make_uid_numeric(uid: str) -> int:
         f'{ord(c)-ord("0") if c in string.digits else ord(c)-ord("A")+10:o}'
         for c in uid
     ]), 8) % 0x7FFF_FFFF_FFFF_FFFF
+
+def deserialize_kubernetes(data, klass):
+    """
+    Boilerplate to deserialize a dictionary into a Kubernetes object. Not very efficient.
+    """
+    class JsonWrapper:
+        def __init__(self, json_data):
+            self.data = json.dumps(json_data)
+
+    return K8sApiClient().deserialize(JsonWrapper(data), klass)
+
+def to_snakecase(s: str):
+    """
+    Convert camelCase, PascalCase and kebab-case into snake_case.
+    """
+    ret = [s[0].lower()]
+    for char in s[1:]:
+        if char in string.ascii_uppercase:
+            ret += ['_', char.lower()]
+        elif char in ['-']:
+            ret.append('_')
+        else:
+            ret.append(char)
+
+    return ''.join(ret)
 
 

@@ -26,6 +26,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
         description="Entrypoint of the job to be executed within the container"
     )
 
+    args: List[str] = Field(
+        default = [],
+        description="Arguments to be passed to the command defined in the entrypoint"
+    )
+
     executable: Path = Field(
         default=Path("/usr/bin/apptainer").resolve(),
         description="Relative or absolute path to apptainer, singularity or other compatible replacements"
@@ -70,7 +75,6 @@ class ContainerSpec(BaseModel, extra="forbid"):
     @property
     def executable_path(self):
         return os.path.join(self.workdir, 'run')
-
 
     ################################################################################
     # Flags
@@ -194,7 +198,9 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
         entry_point_file = '\n'.join([
             '#!/bin/sh',
-            self.entrypoint
+            self.entrypoint + ' ' + ' '.join(
+                ['"%s"' % arg.replace("\"", "\\\"") for arg in self.args]
+            )
         ])
 
         ret = [

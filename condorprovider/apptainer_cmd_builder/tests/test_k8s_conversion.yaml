@@ -1,0 +1,198 @@
+name: hello-world
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: hello-world
+  spec:
+    containers:
+      - name: main
+        image: ubuntu:latest
+        command:
+          - /bin/bash
+          - -c
+          - echo "hello world"
+
+containers: []
+
+validation:
+  inLog:
+    - hello world
+
+---
+
+name: hello-world-with-args
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: hello-world-with-args
+  spec:
+    containers:
+      - name: main
+        image: ubuntu:latest
+        command:
+          - echo
+        args:
+          - "hello world"
+          - "world, hello"
+
+containers: []
+
+validation:
+  inLog:
+    - hello world
+    - world, hello
+
+---
+
+name: hello-world-multiline
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: hello-world-multiline
+  spec:
+    containers:
+      - name: main
+        image: ubuntu:latest
+        command:
+          - /bin/bash
+          - -c
+        args:
+          - |
+            echo "hello world"
+            echo "world, hello"
+
+containers: []
+
+validation:
+  inLog:
+    - hello world
+    - world, hello
+
+---
+
+name: scratch-area
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: scratch-area
+  spec:
+    containers:
+      - name: main
+        image: ubuntu:latest
+        command:
+          - /bin/bash
+          - -c
+        args:
+          - |
+            echo "hello world" > /mnt/scratch/hw.txt
+            cat /mnt/scratch/hw.txt
+        volumeMounts:
+          - name: scratch
+            mountPath: /mnt/scratch
+    volumes:
+      - name: scratch
+        emptyDir: {}
+
+containers:
+  - name: main
+  - empty_dirs:
+      - scratch
+
+validation:
+  inLog:
+    - hello world
+
+---
+
+name: empty-dir
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: scratch-area
+  spec:
+    initContainers:
+      - name: write
+        image: ubuntu:latest
+        command:
+          - /bin/bash
+          - -c
+        args:
+          - |
+            echo "hello world" > /mnt/scratch/hw.txt
+        volumeMounts:
+          - name: scratch
+            mountPath: /mnt/scratch
+
+    containers:
+      - name: main
+        image: ubuntu:latest
+        command:
+          - /bin/bash
+          - -c
+        args:
+          - |
+            cat /mnt/scratch/hw.txt
+        volumeMounts:
+          - name: scratch
+            mountPath: /mnt/scratch
+    volumes:
+      - name: scratch
+        emptyDir: {}
+
+containers:
+  - name: main
+  - empty_dirs:
+      - scratch
+
+validation:
+  inLog:
+    - hello world
+
+---
+
+name: configmap
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: scratch-area
+  spec:
+    containers:
+      - name: main
+        image: ubuntu:latest
+        command:
+          - /bin/bash
+          - -c
+        args:
+          - |
+            cat /configuration/file.txt
+        volumeMounts:
+          - name: my-cfg
+            mountPath: /configuration
+    volumes:
+      - name: my-cfg
+        configMap:
+          name: my-cfg
+          items:
+            - key: file
+              path: file.txt
+
+
+containers:
+  - name: main
+  - config_maps:
+      - metadata:
+          name: my-cfg
+          namespace: whatever
+        data:
+          file: |
+            hello world
+
+validation:
+  inLog:
+    - hello world
