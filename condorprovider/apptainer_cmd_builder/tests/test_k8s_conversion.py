@@ -1,4 +1,5 @@
 import textwrap
+import sys
 import pytest
 import os
 import yaml
@@ -36,5 +37,6 @@ def test_k8s_import(test_name):
     builder, validation = get_pod_and_validation(test_name)
 
     with container_output(builder, test_name=test_name) as output:
+        print(output, file=sys.stderr)
         validation.raise_on_conditions(output)
 

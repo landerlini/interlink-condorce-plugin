@@ -15,5 +15,6 @@ RUN pip install \
   "jinja2" \
   "pytest" \
   "kubernetes" \
+  "htcondor" \
   "git+https://github.com/intertwin-eu/interLink.git#egg=interlink&subdirectory=example"
 

@@ -160,7 +160,7 @@ pod:
   apiVersion: v1
   kind: Pod
   metadata:
-    name: scratch-area
+    name: configmap
   spec:
     containers:
       - name: main
@@ -196,3 +196,136 @@ containers:
 validation:
   inLog:
     - hello world
+
+---
+
+name: secret
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: secret
+  spec:
+    containers:
+      - name: main
+        image: ubuntu:latest
+        command:
+          - /bin/bash
+          - -c
+        args:
+          - |
+            cat /configuration/file.txt
+        volumeMounts:
+          - name: my-scrt
+            mountPath: /configuration
+    volumes:
+      - name: my-scrt
+        secret:
+          secretName: my-scrt
+          items:
+            - key: file
+              path: file.txt
+
+
+containers:
+  - name: main
+  - secrets:
+      - metadata:
+          name: my-scrt
+          namespace: whatever
+        stringData:
+          file: |
+            hello world
+
+validation:
+  inLog:
+    - hello world
+
+---
+
+name: fuse-vol
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: fuse-vol
+    annotations:
+      fuse.vk.io/my-fuse-vol: |
+        cat << EOS > /tmp/rclone.conf
+        [example]
+        type = local
+        nounc = true
+        EOS
+        
+        # Mimic a remote
+        mkdir -p /tmp
+        echo "hello world" > /tmp/file.txt
+        
+        # Mount the remote
+        rclone mount2 \
+          --config /tmp/rclone.conf \
+          --allow-non-empty example:/tmp \
+          $1
+
+  spec:
+    containers:
+      - name: main
+        image: rclone/rclone:latest
+        command:
+          - cat
+        args:
+          - /mnt/fuse-vol/file.txt
+        volumeMounts:
+          - name: my-fuse-vol
+            mountPath: /mnt/fuse-vol
+    volumes:
+      - name: my-fuse-vol
+        persistentVolumeClaim:  # deliberately fake pvc
+          claimName: csi.example.com
+
+containers: {}
+
+validation:
+  inLog:
+    - hello world
+
+
+---
+
+name: loopback-network
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: loopback-network
+
+  spec:
+    containers:
+      - name: server
+        image: python:alpine
+        command:
+          - /bin/ash
+          - -c
+        args:
+          - |
+            cd /mnt
+            echo "hello world" > index.html
+            timeout 4s python3 -m http.server 7890
+
+      - name: server
+        image: python:alpine
+        command:
+          - /bin/ash
+          - -c
+        args:
+          - |
+            sleep 2
+            wget http://127.0.0.1:7890/index.html -O output.html
+            cat output.html
+
+containers: {}
+
+validation:
+  inLog:
+    - hello world
+

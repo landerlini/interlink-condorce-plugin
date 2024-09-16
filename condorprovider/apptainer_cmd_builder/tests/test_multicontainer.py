@@ -108,5 +108,5 @@ def test_loopback_network():
         ],
     )
 
-    with container_output(builder, test_name='scratch_area') as output:
+    with container_output(builder, test_name='loopback_network') as output:
         assert token in output

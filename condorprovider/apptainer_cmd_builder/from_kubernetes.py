@@ -3,10 +3,11 @@ import json
 import os.path
 from distutils.command.config import config
 from string import ascii_uppercase
+import re
 
 from pprint import pprint
 from kubernetes import client as k8s
-from typing import Dict, Any, List, Mapping, Optional
+from typing import Dict, Any, List, Mapping, Optional, Union, Literal
 
 from kubernetes.client import V1Container, V1KeyToPath
 
@@ -14,34 +15,54 @@ from condorprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerS
 from condorprovider.apptainer_cmd_builder.volumes import make_empty_dir, VolumeBind, BaseVolume
 from condorprovider.utils import deserialize_kubernetes
 
-def _make_container_list(
-        containers: Optional[List[V1Container]] = None,
-        pod_volumes: Optional[Mapping[str, BaseVolume]] = None
-    ):
-    if containers is None:
-        return []
+def _create_static_volume_dict(
+        volume_source_by_name: Dict[str, Any],
+        volume_definitions: List[Union[k8s.V1ConfigMap, k8s.V1Secret]],
+):
+    """
+    Internal. Creates a dictionary mapping the name of each volume to a StaticVolume object that can then
+    be mounted in containers with .mount(<path>).
 
-    return [
-        ContainerSpec(
-            entrypoint=c.command[0],
-            args=c.command[1:] + (c.args if c.args is not None else []),
-            image=c.image,
-            volume_binds=[] if c.volume_mounts is None else sum([
-                *[pod_volumes[vm.name].mount(vm.mount_path) for vm in getattr(c, 'volume_mounts')],
-            ], []),
-        ) for c in containers
-    ]
+    volume_source_by_name: maps the volume name to the VolumeSource (the pointer to the Volume in the PodSpec)
 
-def _resolve_key2path(key2paths: List[V1KeyToPath], key: str) -> str:
-    for item in key2paths:
-        if item.key == key:
-            return item.path
+    """
+    # Service function to resolve the correct key to retrieve either binary or ascii data from ConfigMaps and Secrets
+    def get_data(vol, dtype: Literal['string', 'binary']):
+        if vol is None: return {}
+        if isinstance(vol, k8s.V1ConfigMap):
+            return dict(string=vol.data, binary=vol.binary_data)[dtype] or {}
+        if isinstance(vol, k8s.V1Secret):
+            return dict(string=vol.string_data, binary=vol.data)[dtype] or {}
+        raise TypeError(f"Expected volume of type {type(vol)}")
 
+    # Service function to resolve the KeyToPath data structure by name
+    def _resolve_key2path(key2paths: List[V1KeyToPath], key: str) -> str:
+        for item in key2paths:
+            if item.key == key:
+                return item.path
+
+    return {
+        vol.metadata.name: volumes.StaticVolume(
+            config={
+                _resolve_key2path(volume_source_by_name[vol.metadata.name].items, k): volumes.AsciiFileSpec(content=v)
+                for k, v in get_data(vol, 'string').items()
+            },
+            binaries={
+                _resolve_key2path(volume_source_by_name[vol.metadata.name].items, k): volumes.BinaryFileSpec(content=v)
+                for k, v in get_data(vol, 'binary').items()
+            }
+        )
+        for vol in volume_definitions if vol.metadata.name in volume_source_by_name.keys()
+    }
 
 def _make_pod_volume_struct(
         pod: k8s.V1Pod,
         containers_raw: List[Dict[str, Any]]
     ):
+    """
+    Internal. Create a dictionary mapping the volume name to a BaseVolume object that can then be mounted
+    in containers with .mount(<path>).
+    """
     # Count the number of times volumes appear, this is mainly relevant to emptyDirs
     volumes_counts = {}
     for container in (pod.spec.containers or []) + (pod.spec.init_containers or []):
@@ -57,48 +78,109 @@ def _make_pod_volume_struct(
     }
 
     # Create a mapping for configmaps from the pod.spec.volumes structure: {cfgmap.name: cfgmap}
-    config_maps = {
-        v.config_map.name: v.config_map
-        for v in (pod.spec.volumes or []) if v is not None and v.config_map is not None
-    }
+    config_maps = _create_static_volume_dict(
+        volume_source_by_name={
+            v.config_map.name: v.config_map
+            for v in (pod.spec.volumes or []) if v is not None and v.config_map is not None
+        },
+        volume_definitions=[
+            deserialize_kubernetes(cm_raw, 'V1ConfigMap')
+            for container in containers_raw
+            for cm_raw in container.get('config_maps', [])
+        ]
+    )
 
-    config_maps = {
-        cm.metadata.name: volumes.StaticVolume(
-           config={
-               _resolve_key2path(config_maps[cm.metadata.name].items, k): volumes.AsciiFileSpec(content=v)
-               for k, v in (cm.data or {}).items()
-           },
-           binaries={
-                _resolve_key2path(config_maps[cm.metadata.name].items, k): volumes.AsciiFileSpec(content=v)
-                for k, v in (cm.binary_data or {}).items()
-            }
-        )
-        for container in containers_raw
-        for cm in [deserialize_kubernetes(cm_raw, 'V1ConfigMap') for cm_raw in container.get('config_maps', [])]
+    # Create a mapping for configmaps from the pod.spec.volumes structure: {secret.name: secret}
+    secrets = _create_static_volume_dict(
+        volume_source_by_name={
+            v.secret.secret_name: v.secret
+            for v in (pod.spec.volumes or []) if v is not None and v.secret is not None
+        },
+        volume_definitions=[
+            deserialize_kubernetes(cm_raw, 'V1Secret')
+            for container in containers_raw
+            for cm_raw in container.get('secrets', [])
+        ],
+    )
+
+    fuse_vol = {
+        vol_name: volumes.FuseVolume(fuse_mount_script=ann_val)
+        for ann_key, ann_val in (pod.metadata.annotations or {}).items()
+        for vol_name in re.findall("fuse.vk.io/([\w-]+)", ann_key)
     }
 
     return {
         **empty_dirs,
         **config_maps,
+        **secrets,
+        **fuse_vol,
     }
 
+def _make_container_list(
+        containers: Optional[List[V1Container]] = None,
+        pod_volumes: Optional[Mapping[str, BaseVolume]] = None
+) -> List[ContainerSpec]:
+    """
+    Internal. Creates a list of ContainerSpec objects, mounting the volumes defined by pod_volumes.
 
-def from_kubernetes(pod_raw: Dict[str, Any], containers_raw: List[Dict[str, Any]]):
+    :param containers: Kubernetes container objects
+    :param pod_volumes: ApptainerCmdBuild volumes
+    :return: a list of ContainerSpec
+    """
+    if containers is None:
+        return []
+
+    return [
+        ContainerSpec(
+            entrypoint=c.command[0],
+            args=c.command[1:] + (c.args if c.args is not None else []),
+            image=c.image,
+            volume_binds=[] if c.volume_mounts is None else sum([
+                *[pod_volumes[vm.name].mount(vm.mount_path) for vm in getattr(c, 'volume_mounts')],
+            ], []),
+        ) for c in containers
+    ]
+
+
+def from_kubernetes(pod_raw: Dict[str, Any], containers_raw: List[Dict[str, Any]]) -> ApptainerCmdBuilder:
+    """
+    :param pod_raw:
+        the definition of the pod as a raw Python dictionary
+
+    :param containers_raw:
+        the list of containers as packed by InterLink, a list of one dictionary per container with
+        keys for the container name, the empty dirs, the configmaps and the secrets. Dictionary values are
+        the volume definition (and not the volume sources).
+        Example:
+        ```yaml
+        raw_containers:
+          - name: main
+          - empty_dirs: 123
+          - config_maps:
+              - metadata:
+                  name: my-cfg
+                data:
+                  file: |
+                    hello world
+          - secrets:
+              - metadata:
+                  name: my-scrt
+                stringData:
+                  another_file: |
+                    hello world
+        ```
+    :return:
+        An instance of ApptainerCmdBuilder representing the pod
+    """
     if pod_raw['kind'] != 'Pod' and pod_raw['apiVersion'] != 'v1':
         pprint(pod_raw)
         raise ValueError("Invalid pod description")
 
-    #pod = k8s.V1Pod(**{_to_snakecase(k): v for k, v in pod_raw.items()}).to_dict()
     pod = deserialize_kubernetes(pod_raw, 'V1Pod')
     pod_volumes = _make_pod_volume_struct(pod, containers_raw)
 
-    app_pod = ApptainerCmdBuilder(
+    return ApptainerCmdBuilder(
         init_containers=_make_container_list(pod.spec.init_containers, pod_volumes),
         containers=_make_container_list(pod.spec.containers, pod_volumes),
     )
-
-    return app_pod
-
-
-
 
