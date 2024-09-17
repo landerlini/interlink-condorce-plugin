@@ -4,4 +4,4 @@ from os import environ
 SCRATCH_AREA = environ.get("SCRATCH_AREA", "/tmp")
 
 # APPTAINER_CACHEDIR defines the directory where apptainer puts images (default: /cache/apptainer)
-APPTAINER_CACHEDIR = environ.get("APPTAINER_CACHEDIR", "/cache/apptainer")
+APPTAINER_CACHEDIR = environ.get("APPTAINER_CACHEDIR", "/tmp/cache/apptainer")

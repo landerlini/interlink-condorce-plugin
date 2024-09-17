@@ -40,6 +40,11 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         description="User-defined description of the job"
     )
 
+    cachedir: str = Field(
+        default=cfg.APPTAINER_CACHEDIR,
+        description="Scratch area to store apptainer images"
+    )
+
     @property
     def volumes(self) -> List[BaseVolume]:
         return list(set([vb.volume for c in self.containers for vb in c.volume_binds] + self.additional_volumes))
