@@ -103,11 +103,18 @@ def _make_pod_volume_struct(
         for vol_name in re.findall("fuse.vk.io/([\w-]+)", ann_key)
     }
 
+    cvmfs = {
+        vol_name: volumes.BaseVolume(host_path="/cvmfs")
+        for ann_key, ann_val in (pod.metadata.annotations or {}).items()
+        for vol_name in re.findall("cvmfs.vk.io/([\w-]+)", ann_key)
+    }
+
     return {
         **empty_dirs,
         **config_maps,
         **secrets,
         **fuse_vol,
+        **cvmfs,
     }
 
 def _make_container_list(

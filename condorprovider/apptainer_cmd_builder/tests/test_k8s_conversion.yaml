@@ -23,6 +23,42 @@ validation:
 
 ---
 
+name: cern-vm-fs
+can_use_fake_volumes: True
+
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: cern-vm-fs
+    annotations:
+      cvmfs.vk.io/my-volume: sft.cern.ch
+  spec:
+    containers:
+      - name: main
+        image: ubuntu:latest
+        command:
+          - /bin/bash
+          - -c
+          - ls /
+        volumeMounts:
+          - name: my-volume
+            mountPath: /cvmfs
+            readOnly: True
+
+    volumes:
+      - name: my-volume
+        persistentVolumeClaim:
+          claimName: intentionally-not-existing
+
+containers: []
+
+validation:
+  inLog:
+    - cvmfs
+
+---
+
 name: hello-world-with-args
 can_use_fake_volumes: True
 
