@@ -10,7 +10,7 @@ data:
   interlinkconfig.yaml: |
     InterlinkURL: "http://localhost"
     InterlinkPort: {{ .Values.serverPort | default 30080 | quote }}
-    SidecarURL: "http://{{ .Values.sidecarName | default "kueue-plugin" }}.{{ .Release.Namespace }}"
+    SidecarURL: "http://{{ .Values.sidecarName | default "condor-plugin" }}.{{ .Release.Namespace }}"
     SidecarPort: {{ .Values.sidecarPort | quote | default "80" }}
     VerboseLogging: {{ .Values.serverVerboseLogging | default true }}
     ErrorsOnlyLogging: {{ .Values.serverErrorsOnlyLogging | default false }}

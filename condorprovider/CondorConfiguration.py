@@ -111,12 +111,12 @@ class CondorSubmit(BaseModel):
 
 class CondorConfiguration(BaseModel):
     pool: str = Field(
-        default=os.environ.get("CONDOR_POOL", "ce01t-htc.cr.cnaf.infn.it:9619"),
+        default=cfg.CONDOR_POOL,
         description="Schedd central manager (e.g. ce01t-htc.cr.cnaf.infn.it:9619)",
     )
 
     scheduler_name: str = Field(
-        default=os.environ.get("CONDOR_SCHEDULER_NAME", "ce01t-htc.cr.cnaf.infn.it"),
+        default=cfg.CONDOR_SCHEDULER_NAME,
         description="Name of the scheduler (e.g. ce01t-htc.cr.cnaf.infn.it)",
     )
 
@@ -146,9 +146,9 @@ class CondorConfiguration(BaseModel):
     @staticmethod
     def _refresh_token():
         response = requests.post(
-            os.environ["IAM_ISSUER"] + '/token',
+            cfg.IAM_ISSUER + '/token',
             data={'grant_type': 'refresh_token', 'refresh_token': os.environ["REFRESH_TOKEN"]},
-            auth=(os.environ.get('IAM_CLIENT_ID'), os.environ.get('IAM_CLIENT_SECRET'))
+            auth=(cfg.IAM_CLIENT_ID, cfg.IAM_CLIENT_SECRET),
         )
         if response.status_code / 100 != 2:
             print(response.text)

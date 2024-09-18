@@ -12,7 +12,7 @@ serverVersion: 0.3.0
 serverPort: 30080
 
 # sidecarName is the name of the service used to access the sidecar 
-sidecarName: kueue-plugin
+sidecarName: condor-plugin
 
 # sidecarPort is the exposed port of the sidecar
 sidecarPort: 80
@@ -31,10 +31,10 @@ serverExportPodData: true
 # Ingress configuration
 
 # serverPathPrefix is the reverse-proxy path prefix to reach server. WITHOUT SLASHES.
-serverPathPrefix: interlink
+serverPathPrefix: condor
 
-# certManagerEnabled if true, setup a certmanager for TLS termination
-# IMPORTANT!!! Disable it if installing the chart in a already certified cluster
+# certManagerEnabled if true, set up a certmanager for TLS termination
+# IMPORTANT!!! Disable it if installing the chart in an already certified cluster
 certManagerEnabled: true
 
 
@@ -62,7 +62,6 @@ iamScopes:
    - profile 
    - groups
 
-
 # oauth2ProxyPort is the internal port of the oauth2-proxy service
 oauth2ProxyPort: 8000
 
@@ -88,10 +87,7 @@ oauth2ProxyCookieSecret:
 # Plugin configuration
 
 # pluginRepository is the git repository of the plugin, kept updated with git-sync
-pluginRepository: "https://github.com/landerlini/interlink-kueue-plugin"
-
-# pluginSpecRepository is the repository where the reduced k8s apis are defined
-pluginSpecRepository: "git+https://github.com/interTwin-eu/interLink.git#egg=interlink&subdirectory=example"
+pluginRepository: "https://github.com/landerlini/interlink-condorce-plugin"
 
 # pluginLivenessInitialDelaySeconds is the initial delay before prompting the plugin healthz.
 pluginLivenessInitialDelaySeconds: 2
@@ -108,25 +104,25 @@ pluginGitSyncPeriod: 10s
 # see https://www.uvicorn.org/settings/#logging
 pluginLogLevel: info
 
-# cvmfsEnabled enable cvmfs provisioning through the CSI (requires cvmfs-csi!)
-# WARNING! Requires chart: https://github.com/cvmfs-contrib/cvmfs-csi/deployments/helm/cvmfs-csi
-cvmfsEnabled: false
- 
-################################################################################
-# Kueue configuration
+# pluginDebug enables additional debug messages and disable optimizations
+pluginDebug: "true"
 
-# jobsNamespace is the namespace where the interlink jobs are run
-jobsNamespace: ikjobs
+# pluginTokenValiditySeconds defines for how many seconds the token is considered as valid after refresh
+pluginTokenValiditySeconds: 1200
 
-# totalCpuQuota is the amount of CPU provisioned exclusively via interLink
-totalCpuQuota: 0
+# pluginCondorPool is the HTCondor collector, usually passed as value of the argument -pool to condor CLI
+pluginCondorPool: "ce01t-htc.cr.cnaf.infn.it:9619"
 
-# totalMemoryQuota is the amount of memory provisioned exclusively via interLink
-totalMemoryQuota: 0
+# pluginSchedulerName is the HTCondor scheduler, usually passed as value of the argument -name to condor CLI
+pluginCondorScheduler: "ce01t-htc.cr.cnaf.infn.it"
 
-# totalGpuQuota is the amount of nvidia.com/gpu provisioned exclusively via interLink
-totalGpuQuota: 0
+# backendIamIssuer is the IAM issuer to authenticate against the HTCondor backend (via scitokens)
+backendIamIssuer: "https://iam-t1-computing.cloud.cnaf.infn.it"
 
-# resourceFlavorNodeLabels provide node labels to select specific nodes ro run jobs submitted through interlink
-resourceFlavorNodeLabels: {}
+# backendIamClientId is the ClientID of the IAM used to authenticate against the HTCondor backend (via scitokens)
+backendIamClientId:
+
+# backendIamClientSecret is the Client password of the IAM used to authenticate against the HTCondor backend (scitokens)
+backendIamClientSecret:
+
 

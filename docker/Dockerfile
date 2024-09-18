@@ -16,5 +16,5 @@ RUN pip install \
   "pytest" \
   "kubernetes" \
   "htcondor" \
-  "git+https://github.com/intertwin-eu/interLink.git#egg=interlink&subdirectory=example"
+  "git+https://github.com/intertwin-eu/interLink.git@0.3.0#egg=interlink&subdirectory=example"
 
