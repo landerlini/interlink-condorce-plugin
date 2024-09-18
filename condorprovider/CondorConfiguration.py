@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 import io
 from pydantic import BaseModel, Field
 import subprocess
@@ -11,9 +12,8 @@ import htcondor
 import requests
 import asyncio
 
-from pydantic.json_schema import DEFAULT_REF_TEMPLATE
-
 from condorprovider.utils import generate_uid
+from condorprovider import configuration as cfg
 
 from enum import Enum
 class JobStatus(Enum):
@@ -87,6 +87,7 @@ class CondorSubmit(BaseModel):
         description="List of files to be downloaded at the end of the job (basename, without path)"
     )
 
+
     def submit_file(self, command: str, condor_dir: str):
         return textwrap.dedent(f"""
             scitokens_file = /dev/null
@@ -124,6 +125,11 @@ class CondorConfiguration(BaseModel):
         description="If true, debug messages are printed.",
     )
 
+    last_token_refresh: None = Field(
+        default=None,
+        description="Internal field storing the last update of the authentication token"
+    )
+
     @staticmethod
     def initialize_htcondor():
         os.environ['CONDOR_CONFIG'] = os.environ.get('CONDOR_CONFIG', '/dev/null')
@@ -131,23 +137,38 @@ class CondorConfiguration(BaseModel):
             '_condor_SEC_CLIENT_AUTHENTICATION_METHODS', 'SCITOKENS'
         )
 
-        if 'BEARER_TOKEN' not in os.environ.keys():
-            response = requests.post(
-                os.environ["IAM_ISSUER"] + '/token',
-                data={'grant_type': 'refresh_token', 'refresh_token': os.environ["REFRESH_TOKEN"]},
-                auth=(os.environ.get('IAM_CLIENT_ID'), os.environ.get('IAM_CLIENT_SECRET'))
-            )
-            if response.status_code / 100 != 2:
-                print(response.text)
-            response.raise_for_status()
-            os.environ['BEARER_TOKEN'] = response.json().get("access_token")
+        if 'BEARER_TOKEN' not in os.environ.keys() and cfg.BEARER_TOKEN_PATH is not None:
+            os.environ['BEARER_TOKEN'] = CondorConfiguration._refresh_token()
 
-        htcondor.param['SEC_TOKEN'] = os.environ['BEARER_TOKEN']
         htcondor.param['SEC_CLIENT_AUTHENTICATION_METHODS'] = 'SCITOKENS'
-
         htcondor.reload_config()
 
+    @staticmethod
+    def _refresh_token():
+        response = requests.post(
+            os.environ["IAM_ISSUER"] + '/token',
+            data={'grant_type': 'refresh_token', 'refresh_token': os.environ["REFRESH_TOKEN"]},
+            auth=(os.environ.get('IAM_CLIENT_ID'), os.environ.get('IAM_CLIENT_SECRET'))
+        )
+        if response.status_code / 100 != 2:
+            print(response.text)
+        response.raise_for_status()
+        return response.json().get("access_token")
+
+    def _ensure_token(self):
+        last_refresh = self.last_token_refresh
+
+        if cfg.BEARER_TOKEN_PATH is not None:
+            os.environ['BEARER_TOKEN'] = open(cfg.BEARER_TOKEN_PATH).read()
+        elif last_refresh is None or (datetime.now() - last_refresh).seconds > cfg.TOKEN_VALIDITY_SECONDS:
+            os.environ['BEARER_TOKEN'] = CondorConfiguration._refresh_token()
+            self.last_token_refresh = datetime.now()
+
+        htcondor.param['SEC_TOKEN'] = os.environ['BEARER_TOKEN']
+
+
     async def get_schedd(self):
+        self._ensure_token()
         if not hasattr(self, '_schedd'):
             collector = htcondor.Collector(self.pool)
             for attempt in range(CONDOR_ATTEMPTS+1):
@@ -198,6 +219,7 @@ class CondorConfiguration(BaseModel):
                 continue
 
     async def submit(self, job: str, submit: Optional[CondorSubmit] = None):
+        self._ensure_token()
         htcondor.param['COLLECTOR_HOST'] = self.pool
         if submit is None:
             submit = CondorSubmit()
@@ -257,6 +279,7 @@ class CondorConfiguration(BaseModel):
         return files
 
     async def _retrieve_job_output(self, job, cleanup: bool):
+        self._ensure_token()
         for attempt in range(CONDOR_ATTEMPTS+1):
             try:
                 await _shell(f"condor_transfer_data -pool {self.pool} -name {self.scheduler_name} {job['ClusterId']}")
@@ -287,6 +310,7 @@ class CondorConfiguration(BaseModel):
         return files
 
     async def delete(self, job_id: int):
+        self._ensure_token()
         for attempt in range(CONDOR_ATTEMPTS+1):
             try:
                 return await _shell(f"condor_rm -pool {self.pool} -name {self.scheduler_name} {job_id:d}")
@@ -299,6 +323,7 @@ class CondorConfiguration(BaseModel):
 
 
     async def delete_by_name(self, job_name: str):
+        self._ensure_token()
         return await _shell(
             ' '.join([
                 "condor_rm",
@@ -307,6 +332,5 @@ class CondorConfiguration(BaseModel):
                 f"""-constraint 'JobBatchName == "{job_name}"'""",
             ])
         )
-
 
 CondorConfiguration.initialize_htcondor()
