@@ -1,4 +1,3 @@
-from . import configuration as cfg
 from typing import Union, Collection
 import logging
 import uuid
@@ -7,11 +6,16 @@ from pprint import pformat
 from fastapi import HTTPException
 import interlink
 
+from . import configuration as cfg, CondorConfiguration
+from .apptainer_cmd_builder import from_kubernetes
+
+CondorConfiguration.initialize_htcondor()
 
 class CondorProvider(interlink.provider.Provider):
     def __init__(self):
         super().__init__(None)
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.condor = CondorConfiguration()
         
         self.logger.info("Starting CondorProvider")
 
@@ -32,24 +36,19 @@ class CondorProvider(interlink.provider.Provider):
         short_name = '-'.join((namespace, name))[:20]
         return '-'.join((short_name, uid))
 
-    @staticmethod
-    def generate_volume_id(volume_name: str, pod_name: str, namespace: str):
-        """Internal. Return a readable unique id used to name the pod."""
-        uid = str(uuid.uuid4()).replace("-", "")[:30]
-        short_name = '-'.join((namespace[:10], pod_name[:10], volume_name[:10]))[:32]
-        return '-'.join((short_name, uid))
-
-
     async def create_job(self, pod: interlink.PodRequest, volumes: Collection[interlink.Volume]) -> str:
         """
-        Create a kueue job containing the pod
+        Submit the job to condor CE
         """
         self.logger.info(f"Create pod {pod.metadata.name}.{pod.metadata.namespace} [{pod.metadata.uid}]")
+        builder = from_kubernetes(pod.model_dump(), [volume.model_dump() for volume in volumes])
+        job_name = CondorProvider.get_readable_uid(pod)
+        await self.condor.submit(builder.dump(), job_name=job_name)
 
-        return self.get_readable_uid(pod)
+        return job_name
 
     async def delete_pod(self, pod: interlink.PodRequest) -> None:
-        pass
+        await self.condor.delete_by_name(CondorProvider.get_readable_uid(pod))
 
     @staticmethod
     def create_container_states(container_state: V1ContainerState) -> interlink.ContainerStates:

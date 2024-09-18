@@ -1,14 +1,17 @@
 import time
+import io
 from pydantic import BaseModel, Field
 import subprocess
 import os
 import textwrap
-from typing import Optional, Literal
+from typing import Optional, Literal, Dict,  Union, List
 import re
 import htcondor
 
 import requests
 import asyncio
+
+from pydantic.json_schema import DEFAULT_REF_TEMPLATE
 
 from condorprovider.utils import generate_uid
 
@@ -27,8 +30,6 @@ class JobStatus(Enum):
 
 CONDOR_ATTEMPTS = 3
 
-
-
 class HTCondorException(IOError):
     pass
 
@@ -46,6 +47,11 @@ async def _shell(cmd: str):
     return str(stdout)
 
 class CondorSubmit(BaseModel):
+    job_name: Optional[str] = Field(
+        default=None,
+        description="JobBatchName representing an external job_id, used for job lookup with *_by_name methods",
+    )
+
     executable: Optional[str] = Field(
         default="/bin/bash",
         description="Path to the executable"
@@ -76,10 +82,16 @@ class CondorSubmit(BaseModel):
         description="Enable transferring data files"
     )
 
+    transfer_output_files: List[str] = Field(
+        default=[],
+        description="List of files to be downloaded at the end of the job (basename, without path)"
+    )
+
     def submit_file(self, command: str, condor_dir: str):
         return textwrap.dedent(f"""
             scitokens_file = /dev/null
             +Owner = undefined
+            +JobBatchName               = "{self.job_name}"
             
             executable                  = {self.executable}
             arguments                   = {os.path.basename(command)}
@@ -90,28 +102,10 @@ class CondorSubmit(BaseModel):
             when_to_transfer_output     = {self.when_to_transfer_output}
             should_transfer_files       = {self.should_transfer_files}
             transfer_input_files        = {os.path.abspath(command)}
+            transfer_output_files       = {','.join(self.transfer_output_files)}
             
             queue
         """)
-
-    def submit_struct(self, command: str):
-        ret = htcondor.Submit(
-            dict(
-                executable=self.executable,
-                arguments=os.path.basename(command),
-                log=self.log,
-                error=self.stderr,
-                output=self.stdout,
-                when_to_transfer_output=self.when_to_transfer_output,
-                should_transfer_files=self.should_transfer_files,
-                scitokens_files="/dev/null",
-                transfer_input_files=os.path.abspath(command),
-            )
-        )
-        ret['+Owner'] = "undefined"
-        ret['+CustomField'] = "pippo"
-
-        return ret
 
 
 class CondorConfiguration(BaseModel):
@@ -183,12 +177,33 @@ class CondorConfiguration(BaseModel):
                 time.sleep(0.1)
                 continue
 
+    async def query_by_name(self, job_name: str):
+        for attempt in range(CONDOR_ATTEMPTS+1):
+            try:
+                schedd = await self.get_schedd()
+                ret = schedd.query(constraint=f'JobBatchName == "{job_name}"')
+                if len(ret) == 0:
+                    raise HTCondorException(f"Job {job_name} not found.")
+                if len(ret) > 1:
+                    raise HTCondorException(
+                        f"Ambiguous job name {job_name} selecting jobs {', '.join([j['ClusterId'] for j in ret])}."
+                    )
+
+                return ret[0]
+
+            except htcondor.HTCondorIOError as e:
+                if attempt == CONDOR_ATTEMPTS:
+                    raise e
+                time.sleep(0.1)
+                continue
+
     async def submit(self, job: str, submit: Optional[CondorSubmit] = None):
         htcondor.param['COLLECTOR_HOST'] = self.pool
         if submit is None:
             submit = CondorSubmit()
 
         uid = generate_uid()
+        submit.job_name = submit.job_name if submit.job_name is not None else uid
         condor_dir = f"/tmp/.condor.{uid}"
         await _shell(f"mkdir -p {condor_dir}; chmod a+w {condor_dir}")
         submit_file_path = os.path.join(condor_dir, "condor.sub")
@@ -200,7 +215,7 @@ class CondorConfiguration(BaseModel):
         with open(script_file_path, "w") as script_file:
             print (job, file=script_file)
 
-        ret = await _shell(' '.join([
+        ret = await _shell(f"cd {condor_dir}\n" + ' '.join([
             "condor_submit",
             f"-pool {self.pool}",
             f"-name {self.scheduler_name}",
@@ -220,14 +235,31 @@ class CondorConfiguration(BaseModel):
         raise HTCondorException("Failed to submit job to cluster")
 
     async def status(self, job_id: int):
-        job = (await self.query())[job_id]
+        jobs = await self.query()
+        return JobStatus(jobs[job_id]['JobStatus'])
+
+    async def status_by_name(self, job_name: str):
+        job = await self.query_by_name(job_name)
         return JobStatus(job['JobStatus'])
 
+    async def retrieve_by_name(self, job_name: str, cleanup: bool = True):
+        job = await self.query_by_name(job_name)
+        files = await self._retrieve_job_output(job, cleanup=cleanup)
+        if cleanup:
+            await self.delete_by_name(job_name)
+        return files
+
     async def retrieve(self, job_id: int, cleanup: bool = True):
-        job = (await self.query())[job_id]
+        job = await self.query(job_id)
+        files = await self._retrieve_job_output(job, cleanup=cleanup)
+        if cleanup:
+            await self.delete(job_id)
+        return files
+
+    async def _retrieve_job_output(self, job, cleanup: bool):
         for attempt in range(CONDOR_ATTEMPTS+1):
             try:
-                await _shell(f"condor_transfer_data -pool {self.pool} -name {self.scheduler_name} {job_id}")
+                await _shell(f"condor_transfer_data -pool {self.pool} -name {self.scheduler_name} {job['ClusterId']}")
             except subprocess.CalledProcessError as e:
                 if attempt == CONDOR_ATTEMPTS:
                     raise e
@@ -242,15 +274,39 @@ class CondorConfiguration(BaseModel):
             for lfn, content in files.items():
                 print(f"""=== {lfn} ===\n{content}\n=============""")
 
+        if 'TransferOutput' in job.keys():
+            job_dir = job['SUBMIT_Iwd']
+            files.update({
+                k: io.BytesIO(open(os.path.join(job_dir, k), 'rb').read())
+                for k in job['TransferOutput'].split(',')
+            })
+
         if cleanup:
-            await _shell(textwrap.dedent(f"""
-                condor_rm -pool {self.pool} -name {self.scheduler_name} {job_id:d}
-                rm -rf {os.path.dirname(job['JobSubmitFile'])}
-                """))
+            await _shell(f"rm -rf {os.path.dirname(job['JobSubmitFile'])}")
 
         return files
 
+    async def delete(self, job_id: int):
+        for attempt in range(CONDOR_ATTEMPTS+1):
+            try:
+                return await _shell(f"condor_rm -pool {self.pool} -name {self.scheduler_name} {job_id:d}")
+            except subprocess.CalledProcessError as e:
+                if attempt == CONDOR_ATTEMPTS:
+                    raise e
+                else:
+                    await asyncio.sleep(0.2)
+                    continue
+
+
+    async def delete_by_name(self, job_name: str):
+        return await _shell(
+            ' '.join([
+                "condor_rm",
+                f"-pool {self.pool}",
+                f"-name {self.scheduler_name}",
+                f"""-constraint 'JobBatchName == "{job_name}"'""",
+            ])
+        )
+
 
 CondorConfiguration.initialize_htcondor()
-
-

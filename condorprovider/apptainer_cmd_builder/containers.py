@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 import os.path
-from typing import Dict, List, Literal, Union
+from typing import Dict, List, Literal, Union, Optional
 from pathlib import Path
 
 from . import configuration as cfg
@@ -60,13 +60,27 @@ class ContainerSpec(BaseModel, extra="forbid"):
         description="Directory to be used for temporary data related to this container set",
     )
 
+    return_code: Optional[int] = Field(
+        default=None,
+        description="Return code of the container, once completed. None otherwise."
+    )
+
+    log: Optional[str] = Field(
+        default=None,
+        description="Log of the container, once completed. None otherwise."
+    )
+
     @property
     def workdir(self):
         return os.path.join(self.scratch_area, f".acb.cnt.{self.uid}")
 
     @property
     def log_path(self):
-        return os.path.join(self.workdir, 'log')
+        return os.path.join(self.workdir, f'{self.uid}.log')
+
+    @property
+    def return_code_path(self):
+        return os.path.join(self.workdir, f'{self.uid}.ret')
 
     @property
     def env_file_path(self):

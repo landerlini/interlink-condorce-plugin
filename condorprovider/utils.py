@@ -18,7 +18,7 @@ def generate_uid(length: int = 16, allow_uppercase: bool = False) -> str:
     first_char = random.choice(letters)
     other_chars = letters + string.digits
 
-    return first_char + ''.join(random.choice(other_chars) for _ in range(length))
+    return first_char + ''.join(random.choice(other_chars) for _ in range(length-1))
 
 
 def embed_ascii_file(path: str, file_content: str, executable: bool = False, token: str = "EOF") -> str:
@@ -102,5 +102,6 @@ def to_snakecase(s: str):
             ret.append(char)
 
     return ''.join(ret)
+
 
 
