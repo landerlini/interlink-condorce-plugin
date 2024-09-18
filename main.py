@@ -3,7 +3,7 @@ from typing import List
 import os
 import signal
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 import interlink
 
 from condorprovider import CondorProvider

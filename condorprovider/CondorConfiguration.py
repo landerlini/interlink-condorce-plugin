@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 import subprocess
 import os
 import textwrap
-from typing import Optional, Literal, Dict,  Union, List
+from typing import Optional, Literal, List
 import re
 import htcondor
 
@@ -125,7 +125,7 @@ class CondorConfiguration(BaseModel):
         description="If true, debug messages are printed.",
     )
 
-    last_token_refresh: None = Field(
+    last_token_refresh: Optional[datetime] = Field(
         default=None,
         description="Internal field storing the last update of the authentication token"
     )

@@ -1,10 +1,4 @@
-from dataclasses import dataclass
-import json
-import os.path
-from distutils.command.config import config
-from string import ascii_uppercase
 import re
-
 from pprint import pprint
 from kubernetes import client as k8s
 from typing import Dict, Any, List, Mapping, Optional, Union, Literal
@@ -12,7 +6,7 @@ from typing import Dict, Any, List, Mapping, Optional, Union, Literal
 from kubernetes.client import V1Container, V1KeyToPath
 
 from condorprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerSpec, volumes
-from condorprovider.apptainer_cmd_builder.volumes import make_empty_dir, VolumeBind, BaseVolume
+from condorprovider.apptainer_cmd_builder.volumes import BaseVolume
 from condorprovider.utils import deserialize_kubernetes
 
 def _create_static_volume_dict(
@@ -118,7 +112,8 @@ def _make_pod_volume_struct(
 
 def _make_container_list(
         containers: Optional[List[V1Container]] = None,
-        pod_volumes: Optional[Mapping[str, BaseVolume]] = None
+        pod_volumes: Optional[Mapping[str, BaseVolume]] = None,
+        use_fake_volumes: bool = False,
 ) -> List[ContainerSpec]:
     """
     Internal. Creates a list of ContainerSpec objects, mounting the volumes defined by pod_volumes.
@@ -130,19 +125,35 @@ def _make_container_list(
     if containers is None:
         return []
 
+    def _volumes_for_container(container):
+        # NB: Uses pod_volumes and use_fake_volumes from outer scope
+        if container.volume_mounts is None:
+            return []
+
+        if use_fake_volumes:
+            return sum([
+                    *[volumes.ScratchArea().mount(vm.mount_path) for vm in getattr(container, 'volume_mounts')],
+                ], [])
+
+        return sum([
+                *[pod_volumes[vm.name].mount(vm.mount_path) for vm in getattr(container, 'volume_mounts')],
+            ], [])
+
     return [
         ContainerSpec(
             entrypoint=c.command[0],
             args=c.command[1:] + (c.args if c.args is not None else []),
             image=c.image,
-            volume_binds=[] if c.volume_mounts is None else sum([
-                *[pod_volumes[vm.name].mount(vm.mount_path) for vm in getattr(c, 'volume_mounts')],
-            ], []),
+            volume_binds=_volumes_for_container(c),
         ) for c in containers
     ]
 
 
-def from_kubernetes(pod_raw: Dict[str, Any], containers_raw: List[Dict[str, Any]]) -> ApptainerCmdBuilder:
+def from_kubernetes(
+        pod_raw: Dict[str, Any],
+        containers_raw: Optional[List[Dict[str, Any]]] = None,
+        use_fake_volumes: bool = False,
+) -> ApptainerCmdBuilder:
     """
     :param pod_raw:
         the definition of the pod as a raw Python dictionary
@@ -169,6 +180,11 @@ def from_kubernetes(pod_raw: Dict[str, Any], containers_raw: List[Dict[str, Any]
                   another_file: |
                     hello world
         ```
+
+    :param use_fake_volumes:
+        replace all volumes with scratch area, this is mainly used to enable recreating the container structure
+        for asynchronous processing of the return code and log that may happen after volumes have been cleaned up.
+
     :return:
         An instance of ApptainerCmdBuilder representing the pod
     """
@@ -177,10 +193,11 @@ def from_kubernetes(pod_raw: Dict[str, Any], containers_raw: List[Dict[str, Any]
         raise ValueError("Invalid pod description")
 
     pod = deserialize_kubernetes(pod_raw, 'V1Pod')
-    pod_volumes = _make_pod_volume_struct(pod, containers_raw)
+    pod_volumes = _make_pod_volume_struct(pod, containers_raw if containers_raw is not None else [])
 
     return ApptainerCmdBuilder(
-        init_containers=_make_container_list(pod.spec.init_containers, pod_volumes),
-        containers=_make_container_list(pod.spec.containers, pod_volumes),
+        uid=pod.metadata.name,
+        init_containers=_make_container_list(pod.spec.init_containers, pod_volumes, use_fake_volumes=use_fake_volumes),
+        containers=_make_container_list(pod.spec.containers, pod_volumes, use_fake_volumes=use_fake_volumes),
     )
 

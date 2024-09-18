@@ -16,7 +16,6 @@ import requests
 import textwrap
 import time
 import os
-import base64
 
 IAM_ISSUER = os.environ.get("IAM_ISSUER")
 IAM_CLIENT_ID = os.environ.get("IAM_CLIENT_ID")

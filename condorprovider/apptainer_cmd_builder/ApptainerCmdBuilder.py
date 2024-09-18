@@ -2,7 +2,7 @@ import os.path
 import tarfile
 
 from pydantic import BaseModel, Field
-from typing import Dict, List, Literal, Union, BinaryIO
+from typing import List, BinaryIO
 from . import version
 import textwrap
 
@@ -28,7 +28,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
 
     additional_volumes: List[BaseVolume] = Field(
         default=[],
-        description="List of volumes to be mounted or binded to the apptainer container"
+        description="List of volumes to be mounted or bound to the apptainer container"
     )
 
     scratch_area: str = Field(
@@ -57,13 +57,27 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
 
     @property
     def workdir(self):
-        return os.path.join(self.scratch_area, f".acb.jobset.{self.uid}")
+        return os.path.join(self.scratch_area, f".acb.cluster.{self.uid}")
 
     def build_environment_files(self):
         return '\n'.join([container.initialize() for container in self.init_containers + self.containers])
 
     def exec_init_containers(self):
-        return '\n'.join([container.exec() for container in self.init_containers])
+        ret = []
+        for container in self.init_containers:
+            ret += [
+                container.exec(),
+                "echo -n $? > %s" % (container.return_code_path + ".init"),
+                "cp %s %s" % (container.log_path, container.log_path + ".init"),
+            ]
+
+        ret += [
+            "tar cvf $SANDBOX/logs " + ' '.join([
+                *[f"-C {c.workdir} {os.path.basename(c.log_path)}.init" for c in self.init_containers],
+                *[f"-C {c.workdir} {os.path.basename(c.return_code_path)}.init" for c in self.init_containers],
+            ])
+        ]
+        return '\n'.join(ret)
 
     def exec_containers(self):
         ret = [
@@ -187,6 +201,18 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
             container.return_code = int(
                 file_contents[os.path.basename(container.return_code_path)]
                 if os.path.basename(container.return_code_path) in file_contents.keys()
+                else self.error_code_for_return_code_not_found
+            )
+
+        for init_container in self.init_containers:
+            init_container.log = (
+                file_contents[os.path.basename(init_container.log_path + '.init')]
+                if os.path.basename(init_container.log_path) in file_contents.keys()
+                else f"Error retrieving log from {init_container.log_path} (init-container)"
+            )
+            init_container.return_code = int(
+                file_contents[os.path.basename(init_container.return_code_path + '.init')]
+                if os.path.basename(init_container.return_code_path) in file_contents.keys()
                 else self.error_code_for_return_code_not_found
             )
 

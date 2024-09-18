@@ -1,10 +1,10 @@
 import os.path
 
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional, Callable, Literal
+from typing import Dict, Optional, Literal
 import textwrap
 
-from ..utils import generate_uid, embed_ascii_file, embed_binary_file, make_uid_numeric
+from ..utils import embed_ascii_file, embed_binary_file, make_uid_numeric
 from . import configuration as cfg
 
 from condorprovider.utils import generate_uid
@@ -134,7 +134,6 @@ class StaticVolume(BaseVolume, extra="forbid"):
         return '\n'+'\n'.join(ret)
 
     def mount(self, mount_path: str, read_only: bool = True, key: Optional[str] = None):
-        mode = 'ro' if read_only else 'rw'
         if key is None:
             return (
                 [   # Bind ascii files
@@ -187,8 +186,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
      - it must not refer directly to the mount_path, but as the first argument (or "$1")
      - it must be blocking
 
-    :param mount_path: The path where to mount the fuse volume inside the apptainer container
-    :param mount_script: The shell script implementing the fuse mount (e.g. sshfs -f or rclone mount2)
+    :param fuse_mount_script: The shell script implementing the fuse mount (e.g. sshfs -f or rclone mount2)
     :return: a BaseVolume instance describing the fuse volume
 
     """

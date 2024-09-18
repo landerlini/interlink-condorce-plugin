@@ -1,4 +1,6 @@
 name: hello-world
+can_use_fake_volumes: True
+
 pod:
   apiVersion: v1
   kind: Pod
@@ -22,6 +24,8 @@ validation:
 ---
 
 name: hello-world-with-args
+can_use_fake_volumes: True
+
 pod:
   apiVersion: v1
   kind: Pod
@@ -47,6 +51,8 @@ validation:
 ---
 
 name: hello-world-multiline
+can_use_fake_volumes: True
+
 pod:
   apiVersion: v1
   kind: Pod
@@ -74,6 +80,8 @@ validation:
 ---
 
 name: scratch-area
+can_use_fake_volumes: True
+
 pod:
   apiVersion: v1
   kind: Pod
@@ -109,6 +117,8 @@ validation:
 ---
 
 name: empty-dir
+can_use_fake_volumes: False
+
 pod:
   apiVersion: v1
   kind: Pod
@@ -156,6 +166,8 @@ validation:
 ---
 
 name: configmap
+can_use_fake_volumes: False
+
 pod:
   apiVersion: v1
   kind: Pod
@@ -200,6 +212,8 @@ validation:
 ---
 
 name: secret
+can_use_fake_volumes: False
+
 pod:
   apiVersion: v1
   kind: Pod
@@ -244,6 +258,8 @@ validation:
 ---
 
 name: fuse-vol
+can_use_fake_volumes: False
+
 pod:
   apiVersion: v1
   kind: Pod
@@ -254,7 +270,6 @@ pod:
         cat << EOS > /tmp/rclone.conf
         [example]
         type = local
-        nounc = true
         EOS
         
         # Mimic a remote
@@ -293,6 +308,8 @@ validation:
 ---
 
 name: loopback-network
+can_use_fake_volumes: True
+
 pod:
   apiVersion: v1
   kind: Pod

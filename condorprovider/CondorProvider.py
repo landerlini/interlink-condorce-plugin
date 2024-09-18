@@ -1,12 +1,11 @@
 from typing import Union, Collection
 import logging
-import uuid
-from pprint import pformat
+import tarfile
 
 from fastapi import HTTPException
 import interlink
 
-from . import configuration as cfg, CondorConfiguration
+from . import CondorConfiguration, CondorSubmit, CondorJobStatus
 from .apptainer_cmd_builder import from_kubernetes
 
 CondorConfiguration.initialize_htcondor()
@@ -43,63 +42,121 @@ class CondorProvider(interlink.provider.Provider):
         self.logger.info(f"Create pod {pod.metadata.name}.{pod.metadata.namespace} [{pod.metadata.uid}]")
         builder = from_kubernetes(pod.model_dump(), [volume.model_dump() for volume in volumes])
         job_name = CondorProvider.get_readable_uid(pod)
-        await self.condor.submit(builder.dump(), job_name=job_name)
+        await self.condor.submit(builder.dump(), CondorSubmit(job_name=job_name, transfer_output_files=['logs']))
 
         return job_name
 
     async def delete_pod(self, pod: interlink.PodRequest) -> None:
         await self.condor.delete_by_name(CondorProvider.get_readable_uid(pod))
 
-    @staticmethod
-    def create_container_states(container_state: V1ContainerState) -> interlink.ContainerStates:
-        return interlink.ContainerStates(
-            waiting=interlink.StateWaiting(
-                message="Pending",
-                reason="Unknown",
-            )
-        )
-
-    @staticmethod
-    async def _is_job_suspended(job_name: str) -> bool:
-        """
-        Return True if the job.spec.suspend is true. If true, kueue scheduled the job.
-        """
-        # async with kubernetes_api('batch', ignored_statuses=[404]) as k8s:
-        #     job = await k8s.read_namespaced_job(
-        #         namespace=cfg.NAMESPACE,
-        #         name=job_name
-        #     )
-
-        #     logging.getLogger("is_job_suspended").debug(
-        #         f"job.spec.suspend: {job.spec.suspend} (boolean: {job.spec.suspend == True})"
-        #     )
-
-        #     return job.spec.suspend
-
-
     async def get_pod_status(self, pod: interlink.PodRequest) -> Union[interlink.PodStatus, None]:
         self.logger.info(f"Status of pod {pod.metadata.name}.{pod.metadata.namespace} [{pod.metadata.uid}]")
+        job_name = CondorProvider.get_readable_uid(pod)
+        status = await self.condor.status_by_name(job_name)
 
         container_statuses = []
 
-        self.logger.debug(f"Container statuses: " + pformat(container_statuses))
+        if status == CondorJobStatus.held:
+            container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        waiting=interlink.StateWaiting(
+                            message="Spooling",
+                            reason="Job in Held status"
+                        )
+                    )
+                ) for cs in pod.spec.containers + pod.spec.init_containers
+            ]
+
+        elif status == CondorJobStatus.idle:
+            container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        waiting=interlink.StateWaiting(
+                            message="Pending",
+                            reason="Backend queues"
+                        )
+                    )
+                ) for cs in pod.spec.containers + pod.spec.init_containers
+            ]
+
+        elif status == CondorJobStatus.running:
+            container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        running=interlink.StateRunning()
+                    )
+                ) for cs in pod.spec.containers + pod.spec.init_containers
+            ]
+
+        elif status == CondorJobStatus.removed:
+            self.logger.error(f"Requested status for a removed job: {job_name}. Returning exit_code 404.")
+            container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(exit_code=404)
+                    )
+                ) for cs in pod.spec.containers + pod.spec.init_containers
+            ]
+
+        elif status == CondorJobStatus.completed:
+            builder = from_kubernetes(pod.model_dump(), use_fake_volumes=True)
+            output_struct = await self.condor.retrieve_by_name(job_name, cleanup=False)
+            builder.process_logs(output_struct['logs'])
+            container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(exit_code=builder.containers[i_container].return_code)
+                    )
+                ) for i_container, cs in enumerate(pod.spec.containers)
+            ]
+            container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(exit_code=builder.init_containers[i_container].return_code)
+                    )
+                ) for i_container, cs in enumerate(pod.spec.init_containers)
+            ]
 
         return interlink.PodStatus(
             name=pod.metadata.name,
             UID=pod.metadata.uid,
             namespace=pod.metadata.namespace,
-            containers=[
-                interlink.ContainerStatus(
-                    name=cs.name,
-                    state=self.create_container_states(cs.state),
-                ) for cs in container_statuses
-            ]
+            containers=container_statuses
         )
+
 
     async def get_pod_logs(self, log_request: interlink.LogRequest) -> str:
         self.logger.info(f"Log of pod {log_request.PodName}.{log_request.Namespace} [{log_request.PodUID}]")
+        job_name = CondorProvider.get_readable_uid(log_request)
+        status = await self.condor.status_by_name(job_name)
 
-        return "This condor backend does not allow accessing logs of running jobs."
+        if status in [CondorJobStatus.idle, CondorJobStatus.held]:
+            return ""
 
+        if status == CondorJobStatus.running:
+            return "Unfortunately the log cannot retrieved for a running job... "
 
+        if status != CondorJobStatus.completed:
+            return f"Error. Cannot return log for job status '{status}'"
 
+        output_struct = await self.condor.retrieve_by_name(job_name, cleanup=False)
+        if 'logs' not in output_struct.keys():
+            self.logger.error(f"Requested a log for job {job_name}, but log is not available in condor output_files.")
+            return f"Error. Log was not stored or could not be retrieved."
+
+        with tarfile.open(fileobj=output_struct['logs'], mode='r:*') as tar:
+            for member in tar.getmembers():
+                if member.isfile() and member.name == log_request.container_name:
+                    full_log = tar.extractfile(member).read().decode('utf-8')
+
+        if log_request.Opts.Tail is not None:
+            return "\n".join(full_log.split('\n')[-log_request.Opts.Tail:])
+
+        return full_log

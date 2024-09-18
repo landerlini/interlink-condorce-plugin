@@ -163,7 +163,6 @@ def test_fuse_volume():
             cat << EOS > /tmp/rclone.conf
             [example]
             type = local
-            nounc = true
             EOS
 
             rclone mount2 \\
