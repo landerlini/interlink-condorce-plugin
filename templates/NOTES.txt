@@ -1,0 +1,8 @@
+The virtual kubelet {{ .Values.nodeName }} is being created.
+
+To authenticate it, please run the following command:
+
+  $ kubectl exec -it -n {{ .Release.Namespace }} authenticate-{{ .Values.nodeName }} -- python3 /app/auth
+
+and follow the instructions.
+
