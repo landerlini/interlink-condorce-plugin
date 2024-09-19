@@ -195,9 +195,10 @@ def from_kubernetes(
     :return:
         An instance of ApptainerCmdBuilder representing the pod
     """
-    if pod_raw['kind'] != 'Pod' and pod_raw['apiVersion'] != 'v1':
-        pprint(pod_raw)
-        raise ValueError("Invalid pod description")
+    if 'kind' in pod_raw.keys() and 'apiVersion' in pod_raw.keys():
+        if pod_raw['kind'] != 'Pod' and pod_raw['apiVersion'] != 'v1':
+            pprint(pod_raw)
+            raise ValueError("Invalid pod description")
 
     pod = deserialize_kubernetes(pod_raw, 'V1Pod')
     pod_volumes = _make_pod_volume_struct(pod, containers_raw if containers_raw is not None else [])
