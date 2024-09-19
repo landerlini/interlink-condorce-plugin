@@ -13,15 +13,15 @@ spec:
       command: ["sleep", "infinity"]
       env:
         - name: CLIENT_ID
-          value: {{ .Values.iamClientId }}
+          value: {{ .Values.backendIamClientId }}
         - name: CLIENT_SECRET
-          value: {{ .Values.iamClientSecret }}
+          value: {{ .Values.backendIamClientSecret }}
         - name: DEVICECODE_URL
-          value: {{ .Values.iamDeviceCodeEndpoint | default "https://iam.cloud.infn.it/devicecode" }}
+          value: "{{ .Values.backendIamIssuer | default "https://iam.cloud.infn.it" }}/devicecode"
         - name: TOKEN_URL
-          value: {{ .Values.iamTokenEndpoint | default "https://iam.cloud.infn.it/token" }}
+          value: "{{ .Values.backendIamIssuer | default "https://iam.cloud.infn.it" }}/token"
         - name: SCOPES
-          value: {{ .Values.iamScopes | toJson | squote }}
+          value: {{ .Values.backendIamScopes | toJson | squote }}
         - name: SECRET_NAMESPACE
           value: {{ .Release.Namespace }}
         - name: SECRET_NAME 

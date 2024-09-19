@@ -49,18 +49,10 @@ certManagerEmailAddress:
 oauth2ProxyImage: "quay.io/oauth2-proxy/oauth2-proxy:v7.6.0"
 
 # iamClientId is the Client ID of the IAM OIDC token issuer
-iamClientId: 
+oauth2ProxyIamClientId:
 
 # iamClientSecret is the Client Secret of the IAM OIDC token issuer
-iamClientSecret: 
-
-# iamScopes lists the scopes requested to the IAM
-iamScopes:
-   - openid 
-   - email 
-   - offline_access 
-   - profile 
-   - groups
+oauth2ProxyIamClientSecret:
 
 # oauth2ProxyPort is the internal port of the oauth2-proxy service
 oauth2ProxyPort: 8000
@@ -71,11 +63,11 @@ oauth2ProxyIamIssuer: "https://iam.cloud.infn.it/"
 # oauth2ProxyTokenUrl is the path to the IAM issuer passed to the oauth2-proxy
 oauth2ProxyTokenUrl: "https://iam.cloud.infn.it/token"
 
-# iamGroupClaim is the json path in the returned token to retrieve the user's groups
-iamGroupClaim: groups
+# oauth2ProxyIamGroupClaim is the json path in the returned token to retrieve the user's groups
+oauth2ProxyIamGroupClaim: groups
 
-# iamAllowedGroup is the IAM group whose user can access the interlink server
-iamAllowedGroup: admins
+# oauth2ProxyIamAllowedGroup is the IAM group whose user can access the interlink server
+oauth2ProxyIamAllowedGroup: admins
 
 # oauth2ProxyAudience is the audience in the token. Should be consistent with client setup
 oauth2ProxyAudience: users
@@ -128,4 +120,15 @@ backendIamClientId:
 # backendIamClientSecret is the Client password of the IAM used to authenticate against the HTCondor backend (scitokens)
 backendIamClientSecret:
 
+# backendIamScope lists the scopes requested to the IAM
+backendIamScopes:
+  - openid
+  - profile
+  - offline_access
+  - wlcg.groups
+  - wlcg
+  - compute.create
+  - compute.modify
+  - compute.read
+  - compute.cancel
 

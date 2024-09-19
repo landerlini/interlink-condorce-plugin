@@ -165,18 +165,18 @@ spec:
           command: ["oauth2-proxy"]
           args: 
             - --email-domain=*
-            - --client-id={{- .Values.iamClientId | required "missing IAM Client ID" }}
-            - --client-secret={{- .Values.iamClientSecret | required "missing IAM Client Secret" }}
+            - --client-id={{- .Values.oauth2ProxyIamClientId | required "missing IAM Client ID" }}
+            - --client-secret={{- .Values.oauth2ProxyIamClientSecret | required "missing IAM Client Secret" }}
             - --http-address=0.0.0.0:{{- .Values.oauth2ProxyPort | default 8000 }}
             - --oidc-issuer-url={{- .Values.oauth2ProxyIamIssuer | default "https://iam.cloud.infn.it/" }}
             - --pass-authorization-header=true
             - --provider=oidc
-            - --scope={{ join " " .Values.iamScopes }}
-            - --oidc-groups-claim={{ .Values.iamGroupsClaim | default "groups" }}
+            - --scope={{ join " " .Values.oauth2ProxyIamScopes }}
+            - --oidc-groups-claim={{ .Values.oauth2ProxyIamGroupsClaim | default "groups" }}
             - --redirect-url=https://{{- .Values.hostname | required "Field `hostname` not defined." -}}/{{ .Values.serverPathPrefix | default "interlink" -}}/callback
             - --oidc-extra-audience={{- .Values.oauth2ProxyAudience | default "users" }}
             - --upstream=http://interlink.{{- .Release.Namespace -}}:80
-            - --allowed-group={{- .Values.iamAllowedGroup }}
+            - --allowed-group={{- .Values.oauth2ProxyIamAllowedGroup }}
             - --validate-url={{- .Values.oauth2ProxyTokenUrl | default "https://iam.cloud.infn.it/token" }}
             - --cookie-secret={{- .Values.oauth2ProxyCookieSecret | required "Field `oauth2ProxyCookieSecret` not defined." | b64enc }}
             - --skip-auth-route="*='*'"
