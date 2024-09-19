@@ -42,7 +42,7 @@ spec:
               mountPath: /interlink
 
         - name: interlink
-          image: landerlini/interlink-condor-plugin:v0.0
+          image: {{ .Values.pluginDockerImage | default "landerlini/interlink-condorce-plugin:v0.0" }}
           command: ["/bin/sh", "-c"]
           args: 
             - |
