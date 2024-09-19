@@ -8,6 +8,7 @@ import interlink
 
 from condorprovider import CondorProvider
 from condorprovider import configuration as cfg
+from condorprovider.CondorConfiguration import HTCondorException
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -44,7 +45,12 @@ async def delete_pod(pod: interlink.PodRequest) -> str:
 @app.get("/status")
 async def get_pod_status(pods: List[interlink.PodRequest]) -> List[interlink.PodStatus]:
     logging.info(f"Requested status, number of pods: {len(pods)}")
-    retrieved_states = [await condor_provider.get_pod_status(pod) for pod in pods]
+    try:
+        retrieved_states = [await condor_provider.get_pod_status(pod) for pod in pods]
+    except HTCondorException as e:
+        logging.error(str(e))
+        raise HTTPException(404, str(e))
+
     return [state for state in retrieved_states if state is not None]
 
 
