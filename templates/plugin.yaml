@@ -22,7 +22,6 @@ spec:
         app: interlink
         component: condor-plugin
     spec:
-      serviceAccount: condor-plugin
       securityContext:
         # Copy-pasted from https://github.com/kubernetes/git-sync/blob/master/docs/kubernetes.md
         fsGroup: 101
