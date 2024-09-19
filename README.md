@@ -21,6 +21,35 @@ The logical flow of an incoming computation request is as follows:
    authenticated against the HTCondor backend
    (see [authenticator.yaml](templates/authenticator.yaml)), converts and submit the requests.
 
+### Minimal `values.yaml`
+
+```yaml
+# hostname
+hostname: <insert here the fully qualified domain name, without protocol>
+
+# IAM authenticating incoming requests
+oauth2ProxyIamIssuer: <iam-issuer>
+iamClientId: <client-id>
+iamClientSecret: <client-secret>
+oauth2ProxyCookieSecret: <a random string of 16 chars to be used as encryption key)
+
+# IAM authenticating outgoind requests
+backendIamIssuer: <iam-issuer>
+backendIamClientId: <client-id>
+backendIamClientSecret: <client-secret>
+
+# Condor configuration
+pluginCondorPool: <value one would pass to condor -pool argument, with port>
+pluginCondorScheduler: <value one would pass to condor -name argument>
+
+# hostname
+certManagerEmailAddress: <your e-mail>
+```
+
+### Dependencies 
+ * helm
+ * cert-manager: https://cert-manager.io/docs/installation/
+
 ## Specialized plugin
 The plugin is composed of a general package to convert a Kubernetes Pod and a set of volumes into a bash script 
 relying on apptainer (or singularity) for the container runtime interface 
