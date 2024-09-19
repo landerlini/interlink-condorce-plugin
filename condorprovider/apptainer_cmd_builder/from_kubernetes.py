@@ -65,7 +65,7 @@ def _make_pod_volume_struct(
                 volumes_counts[volume_mount.name] = 0
             volumes_counts[volume_mount.name] += 1
 
-    empty_dirs = [v for c in containers_raw for v in (c if c is not None else []).get('empty_dirs', [])]
+    empty_dirs = [v for c in containers_raw for v in (c if c is not None else []).get('emptyDirs') or []]
     empty_dirs = {
         k: volumes.ScratchArea() if volumes_counts.get(k, 0) <= 1 else volumes.make_empty_dir()
         for k in set(empty_dirs)
@@ -80,7 +80,7 @@ def _make_pod_volume_struct(
         volume_definitions=[
             deserialize_kubernetes(cm_raw, 'V1ConfigMap')
             for container in containers_raw
-            for cm_raw in container.get('config_maps', [])
+            for cm_raw in container.get('configMaps') or []
         ]
     )
 
@@ -93,7 +93,7 @@ def _make_pod_volume_struct(
         volume_definitions=[
             deserialize_kubernetes(cm_raw, 'V1Secret')
             for container in containers_raw
-            for cm_raw in container.get('secrets', [])
+            for cm_raw in container.get('secrets') or []
         ],
     )
 
@@ -192,8 +192,8 @@ def from_kubernetes(
         ```yaml
         raw_containers:
           - name: main
-          - empty_dirs: 123
-          - config_maps:
+          - emptyDirs: 123
+          - configMaps:
               - metadata:
                   name: my-cfg
                 data:

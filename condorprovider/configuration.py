@@ -22,7 +22,7 @@ CONDOR_SCHEDULER_NAME = os.environ.get("CONDOR_SCHEDULER_NAME", "ce01t-htc.cr.cn
 IAM_ISSUER = os.environ["IAM_ISSUER"]
 
 # IAM_CLIENT_ID is the ID of the IAM Client defined through the IAM_ISSUER
-IAM_CLIENT_ID = os.environ["IAM_ISSUER"]
+IAM_CLIENT_ID = os.environ["IAM_CLIENT_ID"]
 
 # IAM_CLIENT_SECRET is the SECRET of the IAM Client defined through the IAM_ISSUER
 IAM_CLIENT_SECRET = os.environ['IAM_CLIENT_SECRET']

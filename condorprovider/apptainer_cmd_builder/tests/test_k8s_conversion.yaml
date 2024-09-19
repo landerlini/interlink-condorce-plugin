@@ -143,7 +143,7 @@ pod:
 
 containers:
   - name: main
-  - empty_dirs:
+  - emptyDirs:
       - scratch
 
 validation:
@@ -192,7 +192,7 @@ pod:
 
 containers:
   - name: main
-  - empty_dirs:
+  - emptyDirs:
       - scratch
 
 validation:
@@ -233,7 +233,7 @@ pod:
 
 containers:
   - name: main
-  - config_maps:
+  - configMaps:
       - metadata:
           name: my-cfg
           namespace: whatever
