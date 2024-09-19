@@ -31,7 +31,7 @@ hostname: <insert here the fully qualified domain name, without protocol>
 oauth2ProxyIamIssuer: <iam-issuer>
 iamClientId: <client-id>
 iamClientSecret: <client-secret>
-oauth2ProxyCookieSecret: <a random string of 16 chars to be used as encryption key)
+oauth2ProxyCookieSecret: <a random string of 16 chars to be used as encryption key>
 
 # IAM authenticating outgoind requests
 backendIamIssuer: <iam-issuer>

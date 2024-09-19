@@ -20,9 +20,9 @@ spec:
     metadata:
       labels:
         app: interlink
-        component: kueue-plugin
+        component: condor-plugin
     spec:
-      serviceAccount: kueue-plugin
+      serviceAccount: condor-plugin
       securityContext:
         # Copy-pasted from https://github.com/kubernetes/git-sync/blob/master/docs/kubernetes.md
         fsGroup: 101
@@ -31,7 +31,7 @@ spec:
         - name: git-sync
           image: registry.k8s.io/git-sync/git-sync:v4.0.0
           args: 
-            - --repo={{ .Values.pluginRepository | default "https://github.com/landerlini/interlink-kueue-plugin" }}
+            - --repo={{ .Values.pluginRepository | default "https://github.com/landerlini/interlink-condorce-plugin" }}
             - --period={{ .Values.pluginGitSyncPeriod | default "5s" }}
             - --link=current
             - --root=/interlink

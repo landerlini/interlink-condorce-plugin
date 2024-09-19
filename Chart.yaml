@@ -1,6 +1,6 @@
 apiVersion: v2
-name: interlink-kueue-plugin
-description: A Helm cart for deploying an interlink endpoint for a kueue backend
+name: interlink-condorce-plugin
+description: A Helm cart for deploying an interlink endpoint for a condorce backend
 
 type: application
 
