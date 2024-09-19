@@ -156,6 +156,25 @@ def _make_container_list(
     ]
 
 
+def _clean_keys_of_none_values(dictionary):
+    """
+    Service function to remove all keys corresponding to None values.
+    """
+    keys_to_drop = []
+    for key, value in dictionary.items():
+        if value is None:
+            keys_to_drop.append(key)
+        if isinstance(value, dict):
+            _clean_keys_of_none_values(value)
+        if isinstance(value, list):
+            for entry in value:
+                if isinstance(entry, dict):
+                    _clean_keys_of_none_values(entry)
+
+    for key in keys_to_drop:
+        del dictionary[key]
+
+
 def from_kubernetes(
         pod_raw: Dict[str, Any],
         containers_raw: Optional[List[Dict[str, Any]]] = None,
@@ -199,6 +218,8 @@ def from_kubernetes(
         if pod_raw['kind'] != 'Pod' and pod_raw['apiVersion'] != 'v1':
             pprint(pod_raw)
             raise ValueError("Invalid pod description")
+
+    _clean_keys_of_none_values(pod_raw)
 
     pod = deserialize_kubernetes(pod_raw, 'V1Pod')
     pod_volumes = _make_pod_volume_struct(pod, containers_raw if containers_raw is not None else [])
