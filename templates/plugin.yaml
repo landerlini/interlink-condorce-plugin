@@ -87,7 +87,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: IAM_TOKEN_ENDPOINT
-              value: "{{ .Values.backendIamIssuer | default 'https://iam.cloud.infn.it' }}/token"
+              value: "{{ .Values.backendIamIssuer }}/token"
             - name: IAM_CLIENT_ID
               value: {{ .Values.backendIamClientId | required "Please provide `iamClientId`" }}
             - name: IAM_CLIENT_SECRET
