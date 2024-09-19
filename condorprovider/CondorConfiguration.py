@@ -138,7 +138,7 @@ class CondorConfiguration(BaseModel):
             '_condor_SEC_CLIENT_AUTHENTICATION_METHODS', 'SCITOKENS'
         )
 
-        if 'BEARER_TOKEN' not in os.environ.keys() and cfg.BEARER_TOKEN_PATH is not None:
+        if 'BEARER_TOKEN' not in os.environ.keys() and cfg.BEARER_TOKEN_PATH is None:
             os.environ['BEARER_TOKEN'] = CondorConfiguration._refresh_token()
 
         htcondor.param['SEC_CLIENT_AUTHENTICATION_METHODS'] = 'SCITOKENS'
