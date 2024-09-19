@@ -1,4 +1,5 @@
 import time
+import sys
 from datetime import datetime
 import io
 from pydantic import BaseModel, Field
@@ -8,7 +9,6 @@ import textwrap
 from typing import Optional, Literal, List
 import re
 import htcondor
-import base64
 
 import requests
 import asyncio
@@ -43,6 +43,7 @@ async def _shell(cmd: str):
     stdout, stderr = await proc.communicate()
 
     if proc.returncode > 0:
+        print(stderr, file=sys.stderr)
         raise subprocess.CalledProcessError(returncode=proc.returncode, cmd="/bin/bash", stderr=str(stderr))
 
     return str(stdout)
