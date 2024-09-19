@@ -27,19 +27,6 @@ spec:
         fsGroup: 101
 
       containers:
-        - name: git-sync
-          image: registry.k8s.io/git-sync/git-sync:v4.2.4
-          args: 
-            - --repo={{ .Values.pluginRepository | default "https://github.com/landerlini/interlink-condorce-plugin" }}
-            - --period={{ .Values.pluginGitSyncPeriod | default "5s" }}
-            - --link=current
-            - --root=/interlink
-            - --webhook-url=http://localhost:8000/shutdown
-
-          volumeMounts:
-            - name: interlink
-              mountPath: /interlink
-
         - name: interlink
           image: {{ .Values.pluginDockerImage | default "landerlini/interlink-condorce-plugin:v0.0" }}
           command: ["/bin/sh", "-c"]
@@ -63,11 +50,8 @@ spec:
               value: {{ .Values.backendIamClientId | required "backendIamClientId is missing (this is the condor IAM)"}}
             - name: IAM_CLIENT_SECRET
               value: {{ .Values.backendIamClientSecret | required "backendIamClientSecret is missing (this is the condor IAM)"}}
-            - name: REFRESH_TOKEN
-              valueFrom:
-                  secretKeyRef:
-                    name: {{ .Release.Name }}-token
-                    key: refresh-token
+            - name: BEARER_TOKEN_PATH
+              value: /interlink/token
 
           ports:
             - containerPort: 8000
@@ -84,6 +68,55 @@ spec:
             - name: interlink
               mountPath: /interlink
               readOnly: true
+
+        - name: git-sync
+          image: registry.k8s.io/git-sync/git-sync:v4.2.4
+          args:
+            - --repo={{ .Values.pluginRepository | default "https://github.com/landerlini/interlink-condorce-plugin" }}
+            - --period={{ .Values.pluginGitSyncPeriod | default "5s" }}
+            - --link=current
+            - --root=/interlink
+            - --webhook-url=http://localhost:8000/shutdown
+
+          volumeMounts:
+            - name: interlink
+              mountPath: /interlink
+
+        - name: refresh-token
+          image: {{ .Values.inttwRefreshTokenImage | default "ghcr.io/intertwin-eu/interlink/virtual-kubelet-inttw-refresh:latest" }}
+          imagePullPolicy: Always
+          env:
+            - name: IAM_TOKEN_ENDPOINT
+              value: "{{ .Values.backendIamIssuer | default 'https://iam.cloud.infn.it' }}/token"
+            - name: IAM_CLIENT_ID
+              value: {{ .Values.backendIamClientId | required "Please provide `iamClientId`" }}
+            - name: IAM_CLIENT_SECRET
+              value: {{ .Values.backendIamClientSecret | required "Please provide `iamClientSecret`" }}
+            - name: IAM_GRANT_TYPE
+              value: {{ .Values.backendIamGrantType | default "authorization_code" }}
+            - name: IAM_REFRESH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-token
+                  key: refresh-token
+            - name: IAM_VK_AUD
+              value: {{ .Values.backendIamAudience | default "users" }}
+            - name: TOKEN_PATH
+              value: /interlink/token
+          command:
+            - python3
+            - /opt/refresh.py
+
+          resources:
+            limits:
+              cpu: {{ .Values.backendRefreshTokenCpuLimit | default "200m" }}
+              memory: {{ .Values.backendRefreshTokenMemoryLimit | default "500Mi" }}
+            requests:
+              cpu: {{ .Values.backendRefreshTokenCpuRequest  | default "10m" }}
+              memory: {{ .Values.backendRefreshTokenMemoryRequest | default "100Mi" }}
+          volumeMounts:
+            - name: interlink
+              mountPath: /interlink
 
       volumes:
         - name: interlink

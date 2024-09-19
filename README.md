@@ -29,8 +29,8 @@ hostname: <insert here the fully qualified domain name, without protocol>
 
 # IAM authenticating incoming requests
 oauth2ProxyIamIssuer: <iam-issuer>
-iamClientId: <client-id>
-iamClientSecret: <client-secret>
+oauth2ProxyIamClientId: <client-id>
+oauth2ProxyIamClientSecret: <client-secret>
 oauth2ProxyCookieSecret: <a random string of 16 chars to be used as encryption key>
 
 # IAM authenticating outgoind requests
@@ -61,16 +61,6 @@ bash scripts and submit them to the condor backend.
 
 The CondorProvider is wrapped in a FastAPI application defined in [main.py](main.py) exposing InterLink plugin APIs.
 
-### Warning on scalability
-The CondorProvider is intended as a stateless application with all the information relative to the jobs stored in 
-either the remote Kubernetes cluster or in the HTCondor backend, however the authentication token is stored and 
-refreshed automatically. 
-The chart at its current version does not support running multiple replicas of the server because each of them
-would try to refresh the access token independently, invalidating the token of others. 
-The FastAPI application supports sharing the access token among replicas if the environment variable `BEARER_TOKEN_PATH`
-is defined, but the refresh mechanism should be brought to a sidecar 
-(one could use for example the image `ghcr.io/intertwin-eu/interlink/virtual-kubelet-inttw-refresh:latest` as in 
-[landerlini/interlink-virtual-node](https://github.com/landerlini/interlink-virtual-node)).
 
 ### Dependencies 
 The full list of dependencies of the plugin can be found in the [Dockerfile](docker/Dockerfile). 

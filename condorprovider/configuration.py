@@ -6,6 +6,9 @@ DEBUG = bool(os.environ.get("DEBUG", "false"))
 # BEARER_TOKEN_PATH is the path where an access token is stored
 BEARER_TOKEN_PATH = os.environ.get("BEARER_TOKEN_PATH", None)
 
+# REFRESH_TOKEN or identity token used to authenticate against the condor backend
+REFRESH_TOKEN = os.environ.get("REFRESH_TOKEN", None)
+
 # TOKEN_VALIDITY_SECONDS is the time awaited before triggering a refresh of the bearer token
 TOKEN_VALIDITY_SECONDS = int(os.environ.get("TOKEN_VALIDITY_SECONDS", 1200))
 
@@ -23,4 +26,5 @@ IAM_CLIENT_ID = os.environ["IAM_ISSUER"]
 
 # IAM_CLIENT_SECRET is the SECRET of the IAM Client defined through the IAM_ISSUER
 IAM_CLIENT_SECRET = os.environ['IAM_CLIENT_SECRET']
+
 

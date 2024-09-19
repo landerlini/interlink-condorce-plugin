@@ -8,6 +8,7 @@ import textwrap
 from typing import Optional, Literal, List
 import re
 import htcondor
+import base64
 
 import requests
 import asyncio
@@ -147,7 +148,7 @@ class CondorConfiguration(BaseModel):
     def _refresh_token():
         response = requests.post(
             cfg.IAM_ISSUER + '/token',
-            data={'grant_type': 'refresh_token', 'refresh_token': os.environ["REFRESH_TOKEN"]},
+            data={'grant_type': 'refresh_token', 'refresh_token': cfg.REFRESH_TOKEN},
             auth=(cfg.IAM_CLIENT_ID, cfg.IAM_CLIENT_SECRET),
         )
         if response.status_code / 100 != 2:

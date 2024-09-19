@@ -120,6 +120,25 @@ backendIamClientId:
 # backendIamClientSecret is the Client password of the IAM used to authenticate against the HTCondor backend (scitokens)
 backendIamClientSecret:
 
+# backendIamAudience is the audience for the refreshed token (virtual-kubelet-inttw-refresh image)
+backendIamAudience: users
+
+# backendIamGrantType is the grant_type for the token refresher (virtual-kubelet-inttw-refresh image)
+backendIamGrantType: authorization_code
+
+# backendRefreshTokenCpuLimit is the limit to the cpu of the refresh-token service
+backendRefreshTokenCpuLimit: 200m
+
+# backendRefreshTokenMemoryLimit is the memory limit for the refresh-token servce
+backendRefreshTokenMemoryLimit: 500Mi
+
+# backendRefreshTokenCpuLimit is the limit to the cpu of the refresh-token service
+backendRefreshTokenCpuRequest: 10m
+
+# backendRefreshTokenMemoryLimit is the memory limit for the refresh-token servce
+backendRefreshTokenMemoryRequest: 100Mi
+
+
 # backendIamScope lists the scopes requested to the IAM
 backendIamScopes:
   - openid
