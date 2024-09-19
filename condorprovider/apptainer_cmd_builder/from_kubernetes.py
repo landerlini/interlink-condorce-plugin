@@ -143,7 +143,10 @@ def _make_container_list(
                 ], [])
 
         return sum([
-                *[pod_volumes[vm.name].mount(vm.mount_path) for vm in getattr(container, 'volume_mounts')],
+                *[
+                    pod_volumes.get(vm.name, volumes.ScratchArea()).mount(vm.mount_path)
+                    for vm in getattr(container, 'volume_mounts')
+                ],
             ], [])
 
     return [
