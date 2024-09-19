@@ -66,8 +66,9 @@ spec:
               value: {{ .Values.backendIamClientSecret | required "backendIamClientSecret is missing (this is the condor IAM)"}}
             - name: REFRESH_TOKEN
               valueFrom:
-                  secretKeyRef: {{ .Release.Name }}-token
-                  key: refresh-token
+                  secretKeyRef:
+                    name: {{ .Release.Name }}-token
+                    key: refresh-token
 
           ports:
             - containerPort: 8000
