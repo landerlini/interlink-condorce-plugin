@@ -146,7 +146,10 @@ def _make_container_list(
 
         return sum([
                 *[
-                    pod_volumes.get(vm.name, volumes.ScratchArea()).mount(vm.mount_path)
+                    pod_volumes.get(vm.name, volumes.ScratchArea()).mount(
+                        vm.mount_path,
+                        read_only=vm.read_only if vm.read_only is not None else False
+                    )
                     for vm in getattr(container, 'volume_mounts')
                 ],
             ], [])
