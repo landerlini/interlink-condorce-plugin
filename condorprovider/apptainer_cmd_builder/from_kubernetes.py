@@ -1,3 +1,4 @@
+import os.path
 import re
 from pprint import pprint
 from kubernetes import client as k8s
@@ -69,7 +70,7 @@ def _make_pod_volume_struct(
     empty_dirs = [v for c in containers_raw for v in (c if c is not None else []).get('emptyDirs') or []]
     empty_dirs = {
         k: volumes.ScratchArea() if volumes_counts.get(k, 0) <= 1 else volumes.make_empty_dir()
-        for k in set(empty_dirs)
+        for k in [os.path.split(dir_path)[-1] for dir_path in set(empty_dirs)]
     }
 
     # Create a mapping for configmaps from the pod.spec.volumes structure: {cfgmap.name: cfgmap}
