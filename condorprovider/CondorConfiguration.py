@@ -288,6 +288,8 @@ class CondorConfiguration(BaseModel):
 
     async def _retrieve_job_output(self, job, cleanup: bool):
         self._ensure_token()
+        condor_dir = os.path.dirname(job['JobSubmitFile'])
+        await _shell(f"mkdir -p {condor_dir}; chmod a+w {condor_dir}")
         for attempt in range(CONDOR_ATTEMPTS+1):
             try:
                 await _shell(f"condor_transfer_data -pool {self.pool} -name {self.scheduler_name} {job['ClusterId']}")
@@ -313,7 +315,7 @@ class CondorConfiguration(BaseModel):
             })
 
         if cleanup:
-            await _shell(f"rm -rf {os.path.dirname(job['JobSubmitFile'])}")
+            await _shell(f"rm -rf {condor_dir}")
 
         return files
 
