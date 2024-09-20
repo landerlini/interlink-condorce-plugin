@@ -206,12 +206,12 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         for init_container in self.init_containers:
             init_container.log = (
                 file_contents[os.path.basename(init_container.log_path + '.init')]
-                if os.path.basename(init_container.log_path) in file_contents.keys()
+                if (os.path.basename(init_container.log_path) + '.init') in file_contents.keys()
                 else f"Error retrieving log from {init_container.log_path} (init-container)"
             )
             init_container.return_code = int(
                 file_contents[os.path.basename(init_container.return_code_path + '.init')]
-                if os.path.basename(init_container.return_code_path) in file_contents.keys()
+                if (os.path.basename(init_container.return_code_path) + '.init') in file_contents.keys()
                 else self.error_code_for_return_code_not_found
             )
 
