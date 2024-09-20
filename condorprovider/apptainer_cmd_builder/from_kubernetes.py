@@ -245,7 +245,7 @@ def from_kubernetes(
     print ("::: To kubernetes :::")
     pprint(pod_volumes)
 
-    scratch_area = os.path.join(cfg.SCRATCH_AREA, pod.metadata.uid)
+    scratch_area = os.path.join(cfg.SCRATCH_AREA, f".interlink.{pod.metadata.uid}")
     return ApptainerCmdBuilder(
         uid=pod.metadata.name,
         init_containers=_make_container_list(
