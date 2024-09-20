@@ -151,6 +151,7 @@ def _make_container_list(
 
     return [
         ContainerSpec(
+            uid=c.name,
             entrypoint=c.command[0],
             args=c.command[1:] + (c.args if c.args is not None else []),
             image=c.image,

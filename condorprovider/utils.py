@@ -75,7 +75,7 @@ def make_uid_numeric(uid: str) -> int:
     """Efficient hashing for the unique id into a 64bit integer"""
     return int('0o' + ''.join([
         f'{ord(c)-ord("0") if c in string.digits else ord(c)-ord("A")+10:o}'
-        for c in uid
+        for c in uid.replace('-','')
     ]), 8) % 0x7FFF_FFFF_FFFF_FFFF
 
 def deserialize_kubernetes(data, klass):

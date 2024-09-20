@@ -7,6 +7,7 @@ import interlink
 
 from . import CondorConfiguration, CondorSubmit, CondorJobStatus
 from .apptainer_cmd_builder import from_kubernetes
+from .utils import make_uid_numeric
 
 CondorConfiguration.initialize_htcondor()
 
@@ -33,7 +34,7 @@ class CondorProvider(interlink.provider.Provider):
             raise HTTPException(500, f"Unexpected pod or log request of type {type(pod)}")
 
         short_name = '-'.join((namespace, name))[:20]
-        return '-'.join((short_name, uid))
+        return '-'.join((short_name, f"{make_uid_numeric(uid):x}"))
 
     async def create_job(self, pod: interlink.PodRequest, volumes: Collection[interlink.Volume]) -> str:
         """
