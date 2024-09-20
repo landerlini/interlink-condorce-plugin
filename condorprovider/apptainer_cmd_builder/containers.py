@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+import shlex
 import os.path
 from typing import Dict, List, Literal, Union, Optional
 from pathlib import Path
@@ -213,14 +214,14 @@ class ContainerSpec(BaseModel, extra="forbid"):
         entry_point_file = '\n'.join([
             '#!/bin/sh',
             self.entrypoint + ' ' + ' '.join(
-                ['"%s"' % arg.replace("\"", "\\\"") for arg in self.args]
+                ['"%s"' % shlex.quote(arg) for arg in self.args]
             )
         ])
 
         ret = [
             embed_ascii_file(
                 path=self.env_file_path,
-                file_content='\n'.join([f'{k}="{v}"' for k, v in env_dict.items()]),
+                file_content='\n'.join([f'{k}={v}' for k, v in env_dict.items()]),
                 executable=False,
             ),
 
