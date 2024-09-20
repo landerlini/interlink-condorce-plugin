@@ -121,7 +121,7 @@ backendIamClientId:
 backendIamClientSecret:
 
 # backendIamAudience is the audience for the refreshed token (virtual-kubelet-inttw-refresh image)
-backendIamAudience: users
+backendIamAudience: https://wlcg.cern.ch/jwt/v1/any
 
 # backendIamGrantType is the grant_type for the token refresher (virtual-kubelet-inttw-refresh image)
 backendIamGrantType: authorization_code

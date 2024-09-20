@@ -43,7 +43,7 @@ async def _shell(cmd: str):
     stdout, stderr = await proc.communicate()
 
     if proc.returncode > 0:
-        print(stderr, file=sys.stderr)
+        print(str(stderr, 'utf-8'), file=sys.stderr)
         raise subprocess.CalledProcessError(returncode=proc.returncode, cmd="/bin/bash", stderr=str(stderr))
 
     return str(stdout)
@@ -160,14 +160,19 @@ class CondorConfiguration(BaseModel):
     def _ensure_token(self):
         last_refresh = self.last_token_refresh
 
+        _log_token = cfg.DEBUG and (os.environ.get('BEARER_TOKEN') is None)
+
         if cfg.BEARER_TOKEN_PATH is not None:
             os.environ['BEARER_TOKEN'] = open(cfg.BEARER_TOKEN_PATH).read()
-            print (f"Loaded Bearer token from {cfg.BEARER_TOKEN_PATH}: {os.environ['BEARER_TOKEN']}")
+            print (f"Loaded Bearer token from {cfg.BEARER_TOKEN_PATH}")
         elif last_refresh is None or (datetime.now() - last_refresh).seconds > cfg.TOKEN_VALIDITY_SECONDS:
             os.environ['BEARER_TOKEN'] = CondorConfiguration._refresh_token()
             self.last_token_refresh = datetime.now()
 
         htcondor.param['SEC_TOKEN'] = os.environ['BEARER_TOKEN']
+
+        if _log_token:
+            print(f"Bearer token:", os.environ['BEARER_TOKEN'])
 
 
     async def get_schedd(self):
