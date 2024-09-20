@@ -22,7 +22,13 @@ def generate_uid(length: int = 16, allow_uppercase: bool = False) -> str:
     return first_char + ''.join(random.choice(other_chars) for _ in range(length-1))
 
 
-def embed_ascii_file(path: str, file_content: str, executable: bool = False, token: str = "EOF") -> str:
+def embed_ascii_file(
+        path: str,
+        file_content: str,
+        executable: bool = False,
+        token: str = "EOF",
+        escape: bool = False
+) -> str:
     """
     Embed an ascii file in a bash script using the syntax cat<<EOF > path
 
@@ -30,6 +36,7 @@ def embed_ascii_file(path: str, file_content: str, executable: bool = False, tok
     :param file_content: multi-line content of the file
     :param executable: if True, marks the file as executable (chmod +x)
     :param token: token identifying the end of the stream (useful for nesting)
+    :param escape: if True, it escapes characters of the file content before writing them out
 
     :return: bash code embedding an ascii file in a script
     """
@@ -37,7 +44,7 @@ def embed_ascii_file(path: str, file_content: str, executable: bool = False, tok
     ret = [
         f"mkdir -p {os.path.dirname(os.path.abspath(path))}",
         f"cat <<{token} > {path}",
-        textwrap.dedent(escape_string(file_content)),
+        textwrap.dedent(escape_string(file_content) if escape else file_content),
         token+"\n",
     ]
 

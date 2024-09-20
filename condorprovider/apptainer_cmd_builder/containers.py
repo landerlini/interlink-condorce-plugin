@@ -223,6 +223,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 path=self.env_file_path,
                 file_content='\n'.join([f'{k}={v}' for k, v in env_dict.items()]),
                 executable=False,
+                escape=False,
             ),
 
             embed_ascii_file(
