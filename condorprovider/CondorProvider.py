@@ -66,7 +66,7 @@ class CondorProvider(interlink.provider.Provider):
                             reason="Job in Held status"
                         )
                     )
-                ) for cs in pod.spec.containers + pod.spec.init_containers
+                ) for cs in pod.spec.containers + pod.spec.initContainers
             ]
 
         elif status == CondorJobStatus.idle:
@@ -79,7 +79,7 @@ class CondorProvider(interlink.provider.Provider):
                             reason="Backend queues"
                         )
                     )
-                ) for cs in pod.spec.containers + pod.spec.init_containers
+                ) for cs in pod.spec.containers + pod.spec.initContainers
             ]
 
         elif status == CondorJobStatus.running:
@@ -89,7 +89,7 @@ class CondorProvider(interlink.provider.Provider):
                     state=interlink.ContainerStates(
                         running=interlink.StateRunning()
                     )
-                ) for cs in pod.spec.containers + pod.spec.init_containers
+                ) for cs in pod.spec.containers + pod.spec.initContainers
             ]
 
         elif status == CondorJobStatus.removed:
@@ -100,7 +100,7 @@ class CondorProvider(interlink.provider.Provider):
                     state=interlink.ContainerStates(
                         terminated=interlink.StateTerminated(exitCode=404)
                     )
-                ) for cs in pod.spec.containers + pod.spec.init_containers
+                ) for cs in pod.spec.containers + pod.spec.initContainers
             ]
 
         elif status == CondorJobStatus.completed:
