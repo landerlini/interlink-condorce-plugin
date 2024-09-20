@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Mapping, Optional, Union, Literal
 
 from kubernetes.client import V1Container, V1KeyToPath
 
-from condorprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerSpec, volumes
+from condorprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerSpec, volumes, configuration as cfg
 from condorprovider.apptainer_cmd_builder.volumes import BaseVolume
 from condorprovider.utils import deserialize_kubernetes
 
@@ -127,6 +127,7 @@ def _make_container_list(
         containers: Optional[List[V1Container]] = None,
         pod_volumes: Optional[Mapping[str, BaseVolume]] = None,
         use_fake_volumes: bool = False,
+        scratch_area: str = cfg.SCRATCH_AREA,
 ) -> List[ContainerSpec]:
     """
     Internal. Creates a list of ContainerSpec objects, mounting the volumes defined by pod_volumes.
@@ -165,7 +166,8 @@ def _make_container_list(
             args=c.command[1:] + (c.args if c.args is not None else []),
             image=c.image,
             volume_binds=_volumes_for_container(c),
-            environment={env.name: env.value for env in (c.env or []) if env.value is not None}
+            environment={env.name: env.value for env in (c.env or []) if env.value is not None},
+            scratch_area=scratch_area,
         ) for c in containers
     ]
 
@@ -243,9 +245,21 @@ def from_kubernetes(
     print ("::: To kubernetes :::")
     pprint(pod_volumes)
 
+    scratch_area = os.path.join(cfg.SCRATCH_AREA, pod.metadata.uid)
     return ApptainerCmdBuilder(
         uid=pod.metadata.name,
-        init_containers=_make_container_list(pod.spec.init_containers, pod_volumes, use_fake_volumes=use_fake_volumes),
-        containers=_make_container_list(pod.spec.containers, pod_volumes, use_fake_volumes=use_fake_volumes),
+        init_containers=_make_container_list(
+            containers=pod.spec.init_containers,
+            pod_volumes=pod_volumes,
+            use_fake_volumes=use_fake_volumes,
+            scratch_area=scratch_area
+        ),
+        containers=_make_container_list(
+            containers=pod.spec.containers,
+            pod_volumes=pod_volumes,
+            use_fake_volumes=use_fake_volumes,
+            scratch_area=scratch_area
+        ),
+        scratch_area=scratch_area
     )
 
