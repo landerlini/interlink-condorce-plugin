@@ -154,7 +154,7 @@ class CondorProvider(interlink.provider.Provider):
 
         with tarfile.open(fileobj=output_struct['logs'], mode='r:*') as tar:
             for member in tar.getmembers():
-                if member.isfile() and member.name == log_request.container_name:
+                if member.isfile() and member.name == log_request.containerName:
                     full_log = tar.extractfile(member).read().decode('utf-8')
 
         if log_request.Opts.Tail is not None:
