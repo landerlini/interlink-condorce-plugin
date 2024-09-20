@@ -47,7 +47,7 @@ def _create_static_volume_dict(
             },
             binaries={
                 _resolve_key2path(volume_source_by_name[vol.metadata.name]['items'], k):
-                    volumes.BinaryFileSpec(content=base64.b64decode(v.decode('ascii')))
+                    volumes.BinaryFileSpec(content=base64.b64decode(v.encode('ascii')))
                 for k, v in get_data(vol, 'binary').items()
             }
         )
