@@ -65,6 +65,7 @@ def _make_pod_volume_struct(
                 volumes_counts[volume_mount.name] = 0
             volumes_counts[volume_mount.name] += 1
 
+    pprint (volumes_counts)
     empty_dirs = [v for c in containers_raw for v in (c if c is not None else []).get('emptyDirs') or []]
     empty_dirs = {
         k: volumes.ScratchArea() if volumes_counts.get(k, 0) <= 1 else volumes.make_empty_dir()
