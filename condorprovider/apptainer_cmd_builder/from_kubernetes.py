@@ -156,6 +156,7 @@ def _make_container_list(
             args=c.command[1:] + (c.args if c.args is not None else []),
             image=c.image,
             volume_binds=_volumes_for_container(c),
+            environment={env.name: env.value for env in (c.env or []) if env.value is not None}
         ) for c in containers
     ]
 

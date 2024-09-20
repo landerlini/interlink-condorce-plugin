@@ -115,6 +115,35 @@ validation:
 
 ---
 
+name: hello-world-with-env
+can_use_fake_volumes: True
+
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: hello-world-with-env
+  spec:
+    containers:
+      - name: main
+        image: ubuntu:latest
+        command:
+          - /bin/bash
+          - -c
+        args:
+          - echo $MYVAR
+        env:
+          - name: MYVAR
+            value: hello world
+
+containers: []
+
+validation:
+  inLog:
+    - hello world
+
+---
+
 name: scratch-area
 can_use_fake_volumes: True
 
