@@ -230,6 +230,8 @@ def from_kubernetes(
     pod = deserialize_kubernetes(pod_raw, 'V1Pod')
     pod_volumes = _make_pod_volume_struct(pod, containers_raw if containers_raw is not None else [])
 
+    pprint(pod_volumes)
+
     return ApptainerCmdBuilder(
         uid=pod.metadata.name,
         init_containers=_make_container_list(pod.spec.init_containers, pod_volumes, use_fake_volumes=use_fake_volumes),
