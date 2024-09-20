@@ -1,7 +1,7 @@
 import os
 
 # DEBUG enhances the verbosity of the server. Default: false
-DEBUG = bool(os.environ.get("DEBUG", "false"))
+DEBUG = bool(os.environ.get("DEBUG", "false").lower() in ["true", "yes", "y"])
 
 # BEARER_TOKEN_PATH is the path where an access token is stored
 BEARER_TOKEN_PATH = os.environ.get("BEARER_TOKEN_PATH", None)
