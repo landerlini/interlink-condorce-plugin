@@ -93,12 +93,12 @@ class CondorProvider(interlink.provider.Provider):
             ]
 
         elif status == CondorJobStatus.removed:
-            self.logger.error(f"Requested status for a removed job: {job_name}. Returning exit_code 404.")
+            self.logger.error(f"Requested status for a removed job: {job_name}. Returning exitCode 404.")
             container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
                     state=interlink.ContainerStates(
-                        terminated=interlink.StateTerminated(exit_code=404)
+                        terminated=interlink.StateTerminated(exitCode=404)
                     )
                 ) for cs in pod.spec.containers + pod.spec.init_containers
             ]
@@ -111,7 +111,7 @@ class CondorProvider(interlink.provider.Provider):
                 interlink.ContainerStatus(
                     name=cs.name,
                     state=interlink.ContainerStates(
-                        terminated=interlink.StateTerminated(exit_code=builder.containers[i_container].return_code)
+                        terminated=interlink.StateTerminated(exitCode=builder.containers[i_container].return_code)
                     )
                 ) for i_container, cs in enumerate(pod.spec.containers)
             ]
@@ -119,7 +119,7 @@ class CondorProvider(interlink.provider.Provider):
                 interlink.ContainerStatus(
                     name=cs.name,
                     state=interlink.ContainerStates(
-                        terminated=interlink.StateTerminated(exit_code=builder.init_containers[i_container].return_code)
+                        terminated=interlink.StateTerminated(exitCode=builder.init_containers[i_container].return_code)
                     )
                 ) for i_container, cs in enumerate(pod.spec.init_containers)
             ]
