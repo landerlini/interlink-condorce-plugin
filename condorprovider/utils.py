@@ -4,7 +4,6 @@ import os.path
 import string
 import textwrap
 from base64 import b64encode
-from shlex import quote as escape_string
 
 from kubernetes.client.api_client import ApiClient as K8sApiClient
 
@@ -22,29 +21,29 @@ def generate_uid(length: int = 16, allow_uppercase: bool = False) -> str:
     return first_char + ''.join(random.choice(other_chars) for _ in range(length-1))
 
 
-def embed_ascii_file(
+def _embed_ascii_file(
         path: str,
         file_content: str,
         executable: bool = False,
         token: str = "EOF",
-        escape: bool = False
 ) -> str:
     """
     Embed an ascii file in a bash script using the syntax cat<<EOF > path
+    Unsafe! It does not escape special characters
 
     :param path: path of the file
     :param file_content: multi-line content of the file
     :param executable: if True, marks the file as executable (chmod +x)
     :param token: token identifying the end of the stream (useful for nesting)
-    :param escape: if True, it escapes characters of the file content before writing them out
 
     :return: bash code embedding an ascii file in a script
     """
     file_content = '\n'.join([line for line in file_content.split('\n') if len(line.replace(' ', '')) > 0])
+
     ret = [
         f"mkdir -p {os.path.dirname(os.path.abspath(path))}",
         f"cat <<{token} > {path}",
-        textwrap.dedent(escape_string(file_content) if escape else file_content),
+        textwrap.dedent(file_content),
         token+"\n",
     ]
 
@@ -68,8 +67,12 @@ def embed_binary_file(path: str, file_content: bytes, executable: bool = False, 
     :return: bash code embedding an ascii file in a script
     """
     path_tmp = path+".tmp"
+    chunk_len = 80
+    encoded_data = str(b64encode(file_content), "ascii")
+    encoded_data = "\n".join([encoded_data[i: i+chunk_len] for i in range(0, len(encoded_data), chunk_len)])
+
     ret = [
-        embed_ascii_file(path_tmp, str(b64encode(file_content), 'utf-8'), executable=False, token=token),
+        _embed_ascii_file(path_tmp, encoded_data, executable=False, token=token),
         f"cat {path_tmp} | base64 --decode &> {path}",
         f"rm -f {path_tmp}",
     ]
@@ -78,6 +81,24 @@ def embed_binary_file(path: str, file_content: bytes, executable: bool = False, 
         ret.append(f"chmod +x {path}")
 
     return '\n'+'\n'.join(ret)
+
+def embed_ascii_file(path: str, file_content: str, executable: bool = False, token: str = "EOF") -> str:
+    """
+    Embed a text file in a bash script using the base64 encoding and the syntax cat<<EOF > path
+
+    The text is base64-encoded and dumped in the main script as an ASCII, temporary file.
+    The code to decode it is embedded in the script to generate the desired file at evaluation time, this prevents
+    special characters in the file to be interpreted at runtime by the shell.
+
+    :param path: path of the file
+    :param file_content: string content of the file
+    :param executable: if True, marks the file as executable (chmod +x)
+    :param token: token identifying the end of the stream (useful for nesting)
+
+    :return: bash code embedding an ascii file in a script
+    """
+    return embed_binary_file(path, file_content.encode('utf-8'), executable=executable, token=token)
+
 
 def make_uid_numeric(uid: str) -> int:
     """Efficient hashing for the unique id into a 64bit integer"""

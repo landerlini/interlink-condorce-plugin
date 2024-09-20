@@ -365,7 +365,7 @@ pod:
             echo "hello world" > index.html
             timeout 4s python3 -m http.server 7890
 
-      - name: server
+      - name: client
         image: python:alpine
         command:
           - /bin/ash

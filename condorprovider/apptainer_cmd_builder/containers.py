@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field
-import shlex
 import os.path
 from typing import Dict, List, Literal, Union, Optional
 from pathlib import Path
+import shlex
 
 from . import configuration as cfg
 from ..utils import generate_uid, embed_ascii_file, make_uid_numeric
@@ -213,17 +213,14 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
         entry_point_file = '\n'.join([
             '#!/bin/sh',
-            self.entrypoint + ' ' + ' '.join(
-                ['"%s"' % shlex.quote(arg) for arg in self.args]
-            )
+            self.entrypoint + ' ' + ' '.join([shlex.quote(arg) for arg in self.args])
         ])
 
         ret = [
             embed_ascii_file(
                 path=self.env_file_path,
-                file_content='\n'.join([f'{k}={v}' for k, v in env_dict.items()]),
+                file_content='\n'.join([f'{k}="{v}"' for k, v in env_dict.items()]),
                 executable=False,
-                escape=False,
             ),
 
             embed_ascii_file(
