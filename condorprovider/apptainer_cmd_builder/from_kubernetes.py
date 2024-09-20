@@ -1,4 +1,5 @@
 import os.path
+import base64
 import re
 from pprint import pprint
 from kubernetes import client as k8s
@@ -40,11 +41,13 @@ def _create_static_volume_dict(
     return {
         volume_source_by_name[vol.metadata.name]['volume_name']: volumes.StaticVolume(
             config={
-                _resolve_key2path(volume_source_by_name[vol.metadata.name]['items'], k): volumes.AsciiFileSpec(content=v)
+                _resolve_key2path(volume_source_by_name[vol.metadata.name]['items'], k):
+                    volumes.AsciiFileSpec(content=v)
                 for k, v in get_data(vol, 'string').items()
             },
             binaries={
-                _resolve_key2path(volume_source_by_name[vol.metadata.name]['items'], k): volumes.BinaryFileSpec(content=v)
+                _resolve_key2path(volume_source_by_name[vol.metadata.name]['items'], k):
+                    volumes.BinaryFileSpec(content=base64.b64decode(v.decode('ascii')))
                 for k, v in get_data(vol, 'binary').items()
             }
         )
