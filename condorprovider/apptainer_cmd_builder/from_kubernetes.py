@@ -234,6 +234,9 @@ def from_kubernetes(
     pod = deserialize_kubernetes(pod_raw, 'V1Pod')
     pod_volumes = _make_pod_volume_struct(pod, containers_raw if containers_raw is not None else [])
 
+    print ("::: From interlink :::")
+    pprint (containers_raw)
+    print ("::: To kubernetes :::")
     pprint(pod_volumes)
 
     return ApptainerCmdBuilder(
