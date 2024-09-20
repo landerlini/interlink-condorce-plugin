@@ -71,12 +71,6 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
                 "cp %s %s" % (container.log_path, container.log_path + ".init"),
             ]
 
-        ret += [
-            "tar cvf $SANDBOX/logs " + ' '.join([
-                *[f"-C {c.workdir} {os.path.basename(c.log_path)}.init" for c in self.init_containers],
-                *[f"-C {c.workdir} {os.path.basename(c.return_code_path)}.init" for c in self.init_containers],
-            ])
-        ]
         return '\n'.join(ret)
 
     def exec_containers(self):
@@ -102,6 +96,8 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
 
         ret += [
             "tar cvf $SANDBOX/logs " + ' '.join([
+                *[f"-C {c.workdir} {os.path.basename(c.log_path)}.init" for c in self.init_containers],
+                *[f"-C {c.workdir} {os.path.basename(c.return_code_path)}.init" for c in self.init_containers],
                 *[f"-C {c.workdir} {os.path.basename(c.log_path)}" for c in self.containers],
                 *[f"-C {c.workdir} {os.path.basename(c.return_code_path)}" for c in self.containers],
             ])

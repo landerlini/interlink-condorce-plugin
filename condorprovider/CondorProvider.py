@@ -156,7 +156,7 @@ class CondorProvider(interlink.provider.Provider):
             for member in tar.getmembers():
                 if member.isfile():
                     print (f"Pod has log for container {member.name}, requested {log_request.ContainerName}.log")
-                    if member.name == log_request.ContainerName + ".log":
+                    if member.name in [log_request.ContainerName + ".log", log_request.ContainerName + ".log.init"]:
                         full_log = tar.extractfile(member).read().decode('utf-8')
 
         if log_request.Opts.Tail is not None:
