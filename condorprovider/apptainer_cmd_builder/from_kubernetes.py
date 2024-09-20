@@ -11,7 +11,7 @@ from condorprovider.apptainer_cmd_builder.volumes import BaseVolume
 from condorprovider.utils import deserialize_kubernetes
 
 def _create_static_volume_dict(
-        volume_source_by_name: Dict[str, Any],
+        volume_source_by_name: Dict[str, Dict[Literal['volume_name', 'items'], Any]],
         volume_definitions: List[Union[k8s.V1ConfigMap, k8s.V1Secret]],
 ):
     """
@@ -19,6 +19,7 @@ def _create_static_volume_dict(
     be mounted in containers with .mount(<path>).
 
     volume_source_by_name: maps the volume name to the VolumeSource (the pointer to the Volume in the PodSpec)
+    volume_definitions: List of configMap or secret objects
 
     """
     # Service function to resolve the correct key to retrieve either binary or ascii data from ConfigMaps and Secrets
@@ -37,13 +38,13 @@ def _create_static_volume_dict(
                 return item.path
 
     return {
-        vol.metadata.name: volumes.StaticVolume(
+        volume_source_by_name[vol.metadata.name]['volume_name']: volumes.StaticVolume(
             config={
-                _resolve_key2path(volume_source_by_name[vol.metadata.name].items, k): volumes.AsciiFileSpec(content=v)
+                _resolve_key2path(volume_source_by_name[vol.metadata.name]['items'], k): volumes.AsciiFileSpec(content=v)
                 for k, v in get_data(vol, 'string').items()
             },
             binaries={
-                _resolve_key2path(volume_source_by_name[vol.metadata.name].items, k): volumes.BinaryFileSpec(content=v)
+                _resolve_key2path(volume_source_by_name[vol.metadata.name]['items'], k): volumes.BinaryFileSpec(content=v)
                 for k, v in get_data(vol, 'binary').items()
             }
         )
@@ -76,7 +77,7 @@ def _make_pod_volume_struct(
     # Create a mapping for configmaps from the pod.spec.volumes structure: {cfgmap.name: cfgmap}
     config_maps = _create_static_volume_dict(
         volume_source_by_name={
-            v.config_map.name: v.config_map
+            v.config_map.name: dict(volume_name=v.name, items=v.config_map.items)
             for v in (pod.spec.volumes or []) if v is not None and v.config_map is not None
         },
         volume_definitions=[
@@ -89,7 +90,7 @@ def _make_pod_volume_struct(
     # Create a mapping for configmaps from the pod.spec.volumes structure: {secret.name: secret}
     secrets = _create_static_volume_dict(
         volume_source_by_name={
-            v.secret.secret_name: v.secret
+            v.secret.secret_name: dict(volume_name=v.name, items=v.secret.items)
             for v in (pod.spec.volumes or []) if v is not None and v.secret is not None
         },
         volume_definitions=[

@@ -254,7 +254,7 @@ pod:
     volumes:
       - name: my-cfg
         configMap:
-          name: my-cfg
+          name: my-configmap
           items:
             - key: file
               path: file.txt
@@ -264,7 +264,7 @@ containers:
   - name: main
   - configMaps:
       - metadata:
-          name: my-cfg
+          name: my-configmap
           namespace: whatever
         data:
           file: |
