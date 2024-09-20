@@ -4,6 +4,7 @@ import os.path
 import string
 import textwrap
 from base64 import b64encode
+from shlex import quote as escape_string
 
 from kubernetes.client.api_client import ApiClient as K8sApiClient
 
@@ -36,7 +37,7 @@ def embed_ascii_file(path: str, file_content: str, executable: bool = False, tok
     ret = [
         f"mkdir -p {os.path.dirname(os.path.abspath(path))}",
         f"cat <<{token} > {path}",
-        textwrap.dedent(file_content.replace("$", "\$")),
+        textwrap.dedent(escape_string(file_content)),
         token+"\n",
     ]
 
@@ -61,7 +62,7 @@ def embed_binary_file(path: str, file_content: bytes, executable: bool = False, 
     """
     path_tmp = path+".tmp"
     ret = [
-        embed_ascii_file(path_tmp, str(b64encode(file_content), 'ascii'), executable=False, token=token),
+        embed_ascii_file(path_tmp, str(b64encode(file_content), 'utf-8'), executable=False, token=token),
         f"cat {path_tmp} | base64 --decode &> {path}",
         f"rm -f {path_tmp}",
     ]
