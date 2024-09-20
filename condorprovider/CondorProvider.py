@@ -66,7 +66,7 @@ class CondorProvider(interlink.provider.Provider):
                             reason="Job in Held status"
                         )
                     )
-                ) for cs in pod.spec.containers + pod.spec.initContainers
+                ) for cs in (pod.spec.containers or []) + (pod.spec.initContainers or [])
             ]
 
         elif status == CondorJobStatus.idle:
@@ -79,7 +79,7 @@ class CondorProvider(interlink.provider.Provider):
                             reason="Backend queues"
                         )
                     )
-                ) for cs in pod.spec.containers + pod.spec.initContainers
+                ) for cs in (pod.spec.containers or []) + (pod.spec.initContainers or [])
             ]
 
         elif status == CondorJobStatus.running:
@@ -89,7 +89,7 @@ class CondorProvider(interlink.provider.Provider):
                     state=interlink.ContainerStates(
                         running=interlink.StateRunning()
                     )
-                ) for cs in pod.spec.containers + pod.spec.initContainers
+                ) for cs in (pod.spec.containers or []) + (pod.spec.initContainers or [])
             ]
 
         elif status == CondorJobStatus.removed:
@@ -100,7 +100,7 @@ class CondorProvider(interlink.provider.Provider):
                     state=interlink.ContainerStates(
                         terminated=interlink.StateTerminated(exitCode=404)
                     )
-                ) for cs in pod.spec.containers + pod.spec.initContainers
+                ) for cs in (pod.spec.containers or []) + (pod.spec.initContainers or [])
             ]
 
         elif status == CondorJobStatus.completed:
@@ -113,7 +113,7 @@ class CondorProvider(interlink.provider.Provider):
                     state=interlink.ContainerStates(
                         terminated=interlink.StateTerminated(exitCode=builder.containers[i_container].return_code)
                     )
-                ) for i_container, cs in enumerate(pod.spec.containers)
+                ) for i_container, cs in enumerate(pod.spec.containers or [])
             ]
             container_statuses += [
                 interlink.ContainerStatus(
@@ -121,7 +121,7 @@ class CondorProvider(interlink.provider.Provider):
                     state=interlink.ContainerStates(
                         terminated=interlink.StateTerminated(exitCode=builder.init_containers[i_container].return_code)
                     )
-                ) for i_container, cs in enumerate(pod.spec.init_containers)
+                ) for i_container, cs in enumerate(pod.spec.initContainers or [])
             ]
 
         return interlink.PodStatus(
