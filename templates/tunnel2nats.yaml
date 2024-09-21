@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-keys
+  namespace: {{ .Release.Namespace }}
+data:
+  bastion: {{ .Values.natsAuthorizedKeys | toJson }}
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ssh-nats-deployment
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ssh-nats
+
+  template:
+    metadata:
+      labels:
+        app: ssh-nats
+    spec:
+      containers:
+        - name: openssh-server
+          image: {{ .Values.natsBastionImage | default "binlab/bastion:latest" }}
+          ports:
+            - containerPort: 22
+
+          env:
+            - name: PUBKEY_AUTHENTICATION
+              value: "true"
+            - name: PERMIT_TUNNEL
+              value: "false"
+            - name: X11_FORWARDING
+              value: "false"
+            - name: TCP_FORWARDING
+              value: "true"
+            - name: AGENT_FORWARDING
+              value: "false"
+            - name: LISTEN_ADDRESS
+              value: "0.0.0.0"
+            - name: LISTEN_PORT
+              value: "22"
+            - name: AUTHORIZED_KEYS
+              value: /var/lib/bastion/authorized_keys
+
+          volumeMounts:
+            - name: authorized-keys
+              mountPath: /var/lib/
+              readOnly: true
+            - name: bastion
+              mountPath: /usr/etc/ssh
+
+
+        - name: nats-server
+          image: nats:latest
+          ports:
+            - containerPort: 4222
+      volumes:
+        - name: bastion
+          hostPath:
+            path: /opt/ssh-bastion
+            type: DirectoryOrCreate
+        - name: authorized-keys
+          configMap:
+            name: auth-keys
+            items:
+              - key: bastion
+                path: bastion/authorized_keys
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ssh-nats-service
+spec:
+  selector:
+    app: ssh-nats
+
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: {{ .Values.natsBastionPort }}
+      targetPort: 22
+      nodePort: {{ .Values.natsBastionPort }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+spec:
+  selector:
+    app: ssh-nats
+
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      targetPort: 4222
+

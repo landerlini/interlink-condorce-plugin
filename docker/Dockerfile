@@ -12,7 +12,7 @@ RUN pip install \
   "uvicorn[standard]" \
   "fastapi" \
   "pyyaml" \
-  "jinja2" \
+  "nats-py" \
   "pytest" \
   "kubernetes" \
   "htcondor" \

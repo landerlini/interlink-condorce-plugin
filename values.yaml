@@ -151,3 +151,15 @@ backendIamScopes:
   - compute.read
   - compute.cancel
 
+################################################################################
+# NATS via SSH configuration
+
+# natsBastionPort is the port of a bastion ssh service used to tunnel towards nats server
+natsBastionPort: 30022
+
+# natsBastionImage is the image of the bastion
+natsBastionImage: binlab/bastion:latest
+
+# natsAuthorizedKeys is the content of the authorized_keys files installed in the bastion service
+natsAuthorizedKeys:
+
