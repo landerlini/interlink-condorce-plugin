@@ -1,4 +1,5 @@
 import random
+import math
 import json
 import os.path
 import string
@@ -6,6 +7,8 @@ import textwrap
 from base64 import b64encode
 
 from kubernetes.client.api_client import ApiClient as K8sApiClient
+from kubernetes.utils.quantity import parse_quantity
+import interlink
 
 def generate_uid(length: int = 16, allow_uppercase: bool = False) -> str:
     """
@@ -134,3 +137,25 @@ def to_snakecase(s: str):
 
 
 
+def compute_pod_resource(pod: interlink.PodRequest, resource: str):
+    """
+    Loops over the containers of a pod to sum resource requests/limits.
+
+    Return an integer representing:
+     - 'cpu': number of cpus (obtained ceiling the kubernetes cpu request)
+     - 'memory': number of bytes
+    """
+
+    return int(
+        math.ceil(
+            sum([
+                parse_quantity(
+                    max(
+                        ((c.resources.get('resources') or {}).get('requests') or {}).get(resource) or 1,
+                        ((c.resources.get('resources') or {}).get('limit') or {}).get(resource) or 1,
+                    )
+                )
+                for c in pod.spec.containers ]
+            )
+        )
+    )

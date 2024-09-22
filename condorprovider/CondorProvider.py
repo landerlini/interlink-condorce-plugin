@@ -1,4 +1,5 @@
 from typing import Union, Collection
+import math
 import logging
 import tarfile
 
@@ -7,7 +8,7 @@ import interlink
 
 from . import CondorConfiguration, CondorSubmit, CondorJobStatus
 from .apptainer_cmd_builder import from_kubernetes
-from .utils import make_uid_numeric
+from .utils import make_uid_numeric, compute_pod_resource
 
 CondorConfiguration.initialize_htcondor()
 
@@ -43,7 +44,13 @@ class CondorProvider(interlink.provider.Provider):
         self.logger.info(f"Create pod {pod.metadata.name}.{pod.metadata.namespace} [{pod.metadata.uid}]")
         builder = from_kubernetes(pod.model_dump(), [volume.model_dump() for volume in volumes])
         job_name = CondorProvider.get_readable_uid(pod)
-        await self.condor.submit(builder.dump(), CondorSubmit(job_name=job_name, transfer_output_files=['logs']))
+        condor_options = CondorSubmit(
+            job_name=job_name,
+            transfer_output_files=['logs'],
+            request_cpus=compute_pod_resource(pod, resource='cpu'),
+            request_memory=compute_pod_resource(pod, resource='memory'),
+        )
+        await self.condor.submit(builder.dump(), condor_options)
 
         return job_name
 

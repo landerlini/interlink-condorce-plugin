@@ -89,8 +89,19 @@ class CondorSubmit(BaseModel):
         description="List of files to be downloaded at the end of the job (basename, without path)"
     )
 
+    request_cpus: Optional[int] = Field(
+        default=None,
+        description="Total amount of CPU requested to run the job"
+    )
+
+    request_memory: Optional[int] = Field(
+        default=None,
+        description="Total amount of CPU requested to run the job in MB"
+    )
 
     def submit_file(self, command: str, condor_dir: str):
+        optional_field_keys = ['request_memory', 'request_cpus']
+
         return textwrap.dedent(f"""
             scitokens_file = /dev/null
             +Owner = undefined
@@ -102,13 +113,19 @@ class CondorSubmit(BaseModel):
             error                       = {os.path.join(condor_dir, self.stderr)}
             output                      = {os.path.join(condor_dir, self.stdout)}
             
+            %(optional_fields)s
+            
             when_to_transfer_output     = {self.when_to_transfer_output}
             should_transfer_files       = {self.should_transfer_files}
             transfer_input_files        = {os.path.abspath(command)}
             transfer_output_files       = {','.join(self.transfer_output_files)}
             
             queue
-        """)
+        """) % dict(
+            optional_fields='\n'.join(
+                [f"{k} = {getattr(self, k)}" for k in optional_field_keys if getattr(self, k) is not None]
+            )
+        )
 
 
 class CondorConfiguration(BaseModel):

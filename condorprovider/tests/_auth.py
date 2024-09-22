@@ -48,7 +48,7 @@ print(f"Visit {response_data['verification_uri_complete']}")
 
 while True:
     token_response = requests.post(
-        os.environ["IAM_ISSUER"] + "/token",
+        IAM_ISSUER + ("token" if IAM_ISSUER[-1] == '/' else '/token'),
         data=dict(
             grant_type="urn:ietf:params:oauth:grant-type:device_code",
             device_code=response.json()['device_code'],
@@ -57,7 +57,7 @@ while True:
             'Accept': 'application/json',
             'Content-type': 'application/x-www-form-urlencoded',
         },
-        auth=(os.environ.get('IAM_CLIENT_ID'), os.environ.get('IAM_CLIENT_SECRET'))
+        auth=(IAM_CLIENT_ID, IAM_CLIENT_SECRET)
         )
 
     print (token_response)

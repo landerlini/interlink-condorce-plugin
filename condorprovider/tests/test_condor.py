@@ -82,6 +82,23 @@ def test_condor_submit_multiline():
     """)))
     assert "hello world" in stdout
 
+def test_condor_submit_requests():
+    """
+    Submit a multiline command
+    """
+    stdout, stderr, *_ = asyncio.run(
+        _condor_submit_and_retrieve(
+            textwrap.dedent(
+                f"""
+                    MYSTRING="hello world"
+                    echo $MYSTRING
+                """),
+            request_cpu=2,
+            request_memory=8000,
+        )
+    )
+    assert "hello world" in stdout
+
 def test_condor_with_apptainer():
     """
     Test a simple submission with apptainer
