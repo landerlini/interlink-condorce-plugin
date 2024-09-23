@@ -151,8 +151,8 @@ def compute_pod_resource(pod: interlink.PodRequest, resource: str):
             sum([
                 parse_quantity(
                     max(
-                        ((c.resources.get('resources') or {}).get('requests') or {}).get(resource) or 1,
-                        ((c.resources.get('resources') or {}).get('limit') or {}).get(resource) or 1,
+                        ((c.resources or {}).get('requests') or {}).get(resource) or 1,
+                        ((c.resources or {}).get('limit') or {}).get(resource) or 1,
                     )
                 )
                 for c in pod.spec.containers ]
