@@ -158,6 +158,7 @@ def _make_container_list(
                     )
                     for vm in getattr(container, 'volume_mounts')
                 ],
+                volumes.ScratchArea().mount(mount_path="/cache", read_only=False),
             ], [])
 
     return [
