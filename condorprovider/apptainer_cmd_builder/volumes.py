@@ -74,24 +74,26 @@ class BaseVolume (BaseModel, extra="forbid"):
 
         return ""
 
-    def mount(self, mount_path: str, read_only: bool = False):
+    def mount(self, mount_path: str, sub_path: Optional[str] = None, read_only: bool = False):
         return [
             VolumeBind(
                 volume=self,
                 container_path=mount_path,
-                read_only=read_only
+                read_only=read_only,
+                sub_path=sub_path,
             )
         ]
 
 
 class ScratchArea (BaseVolume, extra="forbid"):
-    def mount(self, mount_path: str, read_only: bool = False):
+    def mount(self, mount_path: str, sub_path: Optional[str] = None, read_only: bool = False):
         return [
             VolumeBind(
                 volume=self,
                 container_path=mount_path,
                 read_only=read_only,
                 mount_type='scratch',
+                sub_path=sub_path,
             )
         ]
 
@@ -133,7 +135,10 @@ class StaticVolume(BaseVolume, extra="forbid"):
         ]
         return '\n'+'\n'.join(ret)
 
-    def mount(self, mount_path: str, read_only: bool = True, key: Optional[str] = None):
+    def mount(self, mount_path: str, sub_path: Optional[str] = None, read_only: bool = True, key: Optional[str] = None):
+        if sub_path is not None:
+            print("Warning sub_path for StaticVolumes is not implemented. Ignored.")
+
         if key is None:
             return (
                 [   # Bind ascii files
@@ -210,9 +215,16 @@ class FuseVolume(BaseVolume, extra="forbid"):
             f"rm -f {self.fuse_mount_script_container_path}"]
         )
 
+        envvars = [
+            "export SUB_PATH=$1",
+            "export MOUNT_POINT=$2",
+        ]
+
         mount_script = "\n".join([line for line in mount_script.split('\n') if len(line)])
         if not mount_script.split('\n')[0].startswith("#!/"):
-            mount_script = '\n'.join(["#!/bin/sh", mount_script])
+            mount_script = '\n'.join(["#!/bin/sh", *envvars, mount_script])
+        else:
+            mount_script = '\n'.join([mount_script.split('\n')[0], *envvars, mount_script])
 
         base_path = os.path.abspath(self.host_path)
         ret = [
@@ -233,7 +245,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
 
         return '\n' + '\n'.join(ret)
 
-    def mount(self, mount_path: str, read_only: bool = False):
+    def mount(self, mount_path: str, sub_path: Optional[str] = None, read_only: bool = False):
         if read_only:
             raise NotImplementedError("Read-only constrain is fuse-lib specific. Implement it in mount script.")
 
@@ -249,6 +261,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
                 volume=self,
                 container_path=mount_path,
                 mount_type='fuse',
+                sub_path=sub_path,
             )
         ]
 
@@ -296,13 +309,15 @@ class VolumeBind(BaseModel, extra="forbid"):
         default='bind',
         description="Type of binding"
     )
+    sub_path: Optional[str] = Field(
+        default=None,
+        description="Mount in mount_path a subPath of the volume instead of its root",
+    )
 
     @property
     def host_path(self):
-        if self.host_path_override is not None:
-            return self.host_path_override
-
-        return self.volume.host_path
+        ret_path = self.host_path_override if self.host_path_override is not None else self.volume.host_path
+        return os.path.join(ret_path, self.sub_path) if self.sub_path is not None else ret_path
 
     def __str__(self):
         if self.mount_type in ['bind']:
@@ -310,7 +325,11 @@ class VolumeBind(BaseModel, extra="forbid"):
         elif self.mount_type in ['scratch']:
             return f"--scratch {self.container_path}"
         elif self.mount_type in ['fuse']:
-            return f"--fusemount \"container:{self.volume.fuse_mount_script_container_path} {self.container_path}\""
+            return f"--fusemount \"container:%(script)s %(sub_path)s %(mount_point)s\"" % dict(
+                sub_path=self.sub_path if self.sub_path is not None else "",
+                script=self.volume.fuse_mount_script_container_path,
+                mount_point=self.container_path,
+            )
 
         raise KeyError(f"Unexpected mount_type '{self.mount_type}', expect 'bind', 'scratch', or 'fuse'.")
 

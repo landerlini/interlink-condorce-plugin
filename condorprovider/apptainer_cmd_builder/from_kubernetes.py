@@ -153,6 +153,7 @@ def _make_container_list(
                 *[
                     pod_volumes.get(vm.name, volumes.ScratchArea()).mount(
                         vm.mount_path,
+                        sub_path=vm.sub_path,
                         read_only=vm.read_only if vm.read_only is not None else False
                     )
                     for vm in getattr(container, 'volume_mounts')
