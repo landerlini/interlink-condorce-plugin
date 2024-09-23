@@ -186,7 +186,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [f'--env-file {self.env_file_path}']
 
         # Volumes
-        ret += [str(vb) for vb in self.volume_binds]
+        ret += [str(vb) for vb in set(self.volume_binds)]
 
         # Executable
         ret += [f'--bind {self.executable_path}:/mnt/apptainer_cmd_builder/run']

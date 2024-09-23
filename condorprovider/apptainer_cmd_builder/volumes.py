@@ -333,5 +333,8 @@ class VolumeBind(BaseModel, extra="forbid"):
 
         raise KeyError(f"Unexpected mount_type '{self.mount_type}', expect 'bind', 'scratch', or 'fuse'.")
 
+    def __hash__(self):
+        return self.__str__().__hash__()
+
 
 
