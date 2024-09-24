@@ -71,6 +71,14 @@ class ContainerSpec(BaseModel, extra="forbid"):
         description="Log of the container, once completed. None otherwise."
     )
 
+    readonly_image_dir: str = Field(
+        default=cfg.IMAGE_DIR,
+        description="""Some frequently used image might be cached locally in this read-only directory.
+        Image will be looked up as os.path.join(readonly_image_dir, image.replace(":", "_")).
+        """,
+    )
+
+
     @property
     def workdir(self):
         return os.path.join(self.scratch_area, f".acb.cnt.{self.uid}")
@@ -198,7 +206,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
             str(self.executable.resolve()),
             "exec",
             *self.flags,
-            self.formatted_image,
+            "$IMAGE",
             '/mnt/apptainer_cmd_builder/run &> ',
             self.log_path
             ])
@@ -228,6 +236,15 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 file_content=entry_point_file,
                 executable=True,
             )
+        ]
+
+        local_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
+        ret += [
+            f"if [ -f {local_image} ]; then",
+            f"  IMAGE={local_image}",
+            f"else"
+            f"  IMAGE={self.formatted_image}",
+            f"fi",
         ]
 
         return '\n'+'\n'.join(ret)

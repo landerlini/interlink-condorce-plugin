@@ -8,3 +8,6 @@ SCRATCH_AREA = environ.get("SCRATCH_AREA", "/tmp")
 
 # APPTAINER_CACHEDIR defines the directory where apptainer puts images (default: /cache/apptainer)
 APPTAINER_CACHEDIR = environ.get("APPTAINER_CACHEDIR", "/tmp/cache/apptainer")
+
+# IMAGE_DIR defines a directory where to look for pre-built images
+IMAGE_DIR = environ.get("IMAGE_DIR", "/opt/exp_software/opssw/budda")

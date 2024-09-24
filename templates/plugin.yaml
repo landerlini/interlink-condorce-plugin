@@ -52,6 +52,8 @@ spec:
               value: {{ .Values.backendIamClientSecret | required "backendIamClientSecret is missing (this is the condor IAM)"}}
             - name: BEARER_TOKEN_PATH
               value: /interlink/token
+            - name: IMAGE_DIR
+              value: {{ .Values.backendLocalImageDir | default "/opt/exp_software/opssw/budda" }}
 
           ports:
             - containerPort: 8000

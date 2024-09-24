@@ -138,6 +138,9 @@ backendRefreshTokenCpuRequest: 10m
 # backendRefreshTokenMemoryLimit is the memory limit for the refresh-token servce
 backendRefreshTokenMemoryRequest: 100Mi
 
+# backendLocalImageDir is a directory where SIF images might be cached
+# The path to SIF images should be {backendLocalImageDir}/{image.replace(":", "_")}
+backendLocalImageDir: /opt/exp_software/opssw/budda
 
 # backendIamScope lists the scopes requested to the IAM
 backendIamScopes:
@@ -162,4 +165,3 @@ natsBastionImage: binlab/bastion:latest
 
 # natsAuthorizedKeys is the content of the authorized_keys files installed in the bastion service
 natsAuthorizedKeys:
-
