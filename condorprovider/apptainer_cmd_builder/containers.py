@@ -109,6 +109,12 @@ class ContainerSpec(BaseModel, extra="forbid"):
         json_schema_extra=dict(arg='--writable-tmpfs'),
     )
 
+    fakeroot: bool = Field(
+        default=cfg.APPTAINER_FAKEROOT,
+        description="Enable --fakeroot option in apptainer",
+        json_schema_extra=dict(arg='--containall'),
+    )
+
     containall: bool = Field(
         default=True,
         description="Contain not only file systems, but also PID, IPC, and environment",

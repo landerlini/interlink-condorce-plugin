@@ -11,3 +11,10 @@ APPTAINER_CACHEDIR = environ.get("APPTAINER_CACHEDIR", "/tmp/cache/apptainer")
 
 # IMAGE_DIR defines a directory where to look for pre-built images
 IMAGE_DIR = environ.get("IMAGE_DIR", "/opt/exp_software/opssw/budda")
+
+# APPTAINER_FAKEROOT enables --fakeroot flag in apptainer exec
+APPTAINER_FAKEROOT = environ.get("APPTAINER_FAKEROOT", "yes").lower() in ["true", "yes", "y"]
+
+# FUSE_ENABLED_ON_HOST defines whether the host enables users to use fuse or not
+FUSE_ENABLED_ON_HOST = environ.get("FUSE_ENABLED_ON_HOST", "yes").lower() in ["true", "yes", "y"]
+

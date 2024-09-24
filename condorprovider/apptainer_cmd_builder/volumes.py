@@ -321,10 +321,14 @@ class VolumeBind(BaseModel, extra="forbid"):
         elif self.mount_type in ['scratch']:
             return f"--scratch {self.container_path}"
         elif self.mount_type in ['fuse']:
-            return f"--fusemount \"container:%(script)s %(sub_path)s %(mount_point)s\"" % dict(
+            return f"--fusemount \"container:%(script)s %(sub_path)s %(mount_point)s %(fake_arg)s\"" % dict(
                 sub_path=self.sub_path if self.sub_path is not None else "",
                 script=self.volume.fuse_mount_script_container_path,
                 mount_point=self.container_path,
+                # fake_arg adds a fake last argument in case the host allows using fuse inside the container directly
+                # without /dev/fd tricks. If the argument is not passed, then the last argument is intercepted by
+                # apptainer and replaced with the /dev/fd device.
+                fake_arg=self.container_path if cfg.FUSE_ENABLED_ON_HOST else '',
             )
 
         raise KeyError(f"Unexpected mount_type '{self.mount_type}', expect 'bind', 'scratch', or 'fuse'.")
