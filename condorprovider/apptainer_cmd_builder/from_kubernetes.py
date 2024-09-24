@@ -162,9 +162,10 @@ def _make_container_list(
                 volumes.ScratchArea().mount(mount_path="/cache", read_only=False),
             ], [])
 
+    prefix = "init-" if is_init_container else "run-"
     return [
         ContainerSpec(
-            uid=c.name if not is_init_container else "".join(("init-", c.name)),
+            uid=prefix+c.name,
             entrypoint=c.command[0],
             args=c.command[1:] + (c.args if c.args is not None else []),
             image=c.image,
