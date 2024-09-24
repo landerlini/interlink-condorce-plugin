@@ -53,7 +53,8 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
 
     @property
     def volumes(self) -> List[BaseVolume]:
-        return list(set([vb.volume for c in self.containers for vb in c.volume_binds] + self.additional_volumes))
+        all_containers = self.containers + self.init_containers
+        return list(set([vb.volume for c in all_containers for vb in c.volume_binds] + self.additional_volumes))
 
     @property
     def workdir(self):
