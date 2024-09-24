@@ -209,11 +209,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
         return f"/mnt/apptainer_cmd_builder/fusemount-scripts/{self.uid}"
 
     def initialize(self):
-        # Delete the configuration file from the container once it has been used to mitigate credentials exposure
-        mount_script = "\n".join([
-            textwrap.dedent(self.fuse_mount_script),
-            f"rm -f {self.fuse_mount_script_container_path}"]
-        )
+        mount_script = textwrap.dedent(self.fuse_mount_script)
 
         envvars = [
             "export SUB_PATH=$1",
