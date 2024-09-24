@@ -159,7 +159,7 @@ def _make_container_list(
                     )
                     for vm in getattr(container, 'volume_mounts')
                 ],
-                volumes.ScratchArea().mount(mount_path="/cache", read_only=False),
+                volumes.make_empty_dir().mount(mount_path="/cache", read_only=False),
             ], [])
 
     prefix = "init-" if is_init_container else "run-"
