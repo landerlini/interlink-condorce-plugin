@@ -1,3 +1,5 @@
+import string
+
 from pydantic import BaseModel, Field
 import os.path
 from typing import Dict, List, Literal, Union, Optional
@@ -202,17 +204,19 @@ class ContainerSpec(BaseModel, extra="forbid"):
         return ret
 
     def exec(self):
+        uid = ''.join([ch for ch in self.uid if ch in (string.ascii_letters + string.digits)]).upper()
         return " \\\n    ".join([
             str(self.executable.resolve()),
             "exec",
             *self.flags,
-            "$IMAGE",
+            f"$IMAGE_{uid}",
             '/mnt/apptainer_cmd_builder/run &> ',
             self.log_path
             ])
 
 
     def initialize(self):
+        uid = ''.join([ch for ch in self.uid if ch in (string.ascii_letters + string.digits)]).upper()
         env_dict = dict(
             GENERATED_WITH='ApptainerCmdBuilder',
             ACB_UID=self.uid,
@@ -241,9 +245,9 @@ class ContainerSpec(BaseModel, extra="forbid"):
         local_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
         ret += [
             f"if [ -f {local_image} ]; then",
-            f"  IMAGE={local_image}",
-            f"else"
-            f"  IMAGE={self.formatted_image}",
+            f"  IMAGE_{uid}={local_image}",
+            f"else",
+            f"  IMAGE_{uid}={self.formatted_image}",
             f"fi",
         ]
 
