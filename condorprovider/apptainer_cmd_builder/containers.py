@@ -176,7 +176,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         json_schema_extra = dict(arg='--cwd %s'),
     )
 
-    cleanenv: str = Field(
+    cleanenv: bool = Field(
         default=True,
         description="Clean the environment of the spawned container",
         json_schema_extra = dict(arg='--cleanenv'),
