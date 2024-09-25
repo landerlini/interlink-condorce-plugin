@@ -234,7 +234,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
         # If possible, will execute the fuse command on host, instead of inside the container
         if cfg.FUSE_ENABLED_ON_HOST:
             ret += [
-                self.parsed_cleanup_script + " \"\" " + self.host_path + " &",
+                self.fuse_mount_script_host_path + " \"\" " + self.host_path + " &",
                 f"FUSE_{sanitize_uid(self.uid).upper()}_PID=$!"
             ]
 
