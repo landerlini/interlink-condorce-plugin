@@ -245,14 +245,18 @@ class FuseVolume(BaseVolume, extra="forbid"):
 
     def finalize(self):
         base_path = os.path.abspath(self.host_path)
-        ret = [f"rm -rf {base_path}"]
         host_path = os.path.join(self.host_path, "mnt")
+
+        ret = []
+
+        if cfg.FUSE_ENABLED_ON_HOST:
+            ret += [  f"fusermount -u {host_path} || kill $FUSE_{sanitize_uid(self.uid).upper()}_PID" ]
+
+        ret += [f"rm -rf {base_path}"]
 
         if self.parsed_cleanup_script is not None:
             ret.append(self.parsed_cleanup_script)
 
-        if cfg.FUSE_ENABLED_ON_HOST:
-            ret += [  f"fusermount -u {host_path} || kill $FUSE_{sanitize_uid(self.uid).upper()}_PID" ]
 
         return '\n' + '\n'.join(ret)
 
