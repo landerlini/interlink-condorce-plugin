@@ -1,10 +1,11 @@
 import os.path
 
+from interlink import Volume
 from pydantic import BaseModel, Field
 from typing import Dict, Optional, Literal
 import textwrap
 
-from ..utils import embed_ascii_file, embed_binary_file, make_uid_numeric
+from ..utils import embed_ascii_file, embed_binary_file, make_uid_numeric, sanitize_uid
 from . import configuration as cfg
 
 from condorprovider.utils import generate_uid
@@ -230,6 +231,13 @@ class FuseVolume(BaseVolume, extra="forbid"):
             self.parsed_init_script or '',
         ]
 
+        # If possible, will execute the fuse command on host, instead of inside the container
+        if cfg.FUSE_ENABLED_ON_HOST:
+            ret += [
+                self.parsed_cleanup_script + " \"\" " + self.host_path + " &",
+                f"FUSE_{sanitize_uid(self.uid).upper()}_PID=$!"
+            ]
+
         return '\n' + '\n'.join(ret)
 
     def finalize(self):
@@ -239,11 +247,24 @@ class FuseVolume(BaseVolume, extra="forbid"):
         if self.parsed_cleanup_script is not None:
             ret.append(self.parsed_cleanup_script)
 
+        if cfg.FUSE_ENABLED_ON_HOST:
+            ret += [  f"fusermount -u {self.host_path} || kill $FUSE_{sanitize_uid(self.uid).upper()}_PID" ]
+
         return '\n' + '\n'.join(ret)
 
     def mount(self, mount_path: str, sub_path: Optional[str] = None, read_only: bool = False):
         if read_only:
             raise NotImplementedError("Read-only constrain is fuse-lib specific. Implement it in mount script.")
+
+        if cfg.FUSE_ENABLED_ON_HOST:
+            return [
+                VolumeBind(
+                    volume=self,
+                    container_path=mount_path,
+                    mount_type='bind',
+                    sub_path=sub_path,
+                )
+            ]
 
         return [
             VolumeBind(

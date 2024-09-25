@@ -7,7 +7,7 @@ from pathlib import Path
 import shlex
 
 from . import configuration as cfg
-from ..utils import generate_uid, embed_ascii_file, make_uid_numeric
+from ..utils import generate_uid, embed_ascii_file, make_uid_numeric, sanitize_uid
 from .volumes import VolumeBind
 
 ImageFormat = Literal[  # See https://apptainer.org/docs/user/main/cli/apptainer_exec.html#synopsis
@@ -112,11 +112,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
     fakeroot: bool = Field(
         default=cfg.APPTAINER_FAKEROOT,
         description="Enable --fakeroot option in apptainer",
-        json_schema_extra=dict(arg='--containall'),
+        json_schema_extra=dict(arg='--fakeroot'),
     )
 
     containall: bool = Field(
-        default=True,
+        default=cfg.APPTAINER_CONTAINALL,
         description="Contain not only file systems, but also PID, IPC, and environment",
         json_schema_extra=dict(arg='--containall'),
     )
@@ -176,6 +176,13 @@ class ContainerSpec(BaseModel, extra="forbid"):
         json_schema_extra = dict(arg='--cwd %s'),
     )
 
+    cleanenv: str = Field(
+        default=True,
+        description="Clean the environment of the spawned container",
+        json_schema_extra = dict(arg='--cleanenv'),
+    )
+
+
     def __hash__(self):
         return make_uid_numeric(self.uid)
 
@@ -210,7 +217,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         return ret
 
     def exec(self):
-        uid = ''.join([ch for ch in self.uid if ch in (string.ascii_letters + string.digits)]).upper()
+        uid = sanitize_uid(self.uid).upper()
         return " \\\n    ".join([
             str(self.executable.resolve()),
             "exec",
@@ -222,7 +229,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
 
     def initialize(self):
-        uid = ''.join([ch for ch in self.uid if ch in (string.ascii_letters + string.digits)]).upper()
+        uid = sanitize_uid(self.uid).upper()
         env_dict = dict(
             GENERATED_WITH='ApptainerCmdBuilder',
             ACB_UID=self.uid,

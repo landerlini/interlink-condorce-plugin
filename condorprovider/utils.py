@@ -156,3 +156,9 @@ def compute_pod_resource(pod: interlink.PodRequest, resource: str):
             )
         )
     )
+
+def sanitize_uid(uid: str):
+    """
+    Return a sanitized version of a string, only including letters and digits
+    """
+    return ''.join([ch for ch in uid if ch in (string.ascii_letters + string.digits)])
