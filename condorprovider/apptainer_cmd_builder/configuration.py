@@ -19,7 +19,7 @@ ADDITIONAL_DIRECTORIES_IN_PATH = environ.get(
 ).split(":")
 
 # APPTAINER_FAKEROOT enables --fakeroot flag in apptainer exec
-APPTAINER_FAKEROOT = environ.get("APPTAINER_FAKEROOT", "yes").lower() in ["true", "yes", "y"]
+APPTAINER_FAKEROOT = environ.get("APPTAINER_FAKEROOT", "no").lower() in ["true", "yes", "y"]
 
 # APPTAINER_CONTAINALL enables --fakeroot flag in apptainer exec
 APPTAINER_CONTAINALL = environ.get("APPTAINER_CONTAINALL", "no").lower() in ["true", "yes", "y"]
