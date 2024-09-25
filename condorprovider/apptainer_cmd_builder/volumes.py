@@ -224,9 +224,12 @@ class FuseVolume(BaseVolume, extra="forbid"):
             mount_script = '\n'.join([mount_script.split('\n')[0], *envvars, mount_script])
 
         base_path = os.path.abspath(self.host_path)
+        host_path = os.path.join(self.host_path, "mnt")
+        cache_path = os.path.join(base_path, 'cache')
         ret = [
             f"rm -rf {base_path}",
-            f"mkdir -p {base_path}/cache",
+            f"mkdir -p {host_path}",
+            f"mkdir -p {cache_path}",
             embed_ascii_file(self.fuse_mount_script_host_path, mount_script, executable=True),
             self.parsed_init_script or '',
         ]
@@ -234,7 +237,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
         # If possible, will execute the fuse command on host, instead of inside the container
         if cfg.FUSE_ENABLED_ON_HOST:
             ret += [
-                f"CACHEDIR={base_path}/cache " + self.fuse_mount_script_host_path + " \"\" " + self.host_path + " &",
+                f"CACHEDIR={cache_path}/cache " + self.fuse_mount_script_host_path + " \"\" " + host_path + " &",
                 f"FUSE_{sanitize_uid(self.uid).upper()}_PID=$!"
             ]
 
@@ -243,12 +246,13 @@ class FuseVolume(BaseVolume, extra="forbid"):
     def finalize(self):
         base_path = os.path.abspath(self.host_path)
         ret = [f"rm -rf {base_path}"]
+        host_path = os.path.join(self.host_path, "mnt")
 
         if self.parsed_cleanup_script is not None:
             ret.append(self.parsed_cleanup_script)
 
         if cfg.FUSE_ENABLED_ON_HOST:
-            ret += [  f"fusermount -u {self.host_path} || kill $FUSE_{sanitize_uid(self.uid).upper()}_PID" ]
+            ret += [  f"fusermount -u {host_path} || kill $FUSE_{sanitize_uid(self.uid).upper()}_PID" ]
 
         return '\n' + '\n'.join(ret)
 
@@ -260,6 +264,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
             return [
                 VolumeBind(
                     volume=self,
+                    host_path_override=os.path.join(self.host_path, "mnt"),
                     container_path=mount_path,
                     mount_type='bind',
                     sub_path=sub_path,
