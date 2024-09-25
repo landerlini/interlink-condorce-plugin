@@ -226,7 +226,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
         base_path = os.path.abspath(self.host_path)
         ret = [
             f"rm -rf {base_path}",
-            f"mkdir -p {base_path}",
+            f"mkdir -p {base_path}/cache",
             embed_ascii_file(self.fuse_mount_script_host_path, mount_script, executable=True),
             self.parsed_init_script or '',
         ]
@@ -234,7 +234,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
         # If possible, will execute the fuse command on host, instead of inside the container
         if cfg.FUSE_ENABLED_ON_HOST:
             ret += [
-                self.fuse_mount_script_host_path + " \"\" " + self.host_path + " &",
+                f"CACHEDIR={base_path}/cache" + self.fuse_mount_script_host_path + " \"\" " + self.host_path + " &",
                 f"FUSE_{sanitize_uid(self.uid).upper()}_PID=$!"
             ]
 
