@@ -45,13 +45,23 @@ async def delete_pod(pod: interlink.PodRequest) -> str:
 @app.get("/status")
 async def get_pod_status(pods: List[interlink.PodRequest]) -> List[interlink.PodStatus]:
     logging.info(f"Requested status, number of pods: {len(pods)}")
-    try:
-        retrieved_states = [await condor_provider.get_pod_status(pod) for pod in pods]
-    except HTCondorException as e:
-        logging.error(str(e))
-        raise HTTPException(404, str(e))
+    ret = []
+    for pod in pods:
+        try:
+            ret.append(await condor_provider.get_pod_status(pod))
+        except HTCondorException as e:
+            logging.error(str(e))
+            ret.append(
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(exitCode=404)
+                    )
+                ) for cs in (pod.spec.containers or []) + (pod.spec.initContainers or [])
+            )
 
-    return [state for state in retrieved_states if state is not None]
+
+    return [state for state in ret if state is not None]
 
 
 @app.get("/getLogs")
