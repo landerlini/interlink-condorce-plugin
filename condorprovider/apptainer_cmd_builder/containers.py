@@ -285,9 +285,10 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 f"if [ -f {local_image} ]; then",
                 f"  IMAGE_{uid}={local_image}",
                 f"else",
-                f"  HTTP_STATUS=$(curl -Lo {os.path.join(self.scratch_area, f'.img.{uid}')} "
-                        f"-H \"X-Token: {self.shub_token}\" "
-                        f"{SHUB_PROXY}/get-docker/{self.image}) ",
+                f"  HTTP_STATUS=$(curl -Lo {os.path.join(self.scratch_area, f'.img.{uid}')} \\"
+                f"      -w \"%{{http_code}}\" \\",
+                f"      -H \"X-Token: {self.shub_token}\" \\",
+                f"      {SHUB_PROXY}/get-docker/{self.image}) ",
                 f"  if [[ $HTTP_STATUS -ge 200 && $HTTP_STATUS -lt 300 ]]; then ",
                 f"    IMAGE_{uid}={os.path.join(self.scratch_area, f'.img.{uid}')} ",
                 f"  else ",
