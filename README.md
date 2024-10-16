@@ -21,6 +21,18 @@ The logical flow of an incoming computation request is as follows:
    authenticated against the HTCondor backend
    (see [authenticator.yaml](templates/authenticator.yaml)), converts and submit the requests.
 
+## Support for shubProxy
+When running apptainer to emulate an OCI runtime in a distributed environment, it is necessary to rethink the caching 
+procedure to avoid each single job to re-download the image from docker hub and rebuild it.
+To this purpose, we use ShubProxy ([Singularity Hub Proxy](github.com/landerlini/shub-proxy)) which accepts docker 
+images by name through a simple REST API and redirect the client to a presigned URL from a backend object storage, 
+if available, otherwise it build the image, upload it and return the presigned URL.
+
+To avoid abuse of the proxy from unauthorized clients, a very simple authorization procedure is put in place. 
+A master token is shared between the plugin and the proxy. When submitting jobs, the master token is presented to 
+the proxy to obtain a client token with limited validity (usually 100 days). Jobs can then use the token to download 
+their image passing it as an `X-Token` header to the GET request to the ShubProxy endpoint.
+
 ### Minimal `values.yaml`
 
 ```yaml
@@ -37,6 +49,10 @@ oauth2ProxyCookieSecret: <a random string of 16 chars to be used as encryption k
 backendIamIssuer: <iam-issuer>
 backendIamClientId: <client-id>
 backendIamClientSecret: <client-secret>
+
+# Singularity Hub Proxy used to cache built singularity images in a distributed environment
+backendShubProxy: <backend shub proxy>
+backendShubProxyMasterToken: <master token of shub proxy>
 
 # Condor configuration
 pluginCondorPool: <value one would pass to condor -pool argument, with port>

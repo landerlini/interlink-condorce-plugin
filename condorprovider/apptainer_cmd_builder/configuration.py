@@ -27,3 +27,15 @@ APPTAINER_CONTAINALL = environ.get("APPTAINER_CONTAINALL", "no").lower() in ["tr
 # FUSE_ENABLED_ON_HOST defines whether the host enables users to use fuse or not
 FUSE_ENABLED_ON_HOST = environ.get("FUSE_ENABLED_ON_HOST", "yes").lower() in ["true", "yes", "y"]
 
+# SHUB_PROXY defines the Singularity Hub proxy instance building and caching OCI images. Without protocol (http).
+SHUB_PROXY = environ.get("SHUB_PROXY")
+
+# SHUB_PROXY_MASTER_TOKEN is the master token used to generate client tokens
+SHUB_PROXY_MASTER_TOKEN = environ.get("SHUB_PROXY_MASTER_TOKEN")
+
+# Minimal input validation
+if SHUB_PROXY is None and SHUB_PROXY_MASTER_TOKEN is not None:
+    raise ValueError("Provided SHUB_PROXY_MASTER_TOKEN with no SHUB_PROXY")
+
+if SHUB_PROXY is not None and SHUB_PROXY_MASTER_TOKEN is None:
+    raise ValueError("Provided SHUB_PROXY but no SHUB_PROXY_MASTER_TOKEN")

@@ -142,6 +142,12 @@ backendRefreshTokenMemoryRequest: 100Mi
 # The path to SIF images should be {backendLocalImageDir}/{image.replace(":", "_")}
 backendLocalImageDir: /opt/exp_software/opssw/budda
 
+# backendShubProxy defines hostname:port (without protocol) of a SingularityHub Proxy
+backendShubProxy:
+
+# backendShubProxyMasterToken defines the ShubProxy Master Token used to obtain new tokens
+backendShubProxyMasterToken:
+
 # backendIamScope lists the scopes requested to the IAM
 backendIamScopes:
   - openid

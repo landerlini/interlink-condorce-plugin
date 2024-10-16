@@ -54,6 +54,10 @@ spec:
               value: /interlink/token
             - name: IMAGE_DIR
               value: {{ .Values.backendLocalImageDir | default "/opt/exp_software/opssw/budda" }}
+            - name: SHUB_PROXY
+              value: {{ .Values.backendShubProxy | required "Please define backendShubProxy" }}
+            - name: SHUB_PROXY_MASTER_TOKEN
+              value: {{ .Values.backendShubProxyMasterToken | required "Please define backendShubProxyMasterToken" }}
 
           ports:
             - containerPort: 8000
