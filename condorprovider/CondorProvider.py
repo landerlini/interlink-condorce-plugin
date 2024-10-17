@@ -123,22 +123,22 @@ class CondorProvider(interlink.provider.Provider):
                     name=cs.name,
                     state=interlink.ContainerStates(
                         terminated=interlink.StateTerminated(
-                            exitCode=builder.containers[i_container].return_code,
-                            reason="Failed" if builder.containers[i_container].return_code else "Completed",
+                            exitCode=builder.init_containers[i_container].return_code,
+                            reason="Failed" if builder.init_containers[i_container].return_code else "Completed",
                         )
                     )
-                ) for i_container, cs in enumerate(pod.spec.containers or [])
+                ) for i_container, cs in enumerate(pod.spec.initContainers or [])
             ]
             container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
                     state=interlink.ContainerStates(
                         terminated=interlink.StateTerminated(
-                            exitCode=builder.init_containers[i_container].return_code,
-                            reason="Failed" if builder.init_containers[i_container].return_code else "Completed",
+                            exitCode=builder.containers[i_container].return_code,
+                            reason="Failed" if builder.containers[i_container].return_code else "Completed",
                         )
                     )
-                ) for i_container, cs in enumerate(pod.spec.initContainers or [])
+                ) for i_container, cs in enumerate(pod.spec.containers or [])
             ]
 
         return interlink.PodStatus(
