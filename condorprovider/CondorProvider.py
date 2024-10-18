@@ -1,5 +1,5 @@
 from typing import Union, Collection
-import math
+import asyncio
 import logging
 import tarfile
 
@@ -140,6 +140,9 @@ class CondorProvider(interlink.provider.Provider):
                     )
                 ) for i_container, cs in enumerate(pod.spec.containers or [])
             ]
+
+        # Return control to FastAPI to handle healtz requests, preventing k8s to kill the pod
+        await asyncio.sleep(0.005)
 
         return interlink.PodStatus(
             name=pod.metadata.name,
