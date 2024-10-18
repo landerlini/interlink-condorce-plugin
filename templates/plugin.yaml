@@ -11,7 +11,7 @@ metadata:
     app: interlink
     component: condor-plugin
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: interlink
@@ -88,6 +88,12 @@ spec:
             - name: interlink
               mountPath: /interlink
 
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 1Gi
+
         - name: refresh-token
           image: {{ .Values.inttwRefreshTokenImage | default "ghcr.io/intertwin-eu/interlink/virtual-kubelet-inttw-refresh:latest" }}
           imagePullPolicy: Always
@@ -128,6 +134,7 @@ spec:
         - name: interlink
           emptyDir:
             sizeLimit: 1Gi
+            medium: Memory
 
 ---
 
