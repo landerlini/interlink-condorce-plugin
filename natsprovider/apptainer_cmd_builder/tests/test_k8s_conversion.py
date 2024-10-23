@@ -3,9 +3,9 @@ import pytest
 import os
 import yaml
 
-from condorprovider.utils import to_snakecase
-from condorprovider.apptainer_cmd_builder import from_kubernetes
-from condorprovider.apptainer_cmd_builder.tests._boilerplate import container_output, ValidationStruct
+from natsprovider.utils import to_snakecase
+from natsprovider.apptainer_cmd_builder import from_kubernetes
+from natsprovider.apptainer_cmd_builder.tests._boilerplate import container_output, ValidationStruct
 
 with open(os.path.abspath(__file__).replace('.py', '.yaml')) as ifile:
     test_data = {d['name']: d for d in yaml.safe_load_all(ifile)}

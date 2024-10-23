@@ -7,9 +7,9 @@ from typing import Dict, Any, List, Mapping, Optional, Union, Literal
 
 from kubernetes.client import V1Container, V1KeyToPath
 
-from condorprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerSpec, volumes, configuration as cfg
-from condorprovider.apptainer_cmd_builder.volumes import BaseVolume
-from condorprovider.utils import deserialize_kubernetes
+from natsprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerSpec, volumes, configuration as cfg
+from natsprovider.apptainer_cmd_builder.volumes import BaseVolume
+from natsprovider.utils import deserialize_kubernetes
 
 def _create_static_volume_dict(
         volume_source_by_name: Dict[str, Dict[Literal['volume_name', 'items'], Any]],

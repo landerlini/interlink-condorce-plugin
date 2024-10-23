@@ -5,10 +5,66 @@ import os.path
 import string
 import textwrap
 from base64 import b64encode
+from typing import Any, Dict, Union
+import zlib
 
+from pydantic import BaseModel, Field
+import orjson
 from kubernetes.client.api_client import ApiClient as K8sApiClient
 from kubernetes.utils.quantity import parse_quantity
 import interlink
+
+from fastapi import HTTPException
+
+
+
+class NatsResponse(BaseModel, extra="forbid"):
+    """
+    Encode a NATS response ready to become an HTTP response, with its status_code and body
+    """
+    status_code: int = Field(description="HTTP Status code representing the outcome of the response")
+    data: Any = Field(default=b'', description="Body of the response")
+    headers: Dict[str, str] = Field(default={}, description="Headers of the reponse")
+
+    @classmethod
+    def from_nats(cls, nats_response):
+        return cls(**orjson.loads(zlib.decompress(nats_response)))
+
+    def to_nats(self):
+        """
+        Dump and compress the status code and the data
+        """
+        return zlib.compress(orjson.dumps(self.model_dump()))
+
+    def raise_for_status(self):
+        """
+        If status code is not 2xx it raises an HTTPException for FastAPI to return appropriate error code to the client
+        """
+        if self.status_code < 200 or self.status_code >= 300:
+            raise HTTPException(self.status_code, str(self.data), headers=self.headers)
+
+    @property
+    def text(self) -> str:
+        return str(self.data)
+
+
+def get_readable_jobid(pod: Union[interlink.PodRequest, interlink.LogRequest]):
+    """
+    Return a readable unique id used to name the pod from either the pod or the log requests.
+    """
+    if isinstance(pod, interlink.PodRequest):
+        name = pod.metadata.name
+        namespace = pod.metadata.namespace
+        uid = pod.metadata.uid
+    elif isinstance(pod, interlink.LogRequest):
+        name = pod.PodName
+        namespace = pod.Namespace
+        uid = pod.PodUID
+    else:
+        raise HTTPException(500, f"Unexpected pod or log request of type {type(pod)}")
+
+    short_name = '-'.join((namespace, name))[:20]
+    return '-'.join((short_name, f"{make_uid_numeric(uid):x}"))
 
 def generate_uid(length: int = 16, allow_uppercase: bool = False) -> str:
     """

@@ -8,7 +8,7 @@ import textwrap
 from ..utils import embed_ascii_file, embed_binary_file, make_uid_numeric, sanitize_uid
 from . import configuration as cfg
 
-from condorprovider.utils import generate_uid
+from natsprovider.utils import generate_uid
 
 MountType = Literal['bind', 'scratch', 'fuse']
 

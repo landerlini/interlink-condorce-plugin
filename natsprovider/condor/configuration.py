@@ -1,8 +1,5 @@
 import os
 
-# DEBUG enhances the verbosity of the server. Default: false
-DEBUG = bool(os.environ.get("DEBUG", "false").lower() in ["true", "yes", "y"])
-
 # BEARER_TOKEN_PATH is the path where an access token is stored
 BEARER_TOKEN_PATH = os.environ.get("BEARER_TOKEN_PATH", None)
 
@@ -26,5 +23,4 @@ IAM_CLIENT_ID = os.environ["IAM_CLIENT_ID"]
 
 # IAM_CLIENT_SECRET is the SECRET of the IAM Client defined through the IAM_ISSUER
 IAM_CLIENT_SECRET = os.environ['IAM_CLIENT_SECRET']
-
 

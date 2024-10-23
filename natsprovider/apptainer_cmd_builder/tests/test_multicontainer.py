@@ -1,8 +1,8 @@
 import textwrap
 
-from condorprovider.utils import generate_uid
-from condorprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerSpec, volumes
-from condorprovider.apptainer_cmd_builder.tests._boilerplate import container_output
+from natsprovider.utils import generate_uid
+from natsprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerSpec, volumes
+from natsprovider.apptainer_cmd_builder.tests._boilerplate import container_output
 
 
 def test_init_container():

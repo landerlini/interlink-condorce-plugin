@@ -12,8 +12,8 @@ import htcondor
 import requests
 import asyncio
 
-from condorprovider.utils import generate_uid
-from condorprovider import configuration as cfg
+from natsprovider.utils import generate_uid
+from natsprovider import configuration as cfg
 
 from enum import Enum
 class JobStatus(Enum):

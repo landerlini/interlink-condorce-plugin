@@ -6,15 +6,18 @@ import signal
 from fastapi import FastAPI, HTTPException
 import interlink
 
-from condorprovider import CondorProvider
-from condorprovider import configuration as cfg
-from condorprovider.CondorConfiguration import HTCondorException
+from natsprovider import NatsGateway
+from natsprovider import configuration as cfg
 
 # Initialize FastAPI app
 app = FastAPI()
 
 # Please Take my provider and handle the interLink REST layer for me
-condor_provider = CondorProvider()
+nats_provider = NatsGateway(
+    nats_server=cfg.NATS_SERVER,
+    nats_subject=cfg.NATS_SUBJECT,
+    nats_timeout_seconds=cfg.NATS_TIMEOUT_SECONDS
+)
 
 log_format = '%(asctime)-22s %(name)-10s %(levelname)-8s %(message)-90s'
 logging.basicConfig(
@@ -34,7 +37,7 @@ async def create_pod(pods: List[interlink.Pod]) -> interlink.CreateStruct:
     logging.info(f"Creating pod {pod.metadata.namespace}/{pod.metadata.name}")
     return interlink.CreateStruct(
         PodUID=pod.metadata.uid,
-        PodJID=await condor_provider.create_job(pod, container)
+        PodJID=await nats_provider.create_job(pod, container)
     )
 
 @app.post("/delete")
@@ -45,12 +48,7 @@ async def delete_pod(pod: interlink.PodRequest) -> str:
 @app.get("/status")
 async def get_pod_status(pods: List[interlink.PodRequest]) -> List[interlink.PodStatus]:
     logging.info(f"Requested status, number of pods: {len(pods)}")
-    try:
-        retrieved_states = [await condor_provider.get_pod_status(pod) for pod in pods]
-    except HTCondorException as e:
-        logging.error(str(e))
-        raise HTTPException(404, str(e))
-
+    retrieved_states = [await condor_provider.get_pod_status(pod) for pod in pods]
     return [state for state in retrieved_states if state is not None]
 
 

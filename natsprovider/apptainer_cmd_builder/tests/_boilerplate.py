@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 
-from condorprovider.utils import generate_uid, to_snakecase
+from natsprovider.utils import generate_uid, to_snakecase
 
 @contextmanager
 def container_output(builder, test_name: str = "test"):

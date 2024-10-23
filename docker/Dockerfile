@@ -13,6 +13,7 @@ RUN pip install \
   "fastapi" \
   "pyyaml" \
   "nats-py" \
+  "orjson" \
   "pytest" \
   "kubernetes" \
   "htcondor" \
