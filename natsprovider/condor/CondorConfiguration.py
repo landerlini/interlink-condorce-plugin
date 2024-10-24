@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 import subprocess
 import os
 import textwrap
-from typing import Optional, Literal, List
+from typing import Dict, Optional, Literal, List
 import re
 import htcondor
 
@@ -288,21 +288,21 @@ class CondorConfiguration(BaseModel):
         job = await self.query_by_name(job_name)
         return JobStatus(job['JobStatus'])
 
-    async def retrieve_by_name(self, job_name: str, cleanup: bool = True):
+    async def retrieve_by_name(self, job_name: str, cleanup: bool = True) -> Dict[str, str]:
         job = await self.query_by_name(job_name)
         files = await self._retrieve_job_output(job, cleanup=cleanup)
         if cleanup:
             await self.delete_by_name(job_name)
         return files
 
-    async def retrieve(self, job_id: int, cleanup: bool = True):
+    async def retrieve(self, job_id: int, cleanup: bool = True) -> Dict[str, str]:
         job = await self.query(job_id)
         files = await self._retrieve_job_output(job, cleanup=cleanup)
         if cleanup:
             await self.delete(job_id)
         return files
 
-    async def _retrieve_job_output(self, job, cleanup: bool):
+    async def _retrieve_job_output(self, job, cleanup: bool) -> Dict[str, str]:
         self._ensure_token()
         condor_dir = os.path.dirname(job['JobSubmitFile'])
         await _shell(f"mkdir -p {condor_dir}; chmod a+w {condor_dir}")

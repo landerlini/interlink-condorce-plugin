@@ -1,4 +1,7 @@
+import io
+import tarfile
 import logging
+from io import BytesIO
 from typing import Collection, Union
 from contextlib import asynccontextmanager
 
@@ -10,7 +13,7 @@ import nats, nats.errors
 import interlink
 
 # Local
-from .utils import NatsResponse, get_readable_jobid
+from .utils import NatsResponse, get_readable_jobid, JobStatus
 from .apptainer_cmd_builder import from_kubernetes
 
 
@@ -33,8 +36,10 @@ class NatsGateway(interlink.provider.Provider):
         try:
             yield nc
         except nats.errors.NoRespondersError as e:
+            self.logger.error(str(e))
             raise HTTPException(502, "No compute backend is configured to manage the request")
         except nats.errors.TimeoutError as e:
+            self.logger.error(str(e))
             raise HTTPException(504, "Compute backend timeout")
         finally:
             await nc.drain()
@@ -75,39 +80,125 @@ class NatsGateway(interlink.provider.Provider):
         """
         self.logger.info(f"Delete pod {pod.metadata.name}.{pod.metadata.namespace} [{pod.metadata.uid}]")
         async with self.nats_connection() as nc:
-            await nc.publish(
-                ".".join((self._nats_subject, "delete", get_readable_jobid(pod))),
-                zlib.compress(orjson.dumps(pod.model_dump())),
+            delete_response = NatsResponse.from_nats(
+                await nc.publish(
+                    ".".join((self._nats_subject, "delete", get_readable_jobid(pod))),
+                    zlib.compress(orjson.dumps(pod.model_dump())),
+                )
             )
+            delete_response.raise_for_status()
 
     async def get_pod_status(self, pod: interlink.PodRequest) -> Union[interlink.PodStatus, None]:
         """
         Request through NATS the status of a pod.
         """
         self.logger.info(f"Query status of pod {pod.metadata.name}.{pod.metadata.namespace} [{pod.metadata.uid}]")
+        job_name = get_readable_jobid(pod)
         async with self.nats_connection() as nc:
             status_response = NatsResponse.from_nats(
                 await nc.request(
-                    ".".join((self._nats_subject, "status", get_readable_jobid(pod))),
+                    ".".join((self._nats_subject, "status", job_name)),
                     zlib.compress(orjson.dumps(pod.model_dump())),
                 )
             )
-            status_response.raise_for_status()
 
-        return interlink.PodStatus(**status_response.data)
+        status_response.raise_for_status()
+        job_status = JobStatus(**status_response.data)
+
+        container_statuses = []
+
+        if job_status.phase == "pending":
+            container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        running=interlink.StateRunning()
+                    )
+                ) for cs in (pod.spec.containers or []) + (pod.spec.initContainers or [])
+            ]
+
+        elif job_status.phase == "unknown":
+            self.logger.error(f"Requested status for a removed job: {job_name}. Returning exitCode 404.")
+            container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(
+                            exitCode=404,
+                            reason="Failed",
+                        )
+                    )
+                ) for cs in (pod.spec.containers or []) + (pod.spec.initContainers or [])
+            ]
+
+        elif job_status.phase in ["succeeded", "failed"]:
+            builder = from_kubernetes(pod.model_dump(), use_fake_volumes=True)
+            builder.process_logs(BytesIO(job_status.logs_tarball))
+            container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(
+                            exitCode=builder.init_containers[i_container].return_code,
+                            reason="Failed" if builder.init_containers[i_container].return_code else "Completed",
+                        )
+                    )
+                ) for i_container, cs in enumerate(pod.spec.initContainers or [])
+            ]
+            container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(
+                            exitCode=builder.containers[i_container].return_code,
+                            reason="Failed" if builder.containers[i_container].return_code else "Completed",
+                        )
+                    )
+                ) for i_container, cs in enumerate(pod.spec.containers or [])
+            ]
+
+        return interlink.PodStatus(
+            name=pod.metadata.name,
+            UID=pod.metadata.uid,
+            namespace=pod.metadata.namespace,
+            containers=container_statuses
+        )
+
 
     async def get_pod_logs(self, log_request: interlink.LogRequest) -> str:
         """
         Request through NATS the logs of a pod
         """
         self.logger.info(f"Requested log of pod {log_request.PodName}.{log_request.Namespace} [{log_request.PodUID}]")
+        job_name = get_readable_jobid(log_request)
         async with self.nats_connection() as nc:
-            log_response = NatsResponse.from_nats(
+            status_response = NatsResponse.from_nats(
                 await nc.request(
-                    ".".join((self._nats_subject, "status", get_readable_jobid(log_request))),
+                    ".".join((self._nats_subject, "status", job_name)),
                     zlib.compress(orjson.dumps(log_request.model_dump())),
                 )
             )
-            log_response.raise_for_status()
+            status_response.raise_for_status()
 
-        return log_response.text
+        job_status = JobStatus(**status_response.data)
+
+        if job_status.phase in ["pending"]:
+            return ""
+
+        if job_status.phase in ["running"]:
+            return "Unfortunately the log cannot retrieved for a running job... "
+
+        if job_status.phase not in ["succeeded", "failed"]:
+            return f"Error. Cannot return log for job status '{job_name}'"
+
+        with tarfile.open(fileobj=io.BytesIO(job_status.logs_tarball), mode='r:*') as tar:
+            for member in tar.getmembers():
+                if member.isfile():
+                    print (f"Pod has log for container {member.name}, requested {log_request.ContainerName}.log")
+                    if member.name in [log_request.ContainerName + ".log", log_request.ContainerName + ".log.init"]:
+                        full_log = tar.extractfile(member).read().decode('utf-8')
+
+        if log_request.Opts.Tail is not None:
+            return "\n".join(full_log.split('\n')[-log_request.Opts.Tail:])
+
+        return full_log
