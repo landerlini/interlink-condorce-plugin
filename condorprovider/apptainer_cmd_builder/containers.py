@@ -1,12 +1,20 @@
+import string
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 import os.path
 from typing import Dict, List, Literal, Union, Optional
 from pathlib import Path
 import shlex
 
+import requests
+
 from . import configuration as cfg
-from ..utils import generate_uid, embed_ascii_file, make_uid_numeric
+from .configuration import SHUB_PROXY
+from ..utils import generate_uid, embed_ascii_file, make_uid_numeric, sanitize_uid
 from .volumes import VolumeBind
+
+_GLOBAL_SHUB_PROXY_TOKEN = None
 
 ImageFormat = Literal[  # See https://apptainer.org/docs/user/main/cli/apptainer_exec.html#synopsis
     "docker",
@@ -71,6 +79,14 @@ class ContainerSpec(BaseModel, extra="forbid"):
         description="Log of the container, once completed. None otherwise."
     )
 
+    readonly_image_dir: str = Field(
+        default=cfg.IMAGE_DIR,
+        description="""Some frequently used image might be cached locally in this read-only directory.
+        Image will be looked up as os.path.join(readonly_image_dir, image.replace(":", "_")).
+        """,
+    )
+
+
     @property
     def workdir(self):
         return os.path.join(self.scratch_area, f".acb.cnt.{self.uid}")
@@ -99,8 +115,14 @@ class ContainerSpec(BaseModel, extra="forbid"):
         json_schema_extra=dict(arg='--writable-tmpfs'),
     )
 
+    fakeroot: bool = Field(
+        default=cfg.APPTAINER_FAKEROOT,
+        description="Enable --fakeroot option in apptainer",
+        json_schema_extra=dict(arg='--fakeroot'),
+    )
+
     containall: bool = Field(
-        default=True,
+        default=cfg.APPTAINER_CONTAINALL,
         description="Contain not only file systems, but also PID, IPC, and environment",
         json_schema_extra=dict(arg='--containall'),
     )
@@ -160,8 +182,33 @@ class ContainerSpec(BaseModel, extra="forbid"):
         json_schema_extra = dict(arg='--cwd %s'),
     )
 
+    cleanenv: bool = Field(
+        default=True,
+        description="Clean the environment of the spawned container",
+        json_schema_extra = dict(arg='--cleanenv'),
+    )
+
+
     def __hash__(self):
         return make_uid_numeric(self.uid)
+
+    @property
+    def shub_token(self):
+        global _GLOBAL_SHUB_PROXY_TOKEN
+        if cfg.SHUB_PROXY is None:
+            return None
+
+        if _GLOBAL_SHUB_PROXY_TOKEN is not None and (datetime.now() - _GLOBAL_SHUB_PROXY_TOKEN[0]).seconds > 300:
+            _GLOBAL_SHUB_PROXY_TOKEN = None   # Expired!
+
+        if _GLOBAL_SHUB_PROXY_TOKEN is None:
+            response = requests.get(f"http://{cfg.SHUB_PROXY}/token", auth=("admin", cfg.SHUB_PROXY_MASTER_TOKEN))
+            response.raise_for_status()
+
+            _GLOBAL_SHUB_PROXY_TOKEN = (datetime.now(), response.text)
+
+        return  _GLOBAL_SHUB_PROXY_TOKEN[1]
+
 
     @property
     def formatted_image(self):
@@ -186,7 +233,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [f'--env-file {self.env_file_path}']
 
         # Volumes
-        ret += [str(vb) for vb in self.volume_binds]
+        ret += [str(vb) for vb in set(self.volume_binds)]
 
         # Executable
         ret += [f'--bind {self.executable_path}:/mnt/apptainer_cmd_builder/run']
@@ -194,17 +241,19 @@ class ContainerSpec(BaseModel, extra="forbid"):
         return ret
 
     def exec(self):
+        uid = sanitize_uid(self.uid).upper()
         return " \\\n    ".join([
             str(self.executable.resolve()),
             "exec",
             *self.flags,
-            self.formatted_image,
+            f"$IMAGE_{uid}",
             '/mnt/apptainer_cmd_builder/run &> ',
             self.log_path
             ])
 
 
     def initialize(self):
+        uid = sanitize_uid(self.uid).upper()
         env_dict = dict(
             GENERATED_WITH='ApptainerCmdBuilder',
             ACB_UID=self.uid,
@@ -229,5 +278,31 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 executable=True,
             )
         ]
+
+        local_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
+        if self.shub_token is not None and self.formatted_image.startswith("docker"):
+            ret += [
+                f"if [ -f {local_image} ]; then",
+                f"  IMAGE_{uid}={local_image}",
+                f"else",
+                f"  HTTP_STATUS=$(curl -Lo {os.path.join(self.scratch_area, f'.img.{uid}')} \\",
+                f"      -w \"%{{http_code}}\" \\",
+                f"      -H \"X-Token: {self.shub_token}\" \\",
+                f"      {SHUB_PROXY}/get-docker/{self.image}) ",
+                f"  if [[ $HTTP_STATUS -ge 200 && $HTTP_STATUS -lt 300 ]]; then ",
+                f"    IMAGE_{uid}={os.path.join(self.scratch_area, f'.img.{uid}')} ",
+                f"  else ",
+                f"    IMAGE_{uid}={self.formatted_image} ",
+                f"  fi ",
+                f"fi",
+            ]
+        else:
+            ret += [
+                f"if [ -f {local_image} ]; then",
+                f"  IMAGE_{uid}={local_image}",
+                f"else",
+                f"  IMAGE_{uid}={self.formatted_image}",
+                f"fi",
+            ]
 
         return '\n'+'\n'.join(ret)

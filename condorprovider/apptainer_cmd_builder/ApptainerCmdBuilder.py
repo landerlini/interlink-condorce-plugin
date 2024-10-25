@@ -31,6 +31,11 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         description="List of volumes to be mounted or bound to the apptainer container"
     )
 
+    additional_directories_in_path: List[str] = Field(
+        default=cfg.ADDITIONAL_DIRECTORIES_IN_PATH,
+        description="Additional directories in PATH"
+    )
+
     scratch_area: str = Field(
         default=cfg.SCRATCH_AREA,
         description="Directory to be used for temporary data related to this container set",
@@ -53,7 +58,8 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
 
     @property
     def volumes(self) -> List[BaseVolume]:
-        return list(set([vb.volume for c in self.containers for vb in c.volume_binds] + self.additional_volumes))
+        all_containers = self.containers + self.init_containers
+        return list(set([vb.volume for c in all_containers for vb in c.volume_binds] + self.additional_volumes))
 
     @property
     def workdir(self):
@@ -131,6 +137,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         export APPTAINER_CACHEDIR=%(apptainer_cachedir)s
         export SINGULARITY_CACHEDIR=$APPTAINER_CACHEDIR
         mkdir -p $APPTAINER_CACHEDIR
+        %(export_of_additional_directories_in_path)s
         
         ################################################################################
         ## Environment variables
@@ -164,6 +171,9 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
             exec_init_containers=self.exec_init_containers(),
             exec_containers=self.exec_containers(),
             cleanup_volumes=self.cleanup_volume_files(),
+            export_of_additional_directories_in_path="" if len(self.additional_directories_in_path) == 0 else (
+                f"export PATH={':'.join(self.additional_directories_in_path)}:$PATH"
+            )
         )
 
         script_lines = script.split('\n')

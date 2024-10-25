@@ -128,6 +128,7 @@ def _make_container_list(
         pod_volumes: Optional[Mapping[str, BaseVolume]] = None,
         use_fake_volumes: bool = False,
         scratch_area: str = cfg.SCRATCH_AREA,
+        is_init_container: bool = False,
 ) -> List[ContainerSpec]:
     """
     Internal. Creates a list of ContainerSpec objects, mounting the volumes defined by pod_volumes.
@@ -153,15 +154,18 @@ def _make_container_list(
                 *[
                     pod_volumes.get(vm.name, volumes.ScratchArea()).mount(
                         vm.mount_path,
+                        sub_path=vm.sub_path,
                         read_only=vm.read_only if vm.read_only is not None else False
                     )
                     for vm in getattr(container, 'volume_mounts')
                 ],
+                volumes.make_empty_dir().mount(mount_path="/cache", read_only=False),
             ], [])
 
+    prefix = "init-" if is_init_container else "run-"
     return [
         ContainerSpec(
-            uid=c.name,
+            uid=prefix+c.name,
             entrypoint=c.command[0],
             args=c.command[1:] + (c.args if c.args is not None else []),
             image=c.image,
@@ -252,13 +256,15 @@ def from_kubernetes(
             containers=pod.spec.init_containers,
             pod_volumes=pod_volumes,
             use_fake_volumes=use_fake_volumes,
-            scratch_area=scratch_area
+            scratch_area=scratch_area,
+            is_init_container=True,
         ),
         containers=_make_container_list(
             containers=pod.spec.containers,
             pod_volumes=pod_volumes,
             use_fake_volumes=use_fake_volumes,
-            scratch_area=scratch_area
+            scratch_area=scratch_area,
+            is_init_container=False,
         ),
         scratch_area=scratch_area
     )

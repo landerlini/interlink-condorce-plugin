@@ -24,37 +24,6 @@ def generate_uid(length: int = 16, allow_uppercase: bool = False) -> str:
     return first_char + ''.join(random.choice(other_chars) for _ in range(length-1))
 
 
-def _embed_ascii_file(
-        path: str,
-        file_content: str,
-        executable: bool = False,
-        token: str = "EOF",
-) -> str:
-    """
-    Embed an ascii file in a bash script using the syntax cat<<EOF > path
-    Unsafe! It does not escape special characters
-
-    :param path: path of the file
-    :param file_content: multi-line content of the file
-    :param executable: if True, marks the file as executable (chmod +x)
-    :param token: token identifying the end of the stream (useful for nesting)
-
-    :return: bash code embedding an ascii file in a script
-    """
-    file_content = '\n'.join([line for line in file_content.split('\n') if len(line.replace(' ', '')) > 0])
-
-    ret = [
-        f"mkdir -p {os.path.dirname(os.path.abspath(path))}",
-        f"cat <<{token} > {path}",
-        textwrap.dedent(file_content),
-        token+"\n",
-    ]
-
-    if executable:
-        ret.append(f"chmod +x {path}")
-
-    return '\n'+'\n'.join(ret)
-
 def embed_binary_file(path: str, file_content: bytes, executable: bool = False, token: str = "EOF") -> str:
     """
     Embed a binary file in a bash script using the base64 encoding and the syntax cat<<EOF > path
@@ -69,16 +38,16 @@ def embed_binary_file(path: str, file_content: bytes, executable: bool = False, 
 
     :return: bash code embedding an ascii file in a script
     """
-    path_tmp = path+".tmp"
     chunk_len = 80
     encoded_data = str(b64encode(file_content), "ascii")
     encoded_data = "\n".join([encoded_data[i: i+chunk_len] for i in range(0, len(encoded_data), chunk_len)])
 
     ret = [
-        _embed_ascii_file(path_tmp, encoded_data, executable=False, token=token),
-        f"cat {path_tmp} | base64 --decode &> {path}",
-        f"rm -f {path_tmp}",
-    ]
+        f"mkdir -p {os.path.dirname(os.path.abspath(path))}",
+        f"cat <<{token} | base64 --decode > {path}",
+        textwrap.dedent(encoded_data),
+        token+"\n",
+        ]
 
     if executable:
         ret.append(f"chmod +x {path}")
@@ -149,13 +118,16 @@ def compute_pod_resource(pod: interlink.PodRequest, resource: str):
     return int(
         math.ceil(
             sum([
-                parse_quantity(
-                    max(
-                        ((c.resources.get('resources') or {}).get('requests') or {}).get(resource) or 1,
-                        ((c.resources.get('resources') or {}).get('limit') or {}).get(resource) or 1,
-                    )
-                )
-                for c in pod.spec.containers ]
+                max(
+                    parse_quantity(((c.resources or {}).get('requests') or {}).get(resource) or "1"),
+                    parse_quantity(((c.resources or {}).get('limit') or {}).get(resource) or "1"),
+                ) for c in pod.spec.containers ]
             )
         )
     )
+
+def sanitize_uid(uid: str):
+    """
+    Return a sanitized version of a string, only including letters and digits
+    """
+    return ''.join([ch for ch in uid if ch in (string.ascii_letters + string.digits)])

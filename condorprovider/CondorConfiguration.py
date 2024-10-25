@@ -1,4 +1,3 @@
-import time
 import sys
 from datetime import datetime
 import io
@@ -220,7 +219,7 @@ class CondorConfiguration(BaseModel):
             except htcondor.HTCondorIOError as e:
                 if attempt == CONDOR_ATTEMPTS:
                     raise e
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
                 continue
 
     async def query_by_name(self, job_name: str):
@@ -240,7 +239,7 @@ class CondorConfiguration(BaseModel):
             except htcondor.HTCondorIOError as e:
                 if attempt == CONDOR_ATTEMPTS:
                     raise e
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
                 continue
 
     async def submit(self, job: str, submit: Optional[CondorSubmit] = None):

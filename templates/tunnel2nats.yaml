@@ -103,4 +103,5 @@ spec:
   ports:
     - protocol: TCP
       targetPort: 4222
+      port: 4222
 

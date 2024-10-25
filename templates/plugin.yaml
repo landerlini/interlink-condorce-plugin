@@ -11,7 +11,7 @@ metadata:
     app: interlink
     component: condor-plugin
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: interlink
@@ -52,6 +52,12 @@ spec:
               value: {{ .Values.backendIamClientSecret | required "backendIamClientSecret is missing (this is the condor IAM)"}}
             - name: BEARER_TOKEN_PATH
               value: /interlink/token
+            - name: IMAGE_DIR
+              value: {{ .Values.backendLocalImageDir | default "/opt/exp_software/opssw/budda" }}
+            - name: SHUB_PROXY
+              value: {{ .Values.backendShubProxy | required "Please define backendShubProxy" }}
+            - name: SHUB_PROXY_MASTER_TOKEN
+              value: {{ .Values.backendShubProxyMasterToken | required "Please define backendShubProxyMasterToken" }}
 
           ports:
             - containerPort: 8000
@@ -81,6 +87,12 @@ spec:
           volumeMounts:
             - name: interlink
               mountPath: /interlink
+
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 1Gi
 
         - name: refresh-token
           image: {{ .Values.inttwRefreshTokenImage | default "ghcr.io/intertwin-eu/interlink/virtual-kubelet-inttw-refresh:latest" }}
@@ -122,6 +134,7 @@ spec:
         - name: interlink
           emptyDir:
             sizeLimit: 1Gi
+            medium: Memory
 
 ---
 

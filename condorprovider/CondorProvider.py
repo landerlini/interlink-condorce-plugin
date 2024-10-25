@@ -1,5 +1,5 @@
 from typing import Union, Collection
-import math
+import asyncio
 import logging
 import tarfile
 
@@ -83,8 +83,8 @@ class CondorProvider(interlink.provider.Provider):
                     name=cs.name,
                     state=interlink.ContainerStates(
                         waiting=interlink.StateWaiting(
-                            message="Pending",
-                            reason="Backend queues"
+                            message="HTCondor queue",
+                            reason="Pending"
                         )
                     )
                 ) for cs in (pod.spec.containers or []) + (pod.spec.initContainers or [])
@@ -106,7 +106,10 @@ class CondorProvider(interlink.provider.Provider):
                 interlink.ContainerStatus(
                     name=cs.name,
                     state=interlink.ContainerStates(
-                        terminated=interlink.StateTerminated(exitCode=404)
+                        terminated=interlink.StateTerminated(
+                            exitCode=404,
+                            reason="Failed",
+                        )
                     )
                 ) for cs in (pod.spec.containers or []) + (pod.spec.initContainers or [])
             ]
@@ -119,18 +122,27 @@ class CondorProvider(interlink.provider.Provider):
                 interlink.ContainerStatus(
                     name=cs.name,
                     state=interlink.ContainerStates(
-                        terminated=interlink.StateTerminated(exitCode=builder.containers[i_container].return_code)
+                        terminated=interlink.StateTerminated(
+                            exitCode=builder.init_containers[i_container].return_code,
+                            reason="Failed" if builder.init_containers[i_container].return_code else "Completed",
+                        )
                     )
-                ) for i_container, cs in enumerate(pod.spec.containers or [])
+                ) for i_container, cs in enumerate(pod.spec.initContainers or [])
             ]
             container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
                     state=interlink.ContainerStates(
-                        terminated=interlink.StateTerminated(exitCode=builder.init_containers[i_container].return_code)
+                        terminated=interlink.StateTerminated(
+                            exitCode=builder.containers[i_container].return_code,
+                            reason="Failed" if builder.containers[i_container].return_code else "Completed",
+                        )
                     )
-                ) for i_container, cs in enumerate(pod.spec.initContainers or [])
+                ) for i_container, cs in enumerate(pod.spec.containers or [])
             ]
+
+        # Return control to FastAPI to handle healtz requests, preventing k8s to kill the pod
+        await asyncio.sleep(0.005)
 
         return interlink.PodStatus(
             name=pod.metadata.name,

@@ -345,7 +345,7 @@ pod:
         rclone mount2 \
           --config /tmp/rclone.conf \
           --allow-non-empty example:/tmp \
-          $1
+          $MOUNT_POINT
 
   spec:
     containers:
@@ -404,6 +404,61 @@ pod:
             sleep 2
             wget http://127.0.0.1:7890/index.html -O output.html
             cat output.html
+
+containers: {}
+
+validation:
+  inLog:
+    - hello world
+
+---
+
+name: fuse-vol-with-subpath
+can_use_fake_volumes: False
+
+pod:
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: fuse-vol-with-subpath
+    annotations:
+      fuse.vk.io/my-fuse-vol: |
+        cat << EOS > /tmp/rclone.conf
+        [example]
+        type = local
+        EOS
+        
+        # Mimic a remote
+        mkdir -p /tmp/sub/path
+        echo "hello world" > /tmp/sub/path/file.txt
+        
+        echo rclone mount2 \
+          --config /tmp/rclone.conf \
+          --allow-non-empty example:/tmp/$SUB_PATH \
+          $MOUNT_POINT
+        
+        # Mount the remote without at its root
+        rclone mount2 \
+          --config /tmp/rclone.conf \
+          --allow-non-empty example:/tmp/$SUB_PATH \
+          $MOUNT_POINT
+
+  spec:
+    containers:
+      - name: main
+        image: rclone/rclone:latest
+        command:
+          - cat
+        args:
+          - /mnt/fuse-vol/file.txt
+        volumeMounts:
+          - name: my-fuse-vol
+            mountPath: /mnt/fuse-vol
+            subPath: sub/path
+    volumes:
+      - name: my-fuse-vol
+        persistentVolumeClaim:  # deliberately fake pvc
+          claimName: csi.example.com
 
 containers: {}
 
