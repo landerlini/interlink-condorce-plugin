@@ -1,4 +1,4 @@
-import os
+from ..configuration import *
 
 # BEARER_TOKEN_PATH is the path where an access token is stored
 BEARER_TOKEN_PATH = os.environ.get("BEARER_TOKEN_PATH", None)

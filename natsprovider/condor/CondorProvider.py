@@ -1,18 +1,10 @@
-from typing import Union, Collection
-import asyncio
-import logging
-import tarfile
-
-from fastapi import HTTPException
 import interlink
 
 from . import CondorConfiguration, CondorSubmit, CondorJobStatus
-from ..apptainer_cmd_builder import from_kubernetes
-from ..utils import  compute_pod_resource, get_readable_jobid, JobStatus
+from ..utils import  compute_pod_resource, JobStatus
+from ..BaseNatsProvider import BaseNatsProvider
 
 CondorConfiguration.initialize_htcondor()
-
-from ..BaseNatsProvider import BaseNatsProvider
 
 class CondorProvider(BaseNatsProvider):
     def __init__(self):
@@ -52,35 +44,3 @@ class CondorProvider(BaseNatsProvider):
             )
 
         return JobStatus(phase="unknown")
-
-
-    async def get_pod_logs(self, log_request: interlink.LogRequest) -> str:
-        self.logger.info(f"Log of pod {log_request.PodName}.{log_request.Namespace} [{log_request.PodUID}]")
-        job_name = get_readable_jobid(log_request)
-        status = await self.condor.status_by_name(job_name)
-
-        if status in [CondorJobStatus.idle, CondorJobStatus.held]:
-            return ""
-
-        if status == CondorJobStatus.running:
-            return "Unfortunately the log cannot retrieved for a running job... "
-
-        if status != CondorJobStatus.completed:
-            return f"Error. Cannot return log for job status '{status}'"
-
-        output_struct = await self.condor.retrieve_by_name(job_name, cleanup=False)
-        if 'logs' not in output_struct.keys():
-            self.logger.error(f"Requested a log for job {job_name}, but log is not available in condor output_files.")
-            return f"Error. Log was not stored or could not be retrieved."
-
-        with tarfile.open(fileobj=output_struct['logs'], mode='r:*') as tar:
-            for member in tar.getmembers():
-                if member.isfile():
-                    print (f"Pod has log for container {member.name}, requested {log_request.ContainerName}.log")
-                    if member.name in [log_request.ContainerName + ".log", log_request.ContainerName + ".log.init"]:
-                        full_log = tar.extractfile(member).read().decode('utf-8')
-
-        if log_request.Opts.Tail is not None:
-            return "\n".join(full_log.split('\n')[-log_request.Opts.Tail:])
-
-        return full_log

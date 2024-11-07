@@ -42,19 +42,19 @@ async def create_pod(pods: List[interlink.Pod]) -> interlink.CreateStruct:
 
 @app.post("/delete")
 async def delete_pod(pod: interlink.PodRequest) -> str:
-    await condor_provider.delete_pod(pod)
+    await nats_provider.delete_pod(pod)
     return "Pod deleted"
 
 @app.get("/status")
 async def get_pod_status(pods: List[interlink.PodRequest]) -> List[interlink.PodStatus]:
     logging.info(f"Requested status, number of pods: {len(pods)}")
-    retrieved_states = [await condor_provider.get_pod_status(pod) for pod in pods]
+    retrieved_states = [await nats_provider.get_pod_status(pod) for pod in pods]
     return [state for state in retrieved_states if state is not None]
 
 
 @app.get("/getLogs")
 async def get_pod_logs(req: interlink.LogRequest) -> str:
-    return await condor_provider.get_pod_logs(req)
+    return await nats_provider.get_pod_logs(req)
 
 
 @app.post("/shutdown")
@@ -64,6 +64,6 @@ async def shutdown() -> str:
     return "Shutting down"
 
 @app.get("/healthz")
-async def healtz() -> bool:
+async def healthz() -> bool:
     logging.debug("Health tested: ok.")
     return True

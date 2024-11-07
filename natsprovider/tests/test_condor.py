@@ -1,4 +1,4 @@
-from natsprovider import CondorConfiguration, CondorSubmit
+from natsprovider.condor import CondorConfiguration, CondorSubmit
 import uuid
 import time
 import textwrap
@@ -6,7 +6,7 @@ import os
 from natsprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerSpec, volumes
 import asyncio
 
-from natsprovider.CondorConfiguration import JobStatus, HTCondorException
+from natsprovider.condor.CondorConfiguration import JobStatus, HTCondorException
 from natsprovider.utils import generate_uid
 
 

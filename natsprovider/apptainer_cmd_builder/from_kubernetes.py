@@ -11,8 +11,10 @@ from natsprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerSpe
 from natsprovider.apptainer_cmd_builder.volumes import BaseVolume
 from natsprovider.utils import deserialize_kubernetes
 
+StaticVolKey = Literal['volume_name', 'items']
+
 def _create_static_volume_dict(
-        volume_source_by_name: Dict[str, Dict[Literal['volume_name', 'items'], Any]],
+        volume_source_by_name: Dict[str, Dict[StaticVolKey, Any]],
         volume_definitions: List[Union[k8s.V1ConfigMap, k8s.V1Secret]],
 ):
     """
@@ -80,7 +82,7 @@ def _make_pod_volume_struct(
     # Create a mapping for configmaps from the pod.spec.volumes structure: {cfgmap.name: cfgmap}
     config_maps = _create_static_volume_dict(
         volume_source_by_name={
-            v.config_map.name: dict(volume_name=v.name, items=v.config_map.items)
+            str(v.config_map.name): {StaticVolKey("volume_name"): v.name, StaticVolKey("items"): v.config_map.items}
             for v in (pod.spec.volumes or []) if v is not None and v.config_map is not None
         },
         volume_definitions=[
@@ -93,7 +95,7 @@ def _make_pod_volume_struct(
     # Create a mapping for configmaps from the pod.spec.volumes structure: {secret.name: secret}
     secrets = _create_static_volume_dict(
         volume_source_by_name={
-            v.secret.secret_name: dict(volume_name=v.name, items=v.secret.items)
+            str(v.secret.secret_name): {StaticVolKey("volume_name"): v.name, StaticVolKey("items"): v.secret.items}
             for v in (pod.spec.volumes or []) if v is not None and v.secret is not None
         },
         volume_definitions=[

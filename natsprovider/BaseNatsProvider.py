@@ -1,9 +1,7 @@
 import logging
 import zlib
-from typing import Collection, Union
 from pprint import pformat
 
-import nats
 from fastapi import HTTPException
 import nats.aio.msg
 import interlink
@@ -68,9 +66,9 @@ class BaseNatsProvider:
         """Wrapper decompressing and parsing the nats body"""
         job_name = msg.subject.split(".")[-1]
         try:
-            job_status = await self.get_pod_status_and_logs(job_name)
+            job_status: JobStatus = await self.get_pod_status_and_logs(job_name)
         except HTTPException as e:
-            self.logger.critical(f"Failed deleting job {job_name}")
+            self.logger.critical(f"Failed retrieving status and log of job {job_name}")
             self.logger.critical(f"Returning error code: {e.status_code} ({e.detail})")
             await msg.respond(
                 NatsResponse(status_code=e.status_code, data=e.detail.encode('utf-8')).to_nats()

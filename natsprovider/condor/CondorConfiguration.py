@@ -13,7 +13,7 @@ import requests
 import asyncio
 
 from natsprovider.utils import generate_uid
-from natsprovider import configuration as cfg
+from natsprovider.condor import configuration as cfg
 
 from enum import Enum
 class JobStatus(Enum):
