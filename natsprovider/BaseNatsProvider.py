@@ -68,7 +68,7 @@ class BaseNatsProvider:
         """Wrapper decompressing and parsing the nats body"""
         job_name = msg.subject.split(".")[-1]
         try:
-            job_status = await self.get_pod_status(job_name)
+            job_status = await self.get_pod_status_and_logs(job_name)
         except HTTPException as e:
             self.logger.critical(f"Failed deleting job {job_name}")
             self.logger.critical(f"Returning error code: {e.status_code} ({e.detail})")
@@ -81,5 +81,6 @@ class BaseNatsProvider:
             )
 
     async def get_pod_status_and_logs(self, job_name: str) -> JobStatus:
+        """Override me!"""
         raise NotImplementedError
 
