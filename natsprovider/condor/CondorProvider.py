@@ -1,14 +1,14 @@
-import interlink
 
 from . import CondorConfiguration, CondorSubmit, CondorJobStatus
+from .. import interlink
 from ..utils import  compute_pod_resource, JobStatus
 from ..BaseNatsProvider import BaseNatsProvider
 
 CondorConfiguration.initialize_htcondor()
 
 class CondorProvider(BaseNatsProvider):
-    def __init__(self):
-        BaseNatsProvider.__init__(self)
+    def __init__(self, nats_server: str, nats_queue: str):
+        BaseNatsProvider.__init__(self, nats_server=nats_server, nats_queue=nats_queue)
         self.condor = CondorConfiguration()
 
     async def create_pod(self, job_name: str, job_sh: str, pod: interlink.PodRequest) -> str:

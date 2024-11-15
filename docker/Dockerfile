@@ -16,6 +16,5 @@ RUN pip install \
   "orjson" \
   "pytest" \
   "kubernetes" \
-  "htcondor" \
-  "git+https://github.com/intertwin-eu/interLink.git@0.3.0#egg=interlink&subdirectory=example"
+  "htcondor"
 

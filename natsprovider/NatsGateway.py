@@ -2,9 +2,10 @@ import io
 import tarfile
 import logging
 from io import BytesIO
-from typing import Collection, Union
+from typing import Collection, List, Union
 from contextlib import asynccontextmanager
 
+import kubernetes.client
 import zlib
 
 import orjson
@@ -44,12 +45,23 @@ class NatsGateway(interlink.provider.Provider):
         finally:
             await nc.drain()
 
+    @staticmethod
+    def retrieve_queue_from_tolerations(tolerations: List[kubernetes.client.V1Toleration]):
+        queues = [t.value for t in tolerations if t.key == 'queue.vk.io']
+        if len(queues) == 0:
+            raise HTTPException(403, "Toleration queue.vk.io=<queue>:NoSchedule is mandatory")
+        if len(queues) > 1:
+            raise HTTPException(403, "Multi-queue submission is not supported, yet.")
+
+        return queues[0]
+
     async def create_job(self, pod: interlink.PodRequest, volumes: Collection[interlink.Volume]) -> str:
         """
         Create the singularity job and forward it to the submitter via NATS
         """
         self.logger.info(f"Create pod {pod.metadata.name}.{pod.metadata.namespace} [{pod.metadata.uid}]")
         builder = from_kubernetes(pod.model_dump(), [volume.model_dump() for volume in volumes])
+        queue = self.retrieve_queue_from_tolerations(pod.spec.tolerations)
 
         nats_payload = dict(
             # job_sh is the single bash script running singularity/apptainer to mimic the pod behavior
@@ -64,7 +76,7 @@ class NatsGateway(interlink.provider.Provider):
         async with self.nats_connection() as nc:
             create_response = NatsResponse.from_nats(
                 await nc.request(
-                    ".".join((self._nats_subject, "create", get_readable_jobid(pod))),
+                    ".".join((self._nats_subject, "create", queue, get_readable_jobid(pod))),
                     zlib.compress(orjson.dumps(nats_payload)),
                     timeout=self._nats_timeout_seconds,
                 )

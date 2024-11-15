@@ -4,9 +4,8 @@ import os
 import signal
 
 from fastapi import FastAPI, HTTPException
-import interlink
 
-from natsprovider import NatsGateway
+from natsprovider import NatsGateway, interlink
 from natsprovider import configuration as cfg
 
 # Initialize FastAPI app
