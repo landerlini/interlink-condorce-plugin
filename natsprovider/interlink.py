@@ -15,7 +15,7 @@ class Metadata(BaseModel):
     labels: Optional[Dict[str, str]] = Field({})
     generateName: Optional[str] = None
 
-class PodRequest(BaseModel):
+class PodRequest(BaseModel, arbitrary_types_allowed=True):
     metadata: k8s.V1ObjectMeta
     spec: k8s.V1PodSpec
 

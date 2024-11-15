@@ -7,8 +7,13 @@ from ..BaseNatsProvider import BaseNatsProvider
 CondorConfiguration.initialize_htcondor()
 
 class CondorProvider(BaseNatsProvider):
-    def __init__(self, nats_server: str, nats_queue: str):
-        BaseNatsProvider.__init__(self, nats_server=nats_server, nats_queue=nats_queue)
+    def __init__(self, nats_server: str, nats_queue: str, interactive_mode: bool):
+        BaseNatsProvider.__init__(
+            self,
+            nats_server=nats_server,
+            nats_queue=nats_queue,
+            interactive_mode=interactive_mode
+        )
         self.condor = CondorConfiguration()
 
     async def create_pod(self, job_name: str, job_sh: str, pod: interlink.PodRequest) -> str:
