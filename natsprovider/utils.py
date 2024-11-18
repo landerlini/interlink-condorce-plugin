@@ -1,6 +1,5 @@
 import random
 import math
-import json
 import os.path
 import string
 import textwrap
@@ -63,9 +62,9 @@ def get_readable_jobid(pod: Union[interlink.PodRequest, interlink.LogRequest]):
     Return a readable unique id used to name the pod from either the pod or the log requests.
     """
     if isinstance(pod, interlink.PodRequest):
-        name = pod.metadata.name
-        namespace = pod.metadata.namespace
-        uid = pod.metadata.uid
+        name = pod.metadata['name']
+        namespace = pod.metadata['namespace']
+        uid = pod.metadata['uid']
     elif isinstance(pod, interlink.LogRequest):
         name = pod.PodName
         namespace = pod.Namespace
@@ -177,7 +176,7 @@ def compute_pod_resource(pod: interlink.PodRequest, resource: str):
                 max(
                     parse_quantity(((c.resources or {}).get('requests') or {}).get(resource) or "1"),
                     parse_quantity(((c.resources or {}).get('limit') or {}).get(resource) or "1"),
-                ) for c in pod.spec.containers ]
+                ) for c in pod.spec['containers'] ]
             )
         )
     )
