@@ -58,7 +58,7 @@ async def delete_pod(pod: Dict[Literal['pod', 'container'], Any]) -> str:
 async def get_pod_status(pods: List[Dict[str, Any]]) -> List[interlink.PodStatus]:
     logging.info(f"Requested status, number of pods: {len(pods)}")
     pprint (pods)
-    pods = [interlink.PodRequest.from_dict(p) for p in pods]
+    pods = [interlink.PodRequest(**p) for p in pods]
     retrieved_states = [await nats_provider.get_pod_status(pod) for pod in pods]
     return [state for state in retrieved_states if state is not None]
 
