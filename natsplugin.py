@@ -7,7 +7,6 @@ from fastapi import FastAPI, HTTPException
 
 from natsprovider import NatsGateway, interlink
 from natsprovider import configuration as cfg
-from natsprovider.utils import deserialize_kubernetes
 
 # Initialize FastAPI app
 app = FastAPI()

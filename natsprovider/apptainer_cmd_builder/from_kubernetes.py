@@ -9,7 +9,7 @@ from kubernetes.client import V1Container, V1KeyToPath
 
 from natsprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerSpec, volumes, configuration as cfg
 from natsprovider.apptainer_cmd_builder.volumes import BaseVolume
-from natsprovider.utils import deserialize_kubernetes
+from natsprovider.interlink import deserialize_kubernetes
 
 StaticVolKey = Literal['volume_name', 'items']
 

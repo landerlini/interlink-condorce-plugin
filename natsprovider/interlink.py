@@ -2,10 +2,12 @@
 # https://github.com/intertwin-eu/interLink.git@0.3.0#egg=interlink&subdirectory=example
 
 import datetime
+import json
 import kubernetes.client as k8s
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
+from kubernetes.client.api_client import ApiClient as K8sApiClient
 
 def deserialize_kubernetes(data, klass):
     """
