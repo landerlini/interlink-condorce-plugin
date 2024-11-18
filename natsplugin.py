@@ -33,7 +33,7 @@ async def create_pod(pods: List[Dict[Literal['pod', 'container'], Any]]) -> inte
 
     pods = [
         interlink.Pod(
-            pod=interlink.PodRequest.from_dict(pod['pod']),
+            pod=interlink.PodRequest(**(pod['pod'])),
             container=[interlink.Volume(**c) for c in pod['container']]
         )
         for pod in pods
@@ -50,7 +50,7 @@ async def create_pod(pods: List[Dict[Literal['pod', 'container'], Any]]) -> inte
 
 @app.post("/delete")
 async def delete_pod(pod: Dict[Literal['pod', 'container'], Any]) -> str:
-    pod = interlink.PodRequest.from_dict(pod)
+    pod = interlink.PodRequest(**pod)
     await nats_provider.delete_pod(pod)
     return "Pod deleted"
 

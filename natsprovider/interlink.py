@@ -4,9 +4,9 @@
 import datetime
 import json
 import kubernetes.client as k8s
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer, field_validator
 from kubernetes.client.api_client import ApiClient as K8sApiClient
 
 def deserialize_kubernetes(data, klass):
@@ -32,12 +32,24 @@ class PodRequest(BaseModel, arbitrary_types_allowed=True):
     metadata: k8s.V1ObjectMeta
     spec: k8s.V1PodSpec
 
+    @field_validator('metadata')
     @classmethod
-    def from_dict(cls, data):
-        return cls(
-            metadata=deserialize_kubernetes(data.get('metadata', {}), "V1ObjectMeta"),
-            spec=deserialize_kubernetes(data.get('spec', {}), 'V1PodSpec'),
-        )
+    def deserialize_metadata(cls, metadata: Dict[str, Any]) -> k8s.V1ObjectMeta:
+        return deserialize_kubernetes(metadata, "V1ObjectMeta")
+
+    @field_validator('spec')
+    @classmethod
+    def deserialize_spec(cls, spec: Dict[str, Any]) -> k8s.V1PodSpec:
+        return deserialize_kubernetes(spec, "V1PodSpec")
+
+    @field_serializer('metadata')
+    def serialize_metadata(self, metadata: k8s.V1ObjectMeta, _info):
+        return metadata.to_dict()
+
+    @field_serializer('spec')
+    def serialize_spec(self, spec: k8s.V1PodSpec, _info):
+        return spec.to_dict()
+
 
 class ConfigMap(BaseModel):
     metadata: Metadata
