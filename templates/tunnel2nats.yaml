@@ -1,3 +1,4 @@
+{{ if .Values.natsBastionAuthorizedKeys }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -7,6 +8,7 @@ data:
   bastion: {{ .Values.natsAuthorizedKeys | toJson }}
 
 ---
+{{ end }}
 
 apiVersion: apps/v1
 kind: Deployment
@@ -25,6 +27,7 @@ spec:
         app: ssh-nats
     spec:
       containers:
+        {{ if .Values.natsBastionAuthorizedKeys }}
         - name: openssh-server
           image: {{ .Values.natsBastionImage | default "binlab/bastion:latest" }}
           ports:
@@ -54,6 +57,7 @@ spec:
               readOnly: true
             - name: bastion
               mountPath: /usr/etc/ssh
+        {{ end }}
 
 
         - name: nats-server
@@ -65,15 +69,18 @@ spec:
           hostPath:
             path: /opt/ssh-bastion
             type: DirectoryOrCreate
+        {{ if .Values.natsBastionAuthorizedKeys }}
         - name: authorized-keys
           configMap:
             name: auth-keys
             items:
               - key: bastion
                 path: bastion/authorized_keys
+        {{ end }}
 
 ---
 
+{{ if .Values.natsBastionAuthorizedKeys }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -90,6 +97,7 @@ spec:
       nodePort: {{ .Values.natsBastionPort }}
 
 ---
+{{ end }}
 
 apiVersion: v1
 kind: Service

@@ -75,7 +75,7 @@ A condor-specific machinery to submit generic payloads to a remote condor backen
 Finally, [CondorProvider](natsprovider/CondorProvider.py) defines methods to convert Kubernetes Pods into 
 bash scripts and submit them to the condor backend. 
 
-The CondorProvider is wrapped in a FastAPI application defined in [main.py](main.py) exposing InterLink plugin APIs.
+The CondorProvider is wrapped in a FastAPI application defined in [main.py](natsplugin.py) exposing InterLink plugin APIs.
 
 
 ### Dependencies 

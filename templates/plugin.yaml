@@ -5,7 +5,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: condor-plugin
+  name: nats-plugin
   namespace: {{ .Release.Namespace }}
   labels:
     app: interlink
@@ -27,13 +27,42 @@ spec:
         fsGroup: 101
 
       containers:
-        - name: interlink
-          image: {{ .Values.pluginDockerImage | default "landerlini/interlink-condorce-plugin:v0.0" }}
+        - name: fastapi-server
+          image: {{ .Values.pluginDockerImage | default "landerlini/interlink-condorce-plugin:v0.1" }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cd /interlink/current
+              python3 -m uvicorn natsplugin:app --reload --host 0.0.0.0 --log-level={{ .Values.pluginLogLevel | default "info" }} --port 8000
+
+          env:
+            - name: DEBUG
+              value: {{ .Values.pluginDebug | default "true" | quote }}
+          ports:
+            - containerPort: 8000
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: {{ .Values.pluginLivenessInitialDelaySeconds | default 3  }}
+            periodSeconds: {{ .Values.pluginLivenessProbePeriodSeconds | default 3  }}
+
+          volumeMounts:
+            - name: interlink
+              mountPath: /interlink
+              readOnly: true
+
+        - name: condorprovider
+          image: {{ .Values.pluginDockerImage | default "landerlini/interlink-condorce-plugin:v0.1" }}
           command: ["/bin/sh", "-c"]
           args: 
             - |
               cd /interlink/current
-              python3 -m uvicorn main:app --reload --host 0.0.0.0 --log-level={{ .Values.pluginLogLevel | default "info" }} --port 8000
+              python3 -m natsprovider condor \
+                  --queue {{ .Values.natsQueue | default "condor" }} \
+                  --shutdown-subject {{ .Values.natsShutdownSubject | default "condor" }} \
+                  --non-interactive
 
           env:
             - name: DEBUG
@@ -58,17 +87,12 @@ spec:
               value: {{ .Values.backendShubProxy | required "Please define backendShubProxy" }}
             - name: SHUB_PROXY_MASTER_TOKEN
               value: {{ .Values.backendShubProxyMasterToken | required "Please define backendShubProxyMasterToken" }}
-
-          ports:
-            - containerPort: 8000
-
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 8000
-            initialDelaySeconds: {{ .Values.pluginLivenessInitialDelaySeconds | default 3  }} 
-            periodSeconds: {{ .Values.pluginLivenessProbePeriodSeconds | default 3  }}
-
+            - name: NATS_SUBJECT
+              value: {{ .Values.natsSubject | default "interlink" }}
+            - name: NATS_SERVER
+              value: {{ .Values.natsServer | default "nats://nats:4222" }}
+            - name: NATS_TIMEOUT_SECONDS
+              value: {{ .Values.natsTimeoutSeconds | default 5 | quote }}
 
           volumeMounts:
             - name: interlink
@@ -79,10 +103,11 @@ spec:
           image: registry.k8s.io/git-sync/git-sync:v4.2.4
           args:
             - --repo={{ .Values.pluginRepository | default "https://github.com/landerlini/interlink-condorce-plugin" }}
+            - --ref={{ .Values.pluginRepositoryBranch | default "HEAD" }}
             - --period={{ .Values.pluginGitSyncPeriod | default "5s" }}
             - --link=current
             - --root=/interlink
-            - --webhook-url=http://localhost:8000/shutdown
+            - --webhook-url=http://localhost:8000/shutdown/{{ .Values.natsShutdownSubject | default "condor" }}
 
           volumeMounts:
             - name: interlink

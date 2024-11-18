@@ -9,7 +9,7 @@ import kubernetes.client
 import zlib
 
 import orjson
-from fastapi import HTTPException
+from natsplugin import HTTPException
 import nats, nats.errors
 import interlink
 
@@ -92,13 +92,10 @@ class NatsGateway(interlink.provider.Provider):
         """
         self.logger.info(f"Delete pod {pod.metadata.name}.{pod.metadata.namespace} [{pod.metadata.uid}]")
         async with self.nats_connection() as nc:
-            delete_response = NatsResponse.from_nats(
-                await nc.publish(
+            delete_response = await nc.publish(
                     ".".join((self._nats_subject, "delete", get_readable_jobid(pod))),
                     zlib.compress(orjson.dumps(pod.model_dump())),
                 )
-            )
-            delete_response.raise_for_status()
 
     async def get_pod_status(self, pod: interlink.PodRequest) -> Union[interlink.PodStatus, None]:
         """
@@ -214,3 +211,7 @@ class NatsGateway(interlink.provider.Provider):
             return "\n".join(full_log.split('\n')[-log_request.Opts.Tail:])
 
         return full_log
+
+    async def shutdown(self, subject: str):
+        async with self.nats_connection() as nc:
+            await nc.publish(".".join((self._nats_subject, "shutdown", subject)))

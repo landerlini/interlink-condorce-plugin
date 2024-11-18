@@ -56,9 +56,10 @@ async def get_pod_logs(req: interlink.LogRequest) -> str:
     return await nats_provider.get_pod_logs(req)
 
 
-@app.post("/shutdown")
-async def shutdown() -> str:
+@app.post("/shutdown/{subject}")
+async def shutdown(subject: str) -> str:
     logging.info("Shutting down")
+    await nats_provider.shutdown(subject)
     os.kill(os.getpid(), signal.SIGTERM)
     return "Shutting down"
 

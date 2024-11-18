@@ -14,7 +14,7 @@ from kubernetes.client.api_client import ApiClient as K8sApiClient
 from kubernetes.utils.quantity import parse_quantity
 import interlink
 
-from fastapi import HTTPException
+from natsplugin import HTTPException
 
 
 

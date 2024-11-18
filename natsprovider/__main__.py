@@ -35,8 +35,14 @@ parser.add_argument(
 
 parser.add_argument(
     "--queue", "-q",
-    default=cfg.NATS_SUBJECT.split('.')[-1],
+    default="default-queue",
     help="NATS queue or ResourceFlavor defining the NATS subject",
+)
+
+parser.add_argument(
+    "--shutdown-subject", "-k",
+    default=None,
+    help="NATS subject triggering a shutdown (and possibly a restart) of this service",
 )
 
 parser.add_argument(

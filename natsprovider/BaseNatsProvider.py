@@ -7,7 +7,7 @@ import zlib
 from pprint import pformat
 from contextlib import asynccontextmanager
 
-from fastapi import HTTPException
+from natsplugin import HTTPException
 import nats.aio.msg
 import interlink
 import orjson
@@ -20,7 +20,7 @@ class BaseNatsProvider:
     """
     Base class implementing the logic to respond to NATS request by a submitter
     """
-    def __init__(self, nats_server: str, nats_queue: str, interactive_mode: bool = True):
+    def __init__(self, nats_server: str, nats_queue: str, interactive_mode: bool = True, shutdown_subject: str = None):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.info(f"Starting {self.__class__.__name__}")
 
@@ -30,6 +30,7 @@ class BaseNatsProvider:
         self._nats_queue = nats_queue
         self._nats_connection = None
         self._interactive_mode = interactive_mode
+        self._shutdown_subject = shutdown_subject if shutdown_subject is not None else nats_queue
 
         self._subscriptions = {}
         self._running = True
@@ -38,15 +39,24 @@ class BaseNatsProvider:
     async def main_loop(self, time_interval: float = 0.2):
         """Main loop of the NATS responder"""
         create_subject = '.'.join((self._nats_subject, 'create', self._nats_queue, '*'))
+        shutdown_subject = '.'.join((self._nats_subject, 'shutdown', self._shutdown_subject))
         async with self.nats_connection() as nc:
             self._subscriptions[create_subject] = await nc.subscribe(
                 subject=create_subject,
                 queue=self._nats_queue,
                 cb=self.create_pod_callback
             )
+            self._subscriptions[create_subject] = await nc.subscribe(
+                subject=shutdown_subject,
+                cb=self.shutdown_callback,
+            )
             while self._running:
                 await asyncio.sleep(time_interval)
         print ("Exiting.")
+
+    def shutdown_callback(self):
+        self.logger.warning("Received shutdown request through NATS. This is usually meant to trigger an update.")
+        self._running = False
 
     def maybe_stop(self):
         if self._last_stop_request is not None and (datetime.now() - self._last_stop_request).total_seconds() < 2:
@@ -66,7 +76,6 @@ class BaseNatsProvider:
             print("Press Ctrl+C again to exit")
         else:
             self._running = False
-
 
     @asynccontextmanager
     async def nats_connection(self):
@@ -123,7 +132,6 @@ class BaseNatsProvider:
     async def create_pod(self, job_name: str, job_sh: str, pod: interlink.PodRequest) -> str:
         """Override me!"""
         raise NotImplementedError
-
 
     async def delete_pod_callback(self, msg: nats.aio.msg.Msg):
         """Wrapper decompressing and parsing the nats body"""
