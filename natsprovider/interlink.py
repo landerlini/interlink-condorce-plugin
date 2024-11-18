@@ -7,6 +7,9 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from natsprovider.utils import deserialize_kubernetes
+
+
 class Metadata(BaseModel):
     name: Optional[str] = None
     namespace: Optional[str] = None
@@ -18,6 +21,13 @@ class Metadata(BaseModel):
 class PodRequest(BaseModel, arbitrary_types_allowed=True):
     metadata: k8s.V1ObjectMeta
     spec: k8s.V1PodSpec
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            metadata=deserialize_kubernetes(data.get('metadata', {}), "V1ObjectMeta"),
+            spec=deserialize_kubernetes(data.get('pod', {}), 'V1PodSpec'),
+        )
 
 class ConfigMap(BaseModel):
     metadata: Metadata

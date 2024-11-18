@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import Any, Dict, List, Literal
 import os
 import signal
 
@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException
 
 from natsprovider import NatsGateway, interlink
 from natsprovider import configuration as cfg
+from natsprovider.utils import deserialize_kubernetes
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -26,7 +27,15 @@ logging.basicConfig(
 logging.debug("Enabled debug mode.")
 
 @app.post("/create")
-async def create_pod(pods: List[interlink.Pod]) -> interlink.CreateStruct:
+async def create_pod(pods: List[Dict[Literal['pod', 'container'], Any]]) -> interlink.CreateStruct:
+    pods = [
+        interlink.Pod(
+            pod=interlink.PodRequest.from_dict(pod['pod']),
+            container=[interlink.Volume(**c) for c in pod['container']]
+        )
+        for pod in pods
+    ]
+
     if len(pods) != 1:
         raise HTTPException(402, f"Can only treat one pod creation at once. {len(pods)} were requested.")
 
@@ -40,13 +49,15 @@ async def create_pod(pods: List[interlink.Pod]) -> interlink.CreateStruct:
     )
 
 @app.post("/delete")
-async def delete_pod(pod: interlink.PodRequest) -> str:
+async def delete_pod(pod: Dict[Literal['pod', 'container'], Any]) -> str:
+    pod = interlink.PodRequest.from_dict(pod)
     await nats_provider.delete_pod(pod)
     return "Pod deleted"
 
 @app.get("/status")
-async def get_pod_status(pods: List[interlink.PodRequest]) -> List[interlink.PodStatus]:
+async def get_pod_status(pods: List[Dict[Literal['pod', 'container'], Any]]) -> List[interlink.PodStatus]:
     logging.info(f"Requested status, number of pods: {len(pods)}")
+    pods = [interlink.PodRequest.from_dict(p) for p in pods]
     retrieved_states = [await nats_provider.get_pod_status(pod) for pod in pods]
     return [state for state in retrieved_states if state is not None]
 
