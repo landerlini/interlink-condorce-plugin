@@ -54,7 +54,7 @@ class BaseNatsProvider:
                 await asyncio.sleep(time_interval)
         print ("Exiting.")
 
-    def shutdown_callback(self):
+    async def shutdown_callback(self):
         self.logger.warning("Received shutdown request through NATS. This is usually meant to trigger an update.")
         self._running = False
 
