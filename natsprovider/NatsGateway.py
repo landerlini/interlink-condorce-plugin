@@ -20,7 +20,6 @@ from .apptainer_cmd_builder import from_kubernetes
 
 class NatsGateway:
     def __init__(self, nats_server: str, nats_subject: str, nats_timeout_seconds: float):
-        super().__init__(None)
         self.logger = logging.getLogger(self.__class__.__name__)
         self._nats_server = nats_server
         self._nats_subject = nats_subject
