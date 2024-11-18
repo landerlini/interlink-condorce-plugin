@@ -7,7 +7,15 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from natsprovider.utils import deserialize_kubernetes
+def deserialize_kubernetes(data, klass):
+    """
+    Boilerplate to deserialize a dictionary into a Kubernetes object. Not very efficient.
+    """
+    class JsonWrapper:
+        def __init__(self, json_data):
+            self.data = json.dumps(json_data)
+
+    return K8sApiClient().deserialize(JsonWrapper(data), klass)
 
 
 class Metadata(BaseModel):

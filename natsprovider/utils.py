@@ -15,7 +15,7 @@ from kubernetes.utils.quantity import parse_quantity
 from fastapi import HTTPException
 
 from . import interlink
-
+from .interlink import deserialize_kubernetes
 
 
 class NatsResponse(BaseModel, extra="forbid"):
@@ -146,16 +146,6 @@ def make_uid_numeric(uid: str) -> int:
         f'{ord(c)-ord("0") if c in string.digits else ord(c)-ord("A")+10:o}'
         for c in uid.replace('-','')
     ]), 8) % 0x7FFF_FFFF_FFFF_FFFF
-
-def deserialize_kubernetes(data, klass):
-    """
-    Boilerplate to deserialize a dictionary into a Kubernetes object. Not very efficient.
-    """
-    class JsonWrapper:
-        def __init__(self, json_data):
-            self.data = json.dumps(json_data)
-
-    return K8sApiClient().deserialize(JsonWrapper(data), klass)
 
 def to_snakecase(s: str):
     """
