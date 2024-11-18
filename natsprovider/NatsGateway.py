@@ -18,7 +18,7 @@ from .utils import NatsResponse, get_readable_jobid, JobStatus
 from .apptainer_cmd_builder import from_kubernetes
 
 
-class NatsGateway(interlink.provider.Provider):
+class NatsGateway:
     def __init__(self, nats_server: str, nats_subject: str, nats_timeout_seconds: float):
         super().__init__(None)
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -123,7 +123,7 @@ class NatsGateway(interlink.provider.Provider):
                     state=interlink.ContainerStates(
                         running=interlink.StateRunning()
                     )
-                ) for cs in (pod.spec.containers or []) + (pod.spec.initContainers or [])
+                ) for cs in (pod.spec.containers or []) + (pod.spec.init_containers or [])
             ]
 
         elif job_status.phase == "unknown":
@@ -137,7 +137,7 @@ class NatsGateway(interlink.provider.Provider):
                             reason="Failed",
                         )
                     )
-                ) for cs in (pod.spec.containers or []) + (pod.spec.initContainers or [])
+                ) for cs in (pod.spec.containers or []) + (pod.spec.init_containers or [])
             ]
 
         elif job_status.phase in ["succeeded", "failed"]:
@@ -152,7 +152,7 @@ class NatsGateway(interlink.provider.Provider):
                             reason="Failed" if builder.init_containers[i_container].return_code else "Completed",
                         )
                     )
-                ) for i_container, cs in enumerate(pod.spec.initContainers or [])
+                ) for i_container, cs in enumerate(pod.spec.init_containers or [])
             ]
             container_statuses += [
                 interlink.ContainerStatus(
