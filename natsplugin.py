@@ -42,9 +42,9 @@ async def create_pod(pods: List[Dict[Literal['pod', 'container'], Any]]) -> inte
     pod = pods[0].pod
     container = pods[0].container
 
-    logging.info(f"Creating pod {pod.metadata.namespace}/{pod.metadata.name}")
+    logging.info(f"Creating pod {pod}")
     return interlink.CreateStruct(
-        PodUID=pod.metadata.uid,
+        PodUID=pod.metadata['uid'],
         PodJID=await nats_provider.create_job(pod, container)
     )
 
@@ -57,7 +57,6 @@ async def delete_pod(pod: Dict[Literal['pod', 'container'], Any]) -> str:
 @app.get("/status")
 async def get_pod_status(pods: List[Dict[str, Any]]) -> List[interlink.PodStatus]:
     logging.info(f"Requested status, number of pods: {len(pods)}")
-    pprint (pods)
     pods = [interlink.PodRequest(**p) for p in pods]
     retrieved_states = [await nats_provider.get_pod_status(pod) for pod in pods]
     return [state for state in retrieved_states if state is not None]
