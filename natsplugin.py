@@ -28,6 +28,9 @@ logging.debug("Enabled debug mode.")
 
 @app.post("/create")
 async def create_pod(pods: List[Dict[Literal['pod', 'container'], Any]]) -> interlink.CreateStruct:
+    if len(pods) != 1:
+        raise HTTPException(402, f"Can only treat one pod creation at once. {len(pods)} were requested.")
+
     pods = [
         interlink.Pod(
             pod=interlink.PodRequest.from_dict(pod['pod']),
@@ -35,9 +38,6 @@ async def create_pod(pods: List[Dict[Literal['pod', 'container'], Any]]) -> inte
         )
         for pod in pods
     ]
-
-    if len(pods) != 1:
-        raise HTTPException(402, f"Can only treat one pod creation at once. {len(pods)} were requested.")
 
     pod = pods[0].pod
     container = pods[0].container
