@@ -45,12 +45,14 @@ class NatsGateway:
             await nc.drain()
 
     @staticmethod
-    def retrieve_queue_from_tolerations(tolerations: List[kubernetes.client.V1Toleration]):
+    def retrieve_queue_from_tolerations(self, tolerations: List[kubernetes.client.V1Toleration]):
         queues = [t.value for t in tolerations if t.key == 'queue.vk.io']
         if len(queues) == 0:
-            raise HTTPException(403, "Toleration queue.vk.io=<queue>:NoSchedule is mandatory")
+            self.logger.error("Multi-queue submission is not supported, yet.")
+            raise HTTPException(400, "Toleration queue.vk.io=<queue>:NoSchedule is mandatory")
         if len(queues) > 1:
-            raise HTTPException(403, "Multi-queue submission is not supported, yet.")
+            self.logger.error("Toleration queue.vk.io=<queue>:NoSchedule is mandatory")
+            raise HTTPException(400, "Multi-queue submission is not supported, yet.")
 
         return queues[0]
 
