@@ -11,7 +11,7 @@ import zlib
 import orjson
 from natsplugin import HTTPException
 import nats, nats.errors
-import interlink
+from . import interlink
 
 # Local
 from .utils import NatsResponse, get_readable_jobid, JobStatus
