@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException
 
 from natsprovider import NatsGateway, interlink
 from natsprovider import configuration as cfg
+from pprint import pprint
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -56,6 +57,7 @@ async def delete_pod(pod: Dict[Literal['pod', 'container'], Any]) -> str:
 @app.get("/status")
 async def get_pod_status(pods: List[Dict[str, Any]]) -> List[interlink.PodStatus]:
     logging.info(f"Requested status, number of pods: {len(pods)}")
+    pprint (pods)
     pods = [interlink.PodRequest.from_dict(p) for p in pods]
     retrieved_states = [await nats_provider.get_pod_status(pod) for pod in pods]
     return [state for state in retrieved_states if state is not None]
