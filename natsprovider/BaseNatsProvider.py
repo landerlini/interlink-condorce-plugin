@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import HTTPException
 import nats.aio.msg
-import interlink
+from . import interlink
 import orjson
 import nats
 
