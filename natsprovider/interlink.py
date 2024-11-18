@@ -36,7 +36,7 @@ class PodRequest(BaseModel, arbitrary_types_allowed=True):
     def from_dict(cls, data):
         return cls(
             metadata=deserialize_kubernetes(data.get('metadata', {}), "V1ObjectMeta"),
-            spec=deserialize_kubernetes(data.get('pod', {}), 'V1PodSpec'),
+            spec=deserialize_kubernetes(data.get('spec', {}), 'V1PodSpec'),
         )
 
 class ConfigMap(BaseModel):
