@@ -58,9 +58,9 @@ class NatsGateway:
         """
         Create the singularity job and forward it to the submitter via NATS
         """
-        self.logger.info(f"Create pod {pod.metadata.name}.{pod.metadata.namespace} [{pod.metadata.uid}]")
+        self.logger.info(f"Create pod {pod}")
         builder = from_kubernetes(pod.model_dump(), [volume.model_dump() for volume in volumes])
-        queue = self.retrieve_queue_from_tolerations(pod.spec.tolerations)
+        queue = self.retrieve_queue_from_tolerations(pod.spec_.tolerations)
 
         nats_payload = dict(
             # job_sh is the single bash script running singularity/apptainer to mimic the pod behavior
@@ -89,7 +89,7 @@ class NatsGateway:
         """
         Publish the request to delete jobs from the remote backend. No confirmation is expected by interlink protocol.
         """
-        self.logger.info(f"Delete pod {pod.metadata.name}.{pod.metadata.namespace} [{pod.metadata.uid}]")
+        self.logger.info(f"Delete pod {pod}")
         async with self.nats_connection() as nc:
             delete_response = await nc.publish(
                     ".".join((self._nats_subject, "delete", get_readable_jobid(pod))),
@@ -100,7 +100,7 @@ class NatsGateway:
         """
         Request through NATS the status of a pod.
         """
-        self.logger.info(f"Query status of pod {pod.metadata.name}.{pod.metadata.namespace} [{pod.metadata.uid}]")
+        self.logger.info(f"Query status of pod {pod}")
         job_name = get_readable_jobid(pod)
         async with self.nats_connection() as nc:
             status_response = NatsResponse.from_nats(
@@ -111,6 +111,7 @@ class NatsGateway:
             )
 
         status_response.raise_for_status()
+        pod_metadata = pod.metadata_
         job_status = JobStatus(**status_response.data)
 
         container_statuses = []
@@ -122,7 +123,7 @@ class NatsGateway:
                     state=interlink.ContainerStates(
                         running=interlink.StateRunning()
                     )
-                ) for cs in (pod.spec.containers or []) + (pod.spec.init_containers or [])
+                ) for cs in (pod.spec_.containers or []) + (pod.spec_.init_containers or [])
             ]
 
         elif job_status.phase == "unknown":
@@ -136,7 +137,7 @@ class NatsGateway:
                             reason="Failed",
                         )
                     )
-                ) for cs in (pod.spec.containers or []) + (pod.spec.init_containers or [])
+                ) for cs in (pod.spec_.containers or []) + (pod.spec_.init_containers or [])
             ]
 
         elif job_status.phase in ["succeeded", "failed"]:
@@ -151,7 +152,7 @@ class NatsGateway:
                             reason="Failed" if builder.init_containers[i_container].return_code else "Completed",
                         )
                     )
-                ) for i_container, cs in enumerate(pod.spec.init_containers or [])
+                ) for i_container, cs in enumerate(pod.spec_.init_containers or [])
             ]
             container_statuses += [
                 interlink.ContainerStatus(
@@ -162,13 +163,13 @@ class NatsGateway:
                             reason="Failed" if builder.containers[i_container].return_code else "Completed",
                         )
                     )
-                ) for i_container, cs in enumerate(pod.spec.containers or [])
+                ) for i_container, cs in enumerate(pod.spec_.containers or [])
             ]
 
         return interlink.PodStatus(
-            name=pod.metadata.name,
-            UID=pod.metadata.uid,
-            namespace=pod.metadata.namespace,
+            name=pod_metadata.name,
+            UID=pod_metadata.uid,
+            namespace=pod_metadata.namespace,
             containers=container_statuses
         )
 

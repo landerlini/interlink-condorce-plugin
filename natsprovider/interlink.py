@@ -6,6 +6,7 @@ import json
 import kubernetes.client as k8s
 from typing import Any, Dict, List, Optional
 
+from kubernetes.client import V1ObjectMeta
 from pydantic import BaseModel, Field, field_serializer, field_validator
 from kubernetes.client.api_client import ApiClient as K8sApiClient
 
@@ -28,27 +29,20 @@ class Metadata(BaseModel):
     labels: Optional[Dict[str, str]] = Field({})
     generateName: Optional[str] = None
 
-class PodRequest(BaseModel, arbitrary_types_allowed=True):
-    metadata: k8s.V1ObjectMeta
-    spec: k8s.V1PodSpec
+class PodRequest(BaseModel):
+    metadata: Dict[str, Any]
+    spec: Dict[str, Any]
 
-    @field_validator('metadata')
-    @classmethod
-    def deserialize_metadata(cls, metadata: Dict[str, Any]) -> k8s.V1ObjectMeta:
-        return deserialize_kubernetes(metadata, "V1ObjectMeta")
+    @property
+    def metadata_(self) -> k8s.V1ObjectMeta:
+        return deserialize_kubernetes(self.metadata, "V1ObjectMeta")
 
-    @field_validator('spec')
-    @classmethod
-    def deserialize_spec(cls, spec: Dict[str, Any]) -> k8s.V1PodSpec:
-        return deserialize_kubernetes(spec, "V1PodSpec")
+    @property
+    def spec_(self) -> k8s.V1PodSpec:
+        return deserialize_kubernetes(self.spec, "V1PodSpec")
 
-    @field_serializer('metadata')
-    def serialize_metadata(self, metadata: k8s.V1ObjectMeta, _info):
-        return metadata.to_dict()
-
-    @field_serializer('spec')
-    def serialize_spec(self, spec: k8s.V1PodSpec, _info):
-        return spec.to_dict()
+    def __str__(self):
+        return f"{self.metadata['name']}.{self.metadata.get('namespace', 'default')} [{self.metadata['uid']}]"
 
 
 class ConfigMap(BaseModel):
