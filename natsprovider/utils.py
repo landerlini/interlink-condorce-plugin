@@ -12,9 +12,9 @@ from pydantic import BaseModel, Field
 import orjson
 from kubernetes.client.api_client import ApiClient as K8sApiClient
 from kubernetes.utils.quantity import parse_quantity
-from . import interlink
+from fastapi import HTTPException
 
-from natsplugin import HTTPException
+from . import interlink
 
 
 

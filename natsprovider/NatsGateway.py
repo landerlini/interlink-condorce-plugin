@@ -9,7 +9,7 @@ import kubernetes.client
 import zlib
 
 import orjson
-from natsplugin import HTTPException
+from fastapi import HTTPException
 import nats, nats.errors
 from . import interlink
 

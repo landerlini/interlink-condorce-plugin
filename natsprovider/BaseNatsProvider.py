@@ -7,7 +7,7 @@ import zlib
 from pprint import pformat
 from contextlib import asynccontextmanager
 
-from natsplugin import HTTPException
+from fastapi import HTTPException
 import nats.aio.msg
 import interlink
 import orjson
