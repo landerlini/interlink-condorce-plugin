@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from symbol import subscript
 
 from datetime import datetime
 import zlib

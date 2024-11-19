@@ -6,8 +6,7 @@ import json
 import kubernetes.client as k8s
 from typing import Any, Dict, List, Optional
 
-from kubernetes.client import V1ObjectMeta
-from pydantic import BaseModel, Field, field_serializer, field_validator
+from pydantic import BaseModel, Field
 from kubernetes.client.api_client import ApiClient as K8sApiClient
 
 def deserialize_kubernetes(data, klass):
@@ -33,13 +32,8 @@ class PodRequest(BaseModel):
     metadata: Dict[str, Any]
     spec: Dict[str, Any]
 
-    @property
-    def metadata_(self) -> k8s.V1ObjectMeta:
-        return deserialize_kubernetes(self.metadata, "V1ObjectMeta")
-
-    @property
-    def spec_(self) -> k8s.V1PodSpec:
-        return deserialize_kubernetes(self.spec, "V1PodSpec")
+    def deserialize(self) -> k8s.V1Pod:
+        return deserialize_kubernetes(self, "V1Pod")
 
     def __str__(self):
         return f"{self.metadata['name']}.{self.metadata.get('namespace', 'default')} [{self.metadata['uid']}]"
