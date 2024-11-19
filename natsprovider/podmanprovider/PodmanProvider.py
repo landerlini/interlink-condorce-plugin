@@ -15,6 +15,6 @@ class PodmanProvider(BaseNatsProvider):
             interactive_mode=interactive_mode
         )
 
-        with podman.PodmanClient(base_url="http+unix://run/podman/podman.sock") as client:
+        with podman.PodmanClient(base_url="http+unix:///run/podman/podman.sock") as client:
             if not client.ping():
                 raise IOError("Cannot contact podman service. Please make sure it is available.")
