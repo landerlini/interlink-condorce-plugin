@@ -45,10 +45,14 @@ class BaseNatsProvider:
                 queue=self._nats_queue,
                 cb=self.create_pod_callback
             )
+            self.logger.info(f"Subscribed to /create subject: {create_subject}")
             self._subscriptions[create_subject] = await nc.subscribe(
                 subject=shutdown_subject,
                 cb=self.shutdown_callback,
             )
+            self.logger.info(f"Subscribed to /shutdown subject: {shutdown_subject}")
+
+            self.logger.info(f"Waiting for NATS payloads...")
             while self._running:
                 await asyncio.sleep(time_interval)
         print ("Exiting.")
