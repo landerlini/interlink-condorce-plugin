@@ -75,7 +75,7 @@ class NatsGateway:
         )
 
         async with self.nats_connection() as nc:
-            create_subject = ".".join((self._nats_subject, "create", queue, get_readable_jobid(pod))),
+            create_subject = ".".join((self._nats_subject, "create", queue, get_readable_jobid(pod)))
             self.logger.info(f"Submitting payload with subject: `{create_subject}`")
             create_response = NatsResponse.from_nats(
                 await nc.request(
