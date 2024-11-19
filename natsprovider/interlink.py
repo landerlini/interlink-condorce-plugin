@@ -33,7 +33,7 @@ class PodRequest(BaseModel):
     spec: Dict[str, Any]
 
     def deserialize(self) -> k8s.V1Pod:
-        return deserialize_kubernetes(self, "V1Pod")
+        return deserialize_kubernetes(self.model_dump(), "V1Pod")
 
     def __str__(self):
         return f"{self.metadata['name']}.{self.metadata.get('namespace', 'default')} [{self.metadata['uid']}]"
