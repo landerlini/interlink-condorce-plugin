@@ -13,6 +13,11 @@ class AllProviders:
         from .condor.CondorProvider import CondorProvider
         return CondorProvider(nats_server, nats_queue, interactive_mode)
 
+    @staticmethod
+    def podman(nats_server: str, nats_queue: str, interactive_mode: bool):
+        from .podmanprovider.PodmanProvider import PodmanProvider
+        return PodmanProvider(nats_server, nats_queue, interactive_mode)
+
 
 parser = ArgumentParser(
     prog="natsprovider",

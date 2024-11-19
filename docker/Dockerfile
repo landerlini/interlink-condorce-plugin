@@ -16,5 +16,6 @@ RUN pip install \
   "orjson" \
   "pytest" \
   "kubernetes" \
-  "htcondor"
+  "htcondor" \
+  "podman"
 
