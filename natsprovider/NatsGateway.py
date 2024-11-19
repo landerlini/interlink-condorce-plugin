@@ -75,15 +75,18 @@ class NatsGateway:
         )
 
         async with self.nats_connection() as nc:
+            create_subject = ".".join((self._nats_subject, "create", queue, get_readable_jobid(pod))),
+            self.logger.info(f"Submitting payload with subject: `{create_subject}`")
             create_response = NatsResponse.from_nats(
                 await nc.request(
-                    ".".join((self._nats_subject, "create", queue, get_readable_jobid(pod))),
+                    create_subject,
                     zlib.compress(orjson.dumps(nats_payload)),
                     timeout=self._nats_timeout_seconds,
                 )
             )
             create_response.raise_for_status()
 
+        self.logger.info(f"Payload `{create_subject}` submitted successfully")
         # create_response should be the job name for the compute backend
         return create_response.text
 
