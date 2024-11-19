@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 
 from datetime import datetime
 import zlib
@@ -13,6 +14,7 @@ import orjson
 import nats
 
 from .utils import NatsResponse, JobStatus
+from . import configuration as cfg
 
 
 class BaseNatsProvider:
@@ -25,7 +27,7 @@ class BaseNatsProvider:
 
         self._nats_server = nats_server
 
-        self._nats_subject = ".".join(('interlink', nats_queue))
+        self._nats_subject = cfg.NATS_SUBJECT
         self._nats_queue = nats_queue
         self._nats_connection = None
         self._interactive_mode = interactive_mode
