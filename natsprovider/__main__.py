@@ -5,12 +5,11 @@ from signal import SIGINT, SIGTERM
 from argparse import ArgumentParser
 from . import configuration as cfg
 from .BaseNatsProvider import BaseNatsProvider
-from .condor.CondorProvider import CondorProvider
 
 
 class AllProviders:
     @staticmethod
-    def condor(nats_server: str, nats_queue: str, interactive_mode: bool) -> CondorProvider:
+    def condor(nats_server: str, nats_queue: str, interactive_mode: bool):
         from .condor.CondorProvider import CondorProvider
         return CondorProvider(nats_server, nats_queue, interactive_mode)
 
