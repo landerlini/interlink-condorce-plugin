@@ -71,7 +71,7 @@ logging.basicConfig(
 )
 logging.debug("Enabled debug mode.")
 
-if any([letter not in string.ascii_lowercase for letter in args.queue]):
+if any([letter not in string.ascii_lowercase + '-' for letter in args.queue]):
     raise ValueError(f"Invalid queue `{args.queue}`: queue names can only include lower-case letters.")
 
 provider: BaseNatsProvider = getattr(AllProviders, args.provider)(

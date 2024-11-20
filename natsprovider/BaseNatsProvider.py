@@ -48,7 +48,7 @@ class BaseNatsProvider:
                 cb=self.create_pod_callback
             )
             self.logger.info(f"Subscribed to /create subject: {create_subject}")
-            self._subscriptions[create_subject] = await nc.subscribe(
+            self._subscriptions[shutdown_subject] = await nc.subscribe(
                 subject=shutdown_subject,
                 cb=self.shutdown_callback,
             )
@@ -57,6 +57,7 @@ class BaseNatsProvider:
             self.logger.info(f"Waiting for NATS payloads...")
             while self._running:
                 await asyncio.sleep(time_interval)
+
         print ("Exiting.")
 
     async def shutdown_callback(self, msg: nats.aio.msg.Msg):
@@ -67,7 +68,7 @@ class BaseNatsProvider:
         self._running = False
 
     def maybe_stop(self):
-        if self._last_stop_request is not None and (datetime.now() - self._last_stop_request).total_seconds() < 2:
+        if self._last_stop_request is not None and (datetime.now() - self._last_stop_request).total_seconds() < 3:
             self._running = False
 
         self._last_stop_request = datetime.now()
@@ -81,7 +82,7 @@ class BaseNatsProvider:
         """)
 
         if self._interactive_mode:
-            print("Press Ctrl+C again to exit")
+            print("Press Ctrl+C again to exit. Or Ctrl+\\ to kill.")
         else:
             self._running = False
 
