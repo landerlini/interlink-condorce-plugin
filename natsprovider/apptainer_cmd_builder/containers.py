@@ -68,6 +68,17 @@ class ContainerSpec(BaseModel, extra="forbid"):
         description="Directory to be used for temporary data related to this container set",
     )
 
+    shub_proxy_server: Optional[str] = Field(
+        default=cfg.SHUB_PROXY,
+        description="SingularityHub proxy server without protocol"
+    )
+
+    shub_proxy_master_token: Optional[str] = Field(
+        default=cfg.SHUB_PROXY_MASTER_TOKEN,
+        description="SingularityHub proxy master token used to generate client tokens"
+    )
+
+
     return_code: Optional[int] = Field(
         default=None,
         description="Return code of the container, once completed. None otherwise."
@@ -84,27 +95,6 @@ class ContainerSpec(BaseModel, extra="forbid"):
         Image will be looked up as os.path.join(readonly_image_dir, image.replace(":", "_")).
         """,
     )
-
-
-    @property
-    def workdir(self):
-        return os.path.join(self.scratch_area, f".acb.cnt.{self.uid}")
-
-    @property
-    def log_path(self):
-        return os.path.join(self.workdir, f'{self.uid}.log')
-
-    @property
-    def return_code_path(self):
-        return os.path.join(self.workdir, f'{self.uid}.ret')
-
-    @property
-    def env_file_path(self):
-        return os.path.join(self.workdir, '.env')
-
-    @property
-    def executable_path(self):
-        return os.path.join(self.workdir, 'run')
 
     ################################################################################
     # Flags
@@ -187,6 +177,27 @@ class ContainerSpec(BaseModel, extra="forbid"):
         json_schema_extra = dict(arg='--cleanenv'),
     )
 
+    @property
+    def workdir(self):
+        return os.path.join(self.scratch_area, f".acb.cnt.{self.uid}")
+
+    @property
+    def log_path(self):
+        return os.path.join(self.workdir, f'{self.uid}.log')
+
+    @property
+    def return_code_path(self):
+        return os.path.join(self.workdir, f'{self.uid}.ret')
+
+    @property
+    def env_file_path(self):
+        return os.path.join(self.workdir, '.env')
+
+    @property
+    def executable_path(self):
+        return os.path.join(self.workdir, 'run')
+
+
 
     def __hash__(self):
         return make_uid_numeric(self.uid)
@@ -194,14 +205,14 @@ class ContainerSpec(BaseModel, extra="forbid"):
     @property
     def shub_token(self):
         global _GLOBAL_SHUB_PROXY_TOKEN
-        if cfg.SHUB_PROXY is None:
+        if self.shub_proxy is None:
             return None
 
         if _GLOBAL_SHUB_PROXY_TOKEN is not None and (datetime.now() - _GLOBAL_SHUB_PROXY_TOKEN[0]).seconds > 300:
             _GLOBAL_SHUB_PROXY_TOKEN = None   # Expired!
 
         if _GLOBAL_SHUB_PROXY_TOKEN is None:
-            response = requests.get(f"http://{cfg.SHUB_PROXY}/token", auth=("admin", cfg.SHUB_PROXY_MASTER_TOKEN))
+            response = requests.get(f"http://{self.shub_proxy_server}/token", auth=("admin", self.shub_proxy_master_token))
             response.raise_for_status()
 
             _GLOBAL_SHUB_PROXY_TOKEN = (datetime.now(), response.text)

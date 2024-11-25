@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from typing import Dict, Union
 
 from datetime import datetime
 import zlib
@@ -16,12 +17,20 @@ import nats
 from .utils import NatsResponse, JobStatus
 from . import configuration as cfg
 
+from .apptainer_cmd_builder import BuildConfig
 
 class BaseNatsProvider:
     """
     Base class implementing the logic to respond to NATS request by a submitter
     """
-    def __init__(self, nats_server: str, nats_queue: str, interactive_mode: bool = True, shutdown_subject: str = None):
+    def __init__(
+            self,
+            nats_server: str,
+            nats_queue: str,
+            build_config: BuildConfig,
+            interactive_mode: bool = True,
+            shutdown_subject: str = None
+    ):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.info(f"Starting {self.__class__.__name__}")
 
@@ -32,22 +41,39 @@ class BaseNatsProvider:
         self._nats_connection = None
         self._interactive_mode = interactive_mode
         self._shutdown_subject = shutdown_subject if shutdown_subject is not None else nats_queue
+        self._build_config = build_config
 
         self._subscriptions = {}
         self._running = True
         self._last_stop_request = None
+        self._last_build_config_refresh = None
+
+    async def maybe_refresh_build_config(self):
+        if (
+                self._last_build_config_refresh is None or
+                (datetime.now() - self._last_build_config_refresh).total_seconds() > 60
+        ):
+            async with self.nats_connection() as nc:
+                await nc.publish(
+                    subject='.'.join((self._nats_subject, 'config', self._nats_queue)),
+                    payload=self._build_config.model_dump_json().encode()
+                )
+                self.logger.info(f"Published build options")
+                self._last_build_config_refresh = datetime.now()
 
     async def main_loop(self, time_interval: float = 0.2):
         """Main loop of the NATS responder"""
         create_subject = '.'.join((self._nats_subject, 'create', self._nats_queue, '*'))
         shutdown_subject = '.'.join((self._nats_subject, 'shutdown', self._shutdown_subject))
         async with self.nats_connection() as nc:
+            await self.maybe_refresh_build_config()
             self._subscriptions[create_subject] = await nc.subscribe(
                 subject=create_subject,
                 queue=self._nats_queue,
                 cb=self.create_pod_callback
             )
             self.logger.info(f"Subscribed to /create subject: {create_subject}")
+
             self._subscriptions[shutdown_subject] = await nc.subscribe(
                 subject=shutdown_subject,
                 cb=self.shutdown_callback,
@@ -57,6 +83,7 @@ class BaseNatsProvider:
             self.logger.info(f"Waiting for NATS payloads...")
             while self._running:
                 await asyncio.sleep(time_interval)
+                await self.maybe_refresh_build_config()
 
         print ("Exiting.")
 

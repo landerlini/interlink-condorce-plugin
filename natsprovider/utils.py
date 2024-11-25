@@ -167,15 +167,17 @@ def compute_pod_resource(pod: interlink.PodRequest, resource: str):
 
     Return an integer representing:
      - 'cpu': number of cpus (obtained ceiling the kubernetes cpu request)
+     - 'millicpu': number of cpus multiplied by 1000
      - 'memory': number of bytes
     """
+    _resource = 'cpu' if resource == 'millicpu' else resource
 
     return int(
         math.ceil(
-            sum([
+            (1000 if resource == 'millicpu' else 1) * sum([
                 max(
-                    parse_quantity(((c.get('resources') or {}).get('requests') or {}).get(resource) or "1"),
-                    parse_quantity(((c.get('resources') or {}).get('limit') or {}).get(resource) or "1"),
+                    parse_quantity(((c.get('resources') or {}).get('requests') or {}).get(_resource) or "1"),
+                    parse_quantity(((c.get('resources') or {}).get('limit') or {}).get(_resource) or "1"),
                 ) for c in pod.spec['containers'] ]
             )
         )

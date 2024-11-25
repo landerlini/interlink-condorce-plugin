@@ -2,7 +2,7 @@ import io
 import tarfile
 import logging
 from io import BytesIO
-from typing import Collection, List, Union
+from typing import Collection, Dict, List, Union
 from contextlib import asynccontextmanager
 
 import kubernetes.client
@@ -10,12 +10,12 @@ import zlib
 
 import orjson
 from fastapi import HTTPException
-import nats, nats.errors
+import nats, nats.errors, nats.aio.msg
 from . import interlink
 
 # Local
 from .utils import NatsResponse, get_readable_jobid, JobStatus
-from .apptainer_cmd_builder import from_kubernetes
+from .apptainer_cmd_builder import from_kubernetes, BuildConfig
 
 
 class NatsGateway:
@@ -24,8 +24,19 @@ class NatsGateway:
         self._nats_server = nats_server
         self._nats_subject = nats_subject
         self._nats_timeout_seconds = nats_timeout_seconds
+        self._build_configs: Dict[str, BuildConfig] = dict()
+
+        with self.nats_connection() as nc:
+            nc.subscribe(
+                subject=".".join((self._nats_subject, "config", "*")),
+                cb=self.config_callback,
+            )
 
         self.logger.info("Starting CondorProvider")
+
+    async def config_callback(self, msg: nats.aio.msg.Msg):
+        queue = msg.subject.split(".")[-1]
+        self._build_configs[queue] = BuildConfig(**orjson.loads(msg.data))
 
     @asynccontextmanager
     async def nats_connection(self):
@@ -61,8 +72,12 @@ class NatsGateway:
         """
         v1pod = pod.deserialize()
         self.logger.info(f"Create pod {pod}")
-        builder = from_kubernetes(pod.model_dump(), [volume.model_dump() for volume in volumes])
         queue = self.retrieve_queue_from_tolerations(v1pod.spec.tolerations)
+        builder = from_kubernetes(
+            pod.model_dump(),
+            [volume.model_dump() for volume in volumes],
+            build_config=self._build_configs.get(queue, BuildConfig()),
+        )
 
         nats_payload = dict(
             # job_sh is the single bash script running singularity/apptainer to mimic the pod behavior

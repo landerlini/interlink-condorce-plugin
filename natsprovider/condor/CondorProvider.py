@@ -3,16 +3,18 @@ from . import CondorConfiguration, CondorSubmit, CondorJobStatus
 from .. import interlink
 from ..utils import  compute_pod_resource, JobStatus
 from ..BaseNatsProvider import BaseNatsProvider
+from ..apptainer_cmd_builder import BuildConfig
 
 CondorConfiguration.initialize_htcondor()
 
 class CondorProvider(BaseNatsProvider):
-    def __init__(self, nats_server: str, nats_queue: str, interactive_mode: bool):
+    def __init__(self, nats_server: str, nats_queue: str, build_config: BuildConfig, interactive_mode: bool):
         BaseNatsProvider.__init__(
             self,
             nats_server=nats_server,
             nats_queue=nats_queue,
-            interactive_mode=interactive_mode
+            interactive_mode=interactive_mode,
+            build_config=build_config,
         )
         self.condor = CondorConfiguration()
 

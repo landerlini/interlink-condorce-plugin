@@ -1,6 +1,70 @@
 ################################################################################
 ## Container plugin
 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: condor-build-conf
+  namespace: {{ .Release.Namespace }}
+data:
+  interlink.conf: |
+    # Volumes and directories configuring access to executor-local data
+    [volumes]
+
+    ### Area in the executor filesystem to be used for temporary files
+    scratch_area = "/tmp"
+
+    ### Location to cache singularity images in the executor filesystem
+    apptainer_cachedir = "/tmp/cache/apptainer"
+
+    ### Location where to look for pre-built images
+    image_dir = {{ .Values.backendLocalImageDir | default "/opt/exp_software/opssw/budda" | toJson }}
+
+    ### Colon-separated list of directories to include in $PATH to look for executables
+    additional_directories_in_path = ["/opt/exp_software/opssw/mabarbet/bin"]
+
+
+
+    # Options configuring the behavior of apptainer runtime
+    [apptainer]
+
+    ### Enables --fakeroot in apptainer exec/run commands
+    fakeroot = false
+
+    ### Enables --containall flag in apptainer exec/run commands
+    containall = false
+
+    ### Defines whether the host enables users to mount fuse volumes or not
+    fuse_enabled_on_host = true
+
+    ### Do not propagate umask to the container, set default 0022 umask
+    no_init = true
+
+    ### Do not bind home by default
+    no_home = true
+
+    ### Drop all privileges from root user in container
+    no_privs = true
+
+    ### Enable nVidia GPU support
+    nvidia_support = false
+
+    ### Clean the environment of the spawned container
+    cleanenv = true
+
+
+
+    # Proxy to download pre-build Docker Images instead of rebuilding at each execution
+    [shub_proxy]
+
+    ### shub proxy instance used to retrieve cached singularity images. Without protocol!
+    server = {{  .Values.backendShubProxy | required "Please define backendShubProxy" | toJson }}
+
+    ### Master token of the proxy used to request and generate client tokens
+    master_token = {{  .Values.backendShubProxyMasterToken | required "Please define backendShubProxyMasterToken" | toJson }}
+
+
+---
 
 apiVersion: apps/v1
 kind: Deployment
@@ -81,12 +145,6 @@ spec:
               value: {{ .Values.backendIamClientSecret | required "backendIamClientSecret is missing (this is the condor IAM)"}}
             - name: BEARER_TOKEN_PATH
               value: /interlink/token
-            - name: IMAGE_DIR
-              value: {{ .Values.backendLocalImageDir | default "/opt/exp_software/opssw/budda" }}
-            - name: SHUB_PROXY
-              value: {{ .Values.backendShubProxy | required "Please define backendShubProxy" }}
-            - name: SHUB_PROXY_MASTER_TOKEN
-              value: {{ .Values.backendShubProxyMasterToken | required "Please define backendShubProxyMasterToken" }}
             - name: NATS_SUBJECT
               value: {{ .Values.natsSubject | default "interlink" }}
             - name: NATS_SERVER
