@@ -105,7 +105,7 @@ def _make_pod_volume_struct(
     # Create a mapping for configmaps from the pod.spec.volumes structure: {secret.name: secret}
     secrets = _create_static_volume_dict(
         volume_source_by_name={
-            str(v.secret.secret_name): {StaticVolKey("volume_name"): v.name, StaticVolKey("items"): v.secret.items}
+            str(v.secret.secret_name): {"volume_name": v.name, "items": v.secret.items}
             for v in (pod.spec.volumes or []) if v is not None and v.secret is not None
         },
         volume_definitions=[
