@@ -5,14 +5,21 @@ import yaml
 
 from natsprovider.utils import to_snakecase
 from natsprovider.apptainer_cmd_builder import from_kubernetes
-from natsprovider.apptainer_cmd_builder.tests._boilerplate import container_output, ValidationStruct
+from natsprovider.apptainer_cmd_builder.tests._boilerplate import (
+    container_output, ValidationStruct, build_config_for_tests
+)
 
 with open(os.path.abspath(__file__).replace('.py', '.yaml')) as ifile:
     test_data = {d['name']: d for d in yaml.safe_load_all(ifile)}
 
 def get_pod_and_validation(test_name: str, use_fake_volumes: bool):
     return (
-        from_kubernetes(test_data[test_name]['pod'], test_data[test_name]['containers'], use_fake_volumes),
+        from_kubernetes(
+            test_data[test_name]['pod'],
+            test_data[test_name]['containers'],
+            use_fake_volumes,
+            build_config=build_config_for_tests
+        ),
         ValidationStruct.from_dict(test_data[test_name]['validation']),
     )
 

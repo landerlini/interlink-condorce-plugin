@@ -1,7 +1,6 @@
 import os.path
 import base64
 import re
-from distutils.command.build import build
 from pprint import pprint
 from kubernetes import client as k8s
 from typing import Dict, Any, List, Mapping, Optional, Union, Literal
@@ -84,14 +83,15 @@ def _make_pod_volume_struct(
     pprint (volumes_counts)
     empty_dirs = [v for c in containers_raw for v in (c if c is not None else []).get('emptyDirs') or []]
     empty_dirs = {
-        k: volumes.ScratchArea(**build_config.base_volume_config()) if volumes_counts.get(k, 0) <= 1 else volumes.make_empty_dir()
+        k:  volumes.ScratchArea(**build_config.base_volume_config()) if volumes_counts.get(k, 0) <= 1
+            else volumes.make_empty_dir(build_config)
         for k in [os.path.split(dir_path)[-1] for dir_path in set(empty_dirs)]
     }
 
     # Create a mapping for configmaps from the pod.spec.volumes structure: {cfgmap.name: cfgmap}
     config_maps = _create_static_volume_dict(
         volume_source_by_name={
-            str(v.config_map.name): {StaticVolKey("volume_name"): v.name, StaticVolKey("items"): v.config_map.items}
+            str(v.config_map.name): {"volume_name": v.name, "items": v.config_map.items}
             for v in (pod.spec.volumes or []) if v is not None and v.config_map is not None
         },
         volume_definitions=[
@@ -123,7 +123,7 @@ def _make_pod_volume_struct(
     }
 
     cvmfs = {
-        vol_name: volumes.BaseVolume(host_path="/cvmfs", **build_config.base_volume_config())
+        vol_name: volumes.BaseVolume(host_path_override="/cvmfs", **build_config.base_volume_config())
         for ann_key, ann_val in (pod.metadata.annotations or {}).items()
         for vol_name in re.findall("cvmfs.vk.io/([\w-]+)", ann_key)
     }
@@ -172,7 +172,7 @@ def _make_container_list(
                     )
                     for vm in getattr(container, 'volume_mounts')
                 ],
-                volumes.make_empty_dir().mount(mount_path="/cache", read_only=False),
+                volumes.make_empty_dir(build_config).mount(mount_path="/cache", read_only=False),
             ], [])
 
     prefix = "init-" if is_init_container else "run-"
@@ -270,17 +270,17 @@ def from_kubernetes(
     return ApptainerCmdBuilder(
         uid=pod.metadata.name,
         init_containers=_make_container_list(
+            build_config=build_config,
             containers=pod.spec.init_containers,
             pod_volumes=pod_volumes,
             use_fake_volumes=use_fake_volumes,
-            scratch_area=scratch_area,
             is_init_container=True,
         ),
         containers=_make_container_list(
+            build_config=build_config,
             containers=pod.spec.containers,
             pod_volumes=pod_volumes,
             use_fake_volumes=use_fake_volumes,
-            scratch_area=scratch_area,
             is_init_container=False,
         ),
         scratch_area=scratch_area,

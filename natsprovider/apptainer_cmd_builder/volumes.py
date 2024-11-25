@@ -48,9 +48,17 @@ class BaseVolume (BaseModel, extra="forbid"):
         description="Indicate the executor is privileged enough to mount fuse volumes without userns tricks"
     )
 
+    host_path_override: Optional[str] = Field(
+        default=None,
+        description="If set, overrides generation of a temporary volume for hosting volume data"
+    )
+
+
     @property
     def host_path(self):
         """Path where the volume is mounted in the host (if any)"""
+        if self.host_path_override is not None:
+            return self.host_path_override
         return os.path.join(self.scratch_area, f".acb.volume.{self.uid}")
 
     def _parse_script(self, script: Optional[str] = None):
@@ -311,7 +319,7 @@ def make_empty_dir(build_config: BuildConfig):
         cleanup_script=textwrap.dedent(f"""
         rm -rf %(host_path)s
         """),
-        build_config=build_config
+        **build_config.base_volume_config()
     )
 
 def clone_git_repo(git_repo: str, build_config: BuildConfig, apptainer_exec: str = "apptainer"):
@@ -332,7 +340,7 @@ def clone_git_repo(git_repo: str, build_config: BuildConfig, apptainer_exec: str
         cleanup_script=textwrap.dedent(f"""
         rm -rf %(host_path)s
         """),
-        build_config=build_config,
+        **build_config.base_volume_config()
     )
 
 

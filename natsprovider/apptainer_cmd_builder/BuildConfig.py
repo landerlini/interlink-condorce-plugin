@@ -124,7 +124,7 @@ class BuildConfig(BaseModel):
         ret.seek(0)
         return ret.read()
 
-    def apptainer_cmf_builder_config(self):
+    def apptainer_cmd_builder_config(self):
         """Provide kwargs to configure BaseVolume according to the options defined in ApptainerCmdBuilderConfig"""
         return dict(
             scratch_area=self.volumes.scratch_area,
@@ -149,7 +149,6 @@ class BuildConfig(BaseModel):
             readonly_image_dir=self.volumes.image_dir,
             fakeroot=self.apptainer.fakeroot,
             containall=self.apptainer.containall,
-            fuse_enabled_on_host=self.apptainer.fuse_enabled_on_host,
             no_init=self.apptainer.no_init,
             no_home=self.apptainer.no_home,
             no_privs=self.apptainer.no_privs,

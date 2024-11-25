@@ -205,7 +205,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
     @property
     def shub_token(self):
         global _GLOBAL_SHUB_PROXY_TOKEN
-        if self.shub_proxy is None:
+        if self.shub_proxy_server is None:
             return None
 
         if _GLOBAL_SHUB_PROXY_TOKEN is not None and (datetime.now() - _GLOBAL_SHUB_PROXY_TOKEN[0]).seconds > 300:
