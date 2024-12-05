@@ -5,6 +5,7 @@ import logging
 from io import BytesIO
 from typing import Collection, Dict, List, Union
 from contextlib import asynccontextmanager
+from pprint import pformat
 
 import kubernetes.client
 import zlib
@@ -39,6 +40,7 @@ class NatsGateway:
     async def config_callback(self, msg: nats.aio.msg.Msg):
         queue = msg.subject.split(".")[-1]
         self._build_configs[queue] = BuildConfig(**orjson.loads(msg.data))
+        self.logger.info(f"Updated configuration for queue {queue}\n{str(self._build_configs[queue])}")
 
     @asynccontextmanager
     async def nats_connection(self):
