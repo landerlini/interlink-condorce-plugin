@@ -289,8 +289,6 @@ class ContainerSpec(BaseModel, extra="forbid"):
             )
         ]
 
-        print(f"shub_proxy: {self.shub_proxy_server}")
-
         local_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
             ret += [

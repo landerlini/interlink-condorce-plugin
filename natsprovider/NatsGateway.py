@@ -31,11 +31,13 @@ class NatsGateway:
         self.logger.info("Starting CondorProvider")
 
     async def configure(self):
+        config_subject = ".".join((self._nats_subject, "config", "*"))
         async with self.nats_connection() as nc:
             await nc.subscribe(
-                subject=".".join((self._nats_subject, "config", "*")),
+                subject=config_subject,
                 cb=self.config_callback,
             )
+        self.logger.info(f"Subscribed to config subject {config_subject}")
 
     async def config_callback(self, msg: nats.aio.msg.Msg):
         queue = msg.subject.split(".")[-1]
