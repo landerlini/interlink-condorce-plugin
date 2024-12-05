@@ -31,7 +31,7 @@ class NatsGateway:
         self.logger.info("Starting CondorProvider")
 
     async def configure(self):
-        with self.nats_connection() as nc:
+        async with self.nats_connection() as nc:
             nc.subscribe(
                 subject=".".join((self._nats_subject, "config", "*")),
                 cb=self.config_callback,
