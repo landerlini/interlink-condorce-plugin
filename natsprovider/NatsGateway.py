@@ -26,7 +26,6 @@ class NatsGateway:
         self._nats_subject = nats_subject
         self._nats_timeout_seconds = nats_timeout_seconds
         self._build_configs: Dict[str, BuildConfig] = dict()
-        asyncio.run(self.configure())
 
         self.logger.info("Starting CondorProvider")
 
