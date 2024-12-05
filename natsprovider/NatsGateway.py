@@ -32,7 +32,7 @@ class NatsGateway:
 
     async def configure(self):
         async with self.nats_connection() as nc:
-            nc.subscribe(
+            await nc.subscribe(
                 subject=".".join((self._nats_subject, "config", "*")),
                 cb=self.config_callback,
             )
