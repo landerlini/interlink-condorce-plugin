@@ -1,3 +1,4 @@
+import asyncio
 import io
 import tarfile
 import logging
@@ -25,14 +26,16 @@ class NatsGateway:
         self._nats_subject = nats_subject
         self._nats_timeout_seconds = nats_timeout_seconds
         self._build_configs: Dict[str, BuildConfig] = dict()
+        asyncio.run(self.configure())
 
+        self.logger.info("Starting CondorProvider")
+
+    async def configure(self):
         with self.nats_connection() as nc:
             nc.subscribe(
                 subject=".".join((self._nats_subject, "config", "*")),
                 cb=self.config_callback,
             )
-
-        self.logger.info("Starting CondorProvider")
 
     async def config_callback(self, msg: nats.aio.msg.Msg):
         queue = msg.subject.split(".")[-1]
