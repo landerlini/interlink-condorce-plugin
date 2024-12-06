@@ -34,7 +34,7 @@ class NatsResponse(BaseModel, extra="forbid"):
         Dump and compress the status code and the data
         """
         payload = BytesIO()
-        pickle.dump(self.model_dump().encode('utf-8'), payload)
+        pickle.dump(self.model_dump(), payload)
         payload.seek(0)
         return zlib.compress(payload.read())
 
