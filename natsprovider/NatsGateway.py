@@ -27,21 +27,19 @@ class NatsGateway:
         self._nats_subject = nats_subject
         self._nats_timeout_seconds = nats_timeout_seconds
         self._build_configs: Dict[str, BuildConfig] = dict()
-        self._build_config_subscription = None
+        self._nats_subs = dict()
 
         self.logger.info("Starting CondorProvider")
 
-    async def configure(self):
-        if self._build_config_subscription is not None:
-            return
-
+    async def configure_nats_callbacks(self):
+        listener_nc = await nats.connect(servers=self._nats_server)
         config_subject = ".".join((self._nats_subject, "config", "*"))
-        async with self.nats_connection() as nc:
-            self._build_config_subscription = await nc.subscribe(
-                subject=config_subject,
-                cb=self.config_callback,
-            )
+        self._nats_subs['config'] = await listener_nc.subscribe(
+            subject=config_subject,
+            cb=self.config_callback,
+        )
         self.logger.info(f"Subscribed to config subject {config_subject}")
+        return listener_nc
 
     async def config_callback(self, msg: nats.aio.msg.Msg):
         queue = msg.subject.split(".")[-1]
