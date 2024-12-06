@@ -84,5 +84,4 @@ async def shutdown(subject: str) -> str:
 @app.get("/healthz")
 async def healthz() -> bool:
     logging.debug("Health tested: ok.")
-    await nats_provider.configure()
     return True
