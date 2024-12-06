@@ -132,12 +132,16 @@ class NatsGateway:
         v1pod = pod.deserialize()
         job_name = get_readable_jobid(pod)
         async with self.nats_connection() as nc:
-            status_response = NatsResponse.from_nats(
-                await nc.request(
-                    ".".join((self._nats_subject, "status", job_name)),
-                    zlib.compress(orjson.dumps(pod.model_dump())),
+            try:
+                status_response = NatsResponse.from_nats(
+                    await nc.request(
+                        ".".join((self._nats_subject, "status", job_name)),
+                        zlib.compress(orjson.dumps(pod.model_dump())),
+                    )
                 )
-            )
+            except nats.errors.NoRespondersError as e:
+                self.logger.error(f"Failed to retrieve status for job {pod}")
+                return None
 
         status_response.raise_for_status()
         pod_metadata = v1pod.metadata
