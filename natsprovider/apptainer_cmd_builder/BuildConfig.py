@@ -34,7 +34,7 @@ class BuildConfig(BaseModel):
         """
         Options configuring the behavior of apptainer runtime
         """
-        executable: bool = Field(
+        executable: str = Field(
             default="/usr/bin/apptainer",
             description="Relative or absolute path to apptainer, singularity or other compatible replacements"
         )
