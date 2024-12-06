@@ -6,9 +6,10 @@ import textwrap
 from base64 import b64encode
 from typing import Any, Dict, Literal, Union
 import zlib
+from io import BytesIO
+import pickle
 
 from pydantic import BaseModel, Field
-import orjson
 from kubernetes.utils.quantity import parse_quantity
 from fastapi import HTTPException
 
@@ -25,13 +26,17 @@ class NatsResponse(BaseModel, extra="forbid"):
 
     @classmethod
     def from_nats(cls, nats_response):
-        return cls(**orjson.loads(zlib.decompress(nats_response)))
+        payload = zlib.decompress(nats_response)
+        return cls(**pickle.loads(payload))
 
     def to_nats(self):
         """
         Dump and compress the status code and the data
         """
-        return zlib.compress(orjson.dumps(self.model_dump()))
+        payload = BytesIO()
+        pickle.dump(self.model_dump().encode('utf-8'), payload)
+        payload.seek(0)
+        return zlib.compress(payload.read())
 
     def raise_for_status(self):
         """
