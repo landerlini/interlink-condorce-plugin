@@ -26,7 +26,7 @@ class NatsResponse(BaseModel, extra="forbid"):
 
     @classmethod
     def from_nats(cls, nats_response):
-        payload = zlib.decompress(nats_response)
+        payload = zlib.decompress(nats_response.data)
         return cls(**pickle.loads(payload))
 
     def to_nats(self):
