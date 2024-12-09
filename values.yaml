@@ -183,3 +183,6 @@ natsShutdownSubject: condor
 
 # natsQueue is the queue of providers used to implement work balance in case of multiple equal providers
 natsQueue: condor
+
+# natsTimeoutSeconds is the time in seconds to await for a NATS response before failing. Larger to adsorb bigger peaks.
+natsTimeoutSeconds: 60

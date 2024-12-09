@@ -137,6 +137,7 @@ class NatsGateway:
                     await nc.request(
                         ".".join((self._nats_subject, "status", job_name)),
                         zlib.compress(orjson.dumps(pod.model_dump())),
+                        timeout=self._nats_timeout_seconds,
                     )
                 )
             except nats.errors.NoRespondersError as e:
@@ -218,6 +219,7 @@ class NatsGateway:
                 await nc.request(
                     ".".join((self._nats_subject, "status", job_name)),
                     zlib.compress(orjson.dumps(log_request.model_dump())),
+                    timeout=self._nats_timeout_seconds,
                 )
             )
             status_response.raise_for_status()
