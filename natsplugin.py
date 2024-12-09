@@ -56,7 +56,7 @@ async def create_pod(pods: List[Dict[Literal['pod', 'container'], Any]]) -> inte
     )
 
 @app.post("/delete")
-async def delete_pod(pod: Dict[Literal['pod', 'container'], Any]) -> str:
+async def delete_pod(pod: Dict[str, Any]) -> str:
     pod = interlink.PodRequest(**pod)
     await nats_provider.delete_pod(pod)
     return "Pod deleted"
