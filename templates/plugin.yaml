@@ -133,8 +133,12 @@ spec:
               value: {{ .Values.pluginDebug | default "true" | quote }}
             - name: TOKEN_VALIDITY_SECONDS
               value: {{ .Values.pluginTokenValiditySeconds | default 1200 | quote }}
+            - name: _condor_CONDOR_HOST
+              value: {{ .Values.pluginCondorPool | required "pluginCondorPool is missing (value for -pool arg)" }}
             - name: CONDOR_POOL
               value: {{ .Values.pluginCondorPool | required "pluginCondorPool is missing (value for -pool arg)" }}
+            - name: _condor_SCHEDD_HOST
+              value: {{ .Values.pluginCondorScheduler | required "pluginCondorPool is missing (value for -name arg)" }}
             - name: CONDOR_SCHEDULER_NAME
               value: {{ .Values.pluginCondorScheduler | required "pluginCondorPool is missing (value for -name arg)" }}
             - name: IAM_ISSUER
@@ -155,6 +159,9 @@ spec:
           volumeMounts:
             - name: interlink
               mountPath: /interlink
+              readOnly: true
+            - name: condorplugin-conf
+              mountPath: /etc/interlink
               readOnly: true
 
         - name: git-sync
@@ -217,6 +224,12 @@ spec:
         - name: interlink
           emptyDir:
             sizeLimit: 1Gi
+        - name: condorplugin-conf
+          configMap:
+            name: condor-build-conf
+            items:
+              - key: interlink.conf
+                path: build.conf
 
 ---
 

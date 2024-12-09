@@ -173,7 +173,7 @@ natsBastionPort: 30022
 natsBastionImage: binlab/bastion:latest
 
 # natsAuthorizedKeys is the content of the authorized_keys files installed in the bastion service
-natsAuthorizedKeys:
+natsBastionAuthorizedKeys:
 
 # natsShutdownSubject is a subject used to trigger the shutdown (or restart) of plugins "attached" to a ggiven server.
 # In a configuration with a single NATS server providing a messaging layers among multiple interlink servers

@@ -5,7 +5,7 @@ metadata:
   name: auth-keys
   namespace: {{ .Release.Namespace }}
 data:
-  bastion: {{ .Values.natsAuthorizedKeys | toJson }}
+  bastion: {{ .Values.natsBastionAuthorizedKeys | toJson }}
 
 ---
 {{ end }}
