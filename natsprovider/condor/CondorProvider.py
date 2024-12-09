@@ -47,7 +47,7 @@ class CondorProvider(BaseNatsProvider):
             output_struct = await self.condor.retrieve_by_name(job_name, cleanup=False)
             return JobStatus(
                 phase="succeeded",
-                logs_tarball=output_struct['logs'],
+                logs_tarball=output_struct['logs'].read(),
             )
 
         return JobStatus(phase="unknown")

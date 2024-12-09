@@ -258,6 +258,9 @@ def from_kubernetes(
 
     _clean_keys_of_none_values(pod_raw)
 
+    if build_config is None:
+        build_config = BuildConfig()
+
     pod = deserialize_kubernetes(pod_raw, 'V1Pod')
     pod_volumes = _make_pod_volume_struct(pod, containers_raw if containers_raw is not None else [], build_config)
 

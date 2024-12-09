@@ -53,12 +53,13 @@ class BaseNatsProvider:
                 self._last_build_config_refresh is None or
                 (datetime.now() - self._last_build_config_refresh).total_seconds() > 60
         ):
+            config_subject = '.'.join((self._nats_subject, 'config', self._nats_queue))
             async with self.nats_connection() as nc:
                 await nc.publish(
-                    subject='.'.join((self._nats_subject, 'config', self._nats_queue)),
+                    subject=config_subject,
                     payload=self._build_config.model_dump_json().encode()
                 )
-                self.logger.info(f"Published build options")
+                self.logger.info(f"Published build options on subject {config_subject}")
                 self._last_build_config_refresh = datetime.now()
 
     async def main_loop(self, time_interval: float = 0.2):

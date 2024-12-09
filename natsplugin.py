@@ -2,21 +2,29 @@ import logging
 from typing import Any, Dict, List, Literal
 import os
 import signal
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 
 from natsprovider import NatsGateway, interlink
 from natsprovider import configuration as cfg
-
-# Initialize FastAPI app
-app = FastAPI()
-
 # Please Take my provider and handle the interLink REST layer for me
+
 nats_provider = NatsGateway(
     nats_server=cfg.NATS_SERVER,
     nats_subject=cfg.NATS_SUBJECT,
     nats_timeout_seconds=cfg.NATS_TIMEOUT_SECONDS
 )
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    nats_connection = await nats_provider.configure_nats_callbacks()
+    yield
+    nats_connection.drain()
+
+# Initialize FastAPI app
+app = FastAPI(lifespan=lifespan)
+
 
 log_format = '%(asctime)-22s %(name)-10s %(levelname)-8s %(message)-90s'
 logging.basicConfig(
@@ -48,7 +56,7 @@ async def create_pod(pods: List[Dict[Literal['pod', 'container'], Any]]) -> inte
     )
 
 @app.post("/delete")
-async def delete_pod(pod: Dict[Literal['pod', 'container'], Any]) -> str:
+async def delete_pod(pod: Dict[str, Any]) -> str:
     pod = interlink.PodRequest(**pod)
     await nats_provider.delete_pod(pod)
     return "Pod deleted"
