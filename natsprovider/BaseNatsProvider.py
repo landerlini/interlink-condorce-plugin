@@ -147,8 +147,7 @@ class BaseNatsProvider:
                 cb=self.get_pod_status_and_logs_callback
             )
             # Register delete pod callback
-            delete_subject = '.'.join((self._nats_subject, 'delete', job_name)),
-            self.logger.info(f"Subscribed to delete subject: {delete_subject}")
+            delete_subject = '.'.join((self._nats_subject, 'delete', job_name))
             self._subscriptions[delete_subject] = await nc.subscribe(
                 subject=delete_subject,
                 cb=self.delete_pod_callback
@@ -175,7 +174,6 @@ class BaseNatsProvider:
     async def delete_pod_callback(self, msg: nats.aio.msg.Msg):
         """Wrapper decompressing and parsing the nats body"""
         job_name = msg.subject.split(".")[-1]
-        self.logger.info(f"Job {job_name}: request to delete")
         try:
             await self.delete_pod(job_name)
         except HTTPException as e:

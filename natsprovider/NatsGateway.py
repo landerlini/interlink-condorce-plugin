@@ -124,7 +124,6 @@ class NatsGateway:
                     zlib.compress(orjson.dumps(pod.model_dump())),
                 )
 
-            self.logger.info(f'Publish on subj: {".".join((self._nats_subject, "delete", get_readable_jobid(pod)))}')
 
     async def get_pod_status(self, pod: interlink.PodRequest) -> Union[interlink.PodStatus, None]:
         """
