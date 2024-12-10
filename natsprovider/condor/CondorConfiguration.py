@@ -228,12 +228,13 @@ class CondorConfiguration(BaseModel):
                 ret = schedd.query(constraint=f'JobBatchName == "{job_name}"')
                 if len(ret) == 0:
                     raise HTCondorException(f"Job {job_name} not found.")
-                if len(ret) > 1:
-                    raise HTCondorException(
-                        f"Ambiguous job name {job_name} selecting jobs {', '.join([j['ClusterId'] for j in ret])}."
-                    )
+                # if len(ret) > 1:
+                #     raise HTCondorException(
+                #         f"Ambiguous job name {job_name} selecting jobs "
+                #         f"{', '.join([str(j['ClusterId']) for j in ret])}."
+                #     )
 
-                return ret[0]
+                return ret[-1]
 
             except htcondor.HTCondorIOError as e:
                 if attempt == CONDOR_ATTEMPTS:
