@@ -20,7 +20,7 @@ nats_provider = NatsGateway(
 async def lifespan(app: FastAPI):
     nats_connection = await nats_provider.configure_nats_callbacks()
     yield
-    nats_connection.drain()
+    await nats_connection.drain()
 
 # Initialize FastAPI app
 app = FastAPI(lifespan=lifespan)
