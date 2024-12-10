@@ -181,9 +181,9 @@ spec:
 
           resources:
             limits:
-              memory: 1Gi
+              memory: 300Mi
             requests:
-              memory: 1Gi
+              memory: 300Mi
 
         - name: refresh-token
           image: {{ .Values.inttwRefreshTokenImage | default "ghcr.io/intertwin-eu/interlink/virtual-kubelet-inttw-refresh:latest" }}
