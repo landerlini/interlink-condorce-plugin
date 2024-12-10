@@ -174,6 +174,7 @@ class BaseNatsProvider:
     async def delete_pod_callback(self, msg: nats.aio.msg.Msg):
         """Wrapper decompressing and parsing the nats body"""
         job_name = msg.subject.split(".")[-1]
+        self.logger.info(f"Job {job_name}: request to delete")
         try:
             await self.delete_pod(job_name)
         except HTTPException as e:
