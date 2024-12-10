@@ -180,7 +180,6 @@ class CondorConfiguration(BaseModel):
 
         if cfg.BEARER_TOKEN_PATH is not None:
             os.environ['BEARER_TOKEN'] = open(cfg.BEARER_TOKEN_PATH).read()
-            print (f"Loaded Bearer token from {cfg.BEARER_TOKEN_PATH}")
         elif last_refresh is None or (datetime.now() - last_refresh).seconds > cfg.TOKEN_VALIDITY_SECONDS:
             os.environ['BEARER_TOKEN'] = CondorConfiguration._refresh_token()
             self.last_token_refresh = datetime.now()
