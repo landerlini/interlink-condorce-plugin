@@ -13,6 +13,8 @@ import zlib
 import orjson
 from fastapi import HTTPException
 import nats, nats.errors, nats.aio.msg
+from requests import delete
+
 from . import interlink
 
 # Local
@@ -119,10 +121,14 @@ class NatsGateway:
         """
         self.logger.info(f"Delete pod {pod}")
         async with self.nats_connection() as nc:
-            await nc.publish(
+            delete_response = NatsResponse.from_nats(
+                await nc.request(
                     ".".join((self._nats_subject, "delete", get_readable_jobid(pod))),
                     zlib.compress(orjson.dumps(pod.model_dump())),
+                    timeout=self._nats_timeout_seconds,
                 )
+            )
+            delete_response.raise_for_status()
 
 
     async def get_pod_status(self, pod: interlink.PodRequest) -> Union[interlink.PodStatus, None]:
