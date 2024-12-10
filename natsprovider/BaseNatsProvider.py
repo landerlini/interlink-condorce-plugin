@@ -154,6 +154,7 @@ class BaseNatsProvider:
             )
 
         try:
+            self.logger.info(f"Submitting job {job_name}")
             job_id_in_backend = await self.create_pod(job_name, job_sh, pod)
         except HTTPException as e:
             self.logger.critical(f"Failed creating job {job_name} \n{pformat(body)}")
@@ -182,6 +183,7 @@ class BaseNatsProvider:
                 NatsResponse(status_code=e.status_code, data=e.detail.encode('utf-8')).to_nats()
             )
         else:
+            self.logger.info(f"Deleted job {job_name}")
             await msg.respond(
                 NatsResponse(status_code=200).to_nats()
             )
@@ -213,6 +215,7 @@ class BaseNatsProvider:
                 NatsResponse(status_code=e.status_code, data=e.detail.encode('utf-8')).to_nats()
             )
         else:
+            self.logger.info(f"Retrieved status of {job_name}: {job_status.phase}")
             await msg.respond(
                 NatsResponse(status_code=200, data=job_status.model_dump()).to_nats()
             )
