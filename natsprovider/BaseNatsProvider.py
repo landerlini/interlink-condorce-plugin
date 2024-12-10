@@ -148,6 +148,7 @@ class BaseNatsProvider:
             )
             # Register delete pod callback
             delete_subject = '.'.join((self._nats_subject, 'delete', job_name)),
+            self.logger.info(f"Subscribed to delete subject: {delete_subject}")
             self._subscriptions[delete_subject] = await nc.subscribe(
                 subject=delete_subject,
                 cb=self.delete_pod_callback
