@@ -1,5 +1,6 @@
 
 from . import CondorConfiguration, CondorSubmit, CondorJobStatus
+from .CondorConfiguration import HTCondorException
 from .. import interlink
 from ..utils import  compute_pod_resource, JobStatus
 from ..BaseNatsProvider import BaseNatsProvider
@@ -36,7 +37,11 @@ class CondorProvider(BaseNatsProvider):
         await self.condor.delete_by_name(job_name)
 
     async def get_pod_status_and_logs(self, job_name: str) -> JobStatus:
-        status = await self.condor.status_by_name(job_name)
+        try:
+            status = await self.condor.status_by_name(job_name)
+        except HTCondorException:
+            return JobStatus(phase="unknown")
+
         if status == CondorJobStatus.held:
             return JobStatus(phase="pending")
         elif status == CondorJobStatus.idle:
