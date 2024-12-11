@@ -80,6 +80,9 @@ spec:
           image: nats:latest
           ports:
             - containerPort: 4222
+          volumeMounts:
+            - name: nats-config
+              mountPath: /etc/nats
       volumes:
         - name: nats-config
           configMap:
