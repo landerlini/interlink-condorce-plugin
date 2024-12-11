@@ -211,7 +211,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         if _GLOBAL_SHUB_PROXY_TOKEN is not None and (datetime.now() - _GLOBAL_SHUB_PROXY_TOKEN[0]).seconds > 300:
             _GLOBAL_SHUB_PROXY_TOKEN = None   # Expired!
 
-        if _GLOBAL_SHUB_PROXY_TOKEN is None:
+        if _GLOBAL_SHUB_PROXY_TOKEN is None and _GLOBAL_SHUB_PROXY_TOKEN != "":
             response = requests.get(f"http://{self.shub_proxy_server}/token", auth=("admin", self.shub_proxy_master_token))
             response.raise_for_status()
 
