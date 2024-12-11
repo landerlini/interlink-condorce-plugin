@@ -23,9 +23,12 @@ data:
     }
     websocket 
     {
-      no_tls: True
-      username: {{ .Values.natsWebSocketUsername | required "Missing natsWebSocketUsername in values" }}
-      password: {{ .Values.natsWebSocketPassword | required "Missing natsWebSocketPassword in values" }}
+      no_tls: true
+      authorization 
+      {
+        username: {{ .Values.natsWebSocketUsername | required "Missing natsWebSocketUsername in values" | quote }}
+        password: {{ .Values.natsWebSocketPassword | required "Missing natsWebSocketPassword in values" | quote }}
+      }
     }
 
 ---
