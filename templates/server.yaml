@@ -244,7 +244,7 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.org/websocket-services: "nats"
 
-  name: interlink
+  name: interlink-nats
   namespace: {{ .Release.Namespace }}
 spec:
   ingressClassName: nginx
