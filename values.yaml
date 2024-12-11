@@ -186,3 +186,9 @@ natsQueue: condor
 
 # natsTimeoutSeconds is the time in seconds to await for a NATS response before failing. Larger to adsorb bigger peaks.
 natsTimeoutSeconds: 60
+
+# natsWebSocketUsername is the username of the nats server to access through the websocket interface. Mandatory.
+natsWebSocketUsername:
+
+# natsWebSocketPassword is the password of the nats server to access through the websocket interface. Mandatory.
+natsWebSocketPassword:

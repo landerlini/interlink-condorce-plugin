@@ -10,6 +10,22 @@ data:
 ---
 {{ end }}
 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nats-config
+  namespace: {{ .Release.Namespace }}
+data:
+  nats-server-conf: |
+    websocket 
+    {
+      no_tls: True
+      username: {{ .Values.natsWebSocketUsername | required "Missing natsWebSocketUsername in values" }}
+      password: {{ .Values.natsWebSocketPassword | required "Missing natsWebSocketPassword in values" }}
+    }
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -65,6 +81,12 @@ spec:
           ports:
             - containerPort: 4222
       volumes:
+        - name: nats-config
+          configMap:
+            name: nats-config
+            items:
+              - key: nats-server-conf
+                path:  /etc/nats/nats-server.conf
         - name: bastion
           hostPath:
             path: /opt/ssh-bastion
@@ -109,7 +131,12 @@ spec:
 
   type: ClusterIP
   ports:
-    - protocol: TCP
+    - name: nats
+      protocol: TCP
       targetPort: 4222
       port: 4222
+    - name: websocket
+      protocol: TCP
+      targetPort: 8080
+      port: 8080
 

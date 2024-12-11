@@ -225,6 +225,13 @@ spec:
               name: http
         path: /{{- .Values.serverPathPrefix }}
         pathType: Prefix
+      - backend:
+          service:
+            name: nats
+            port:
+              name: websocket
+        path: /nats
+        pathType: Prefix
 
   {{ if .Values.certManagerEnabled }}
   tls:
