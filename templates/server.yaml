@@ -215,16 +215,42 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
+    - host: {{ .Values.hostname }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: interlink-oidc
+                port:
+                  name: http
+            path: /{{- .Values.serverPathPrefix }}
+            pathType: Prefix
+
+  {{ if .Values.certManagerEnabled }}
+  tls:
+    - hosts:
+        - {{ .Values.hostname }}
+      secretName: interlink-tls
+  {{ end }}
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: lets-issuer
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+
+  name: interlink-nats
+  namespace: {{ .Release.Namespace }}
+spec:
+  ingressClassName: nginx
+  rules:
   - host: {{ .Values.hostname }} 
     http:
       paths:
-      - backend:
-          service:
-            name: interlink-oidc
-            port:
-              name: http
-        path: /{{- .Values.serverPathPrefix }}
-        pathType: Prefix
       - backend:
           service:
             name: nats
