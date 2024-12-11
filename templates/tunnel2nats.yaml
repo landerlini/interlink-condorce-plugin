@@ -17,6 +17,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   nats-server-conf: |
+    cluster 
+    {
+      name: interlink-plugin
+    }
     websocket 
     {
       no_tls: True
@@ -78,6 +82,9 @@ spec:
 
         - name: nats-server
           image: nats:latest
+          args:
+            - -c
+            - /etc/nats/nats-server.conf
           ports:
             - containerPort: 4222
             - containerPort: 8080
