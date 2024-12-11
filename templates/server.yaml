@@ -241,9 +241,10 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: lets-issuer
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.org/websocket-services: "nats"
 
-  name: interlink-nats
+  name: interlink
   namespace: {{ .Release.Namespace }}
 spec:
   ingressClassName: nginx
