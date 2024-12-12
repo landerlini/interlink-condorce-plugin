@@ -99,7 +99,7 @@ if any([letter not in string.ascii_lowercase + '-' for letter in args.queue]):
 tolerate_missing_build_config = (args.build_config is None)
 build_config = args.build_config if args.build_config is not None else '/etc/interlink/build.conf'
 
-if not os.path.exists(args.build_config):
+if not os.path.exists(build_config):
     if tolerate_missing_build_config:
         logging.warning(f"Build configuration file {build_config} does not exist. Using default configuration.")
         build_config = BuildConfig()
@@ -107,7 +107,7 @@ if not os.path.exists(args.build_config):
         logging.critical(f"Build configuration file {build_config} does not exist.")
         exit(MISSING_BUILD_CONFIG_ERROR_CODE)
 else:
-    with open(args.build_config, 'rb') as input_file:
+    with open(build_config, 'rb') as input_file:
         build_config = BuildConfig(**toml_load(input_file))
 
 provider: BaseNatsProvider = getattr(AllProviders, args.provider)(
