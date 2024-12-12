@@ -83,6 +83,8 @@ class NatsGateway:
         v1pod = pod.deserialize()
         self.logger.info(f"Create pod {pod}")
         queue = self.retrieve_queue_from_tolerations(v1pod.spec.tolerations)
+        if queue not in self._build_configs.keys():
+            self.logger.error(f"Missing configuration for queue {queue}!")
         builder = from_kubernetes(
             pod.model_dump(),
             [volume.model_dump() for volume in volumes],
