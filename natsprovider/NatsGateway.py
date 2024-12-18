@@ -214,6 +214,7 @@ class NatsGateway:
             ]
 
         print (v1pod.spec.containers)
+        print (container_statuses)
         if len(container_statuses) == 0:
             self.logger.critical("Could not retrieve the status of any container!")
             return None
