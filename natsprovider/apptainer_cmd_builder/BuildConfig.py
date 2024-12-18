@@ -141,6 +141,8 @@ class BuildConfig(BaseModel):
 
     def container_spec_config(self):
         """Provide kwargs to configure BaseVolume according to the options defined in ContainerSpec"""
+        print("Apptainer executable in BuildConfig:", self.apptainer.executable)
+
         return dict(
             executable=self.apptainer.executable,
             scratch_area=self.volumes.scratch_area,
