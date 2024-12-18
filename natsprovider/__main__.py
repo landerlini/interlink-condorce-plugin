@@ -97,17 +97,17 @@ if any([letter not in string.ascii_lowercase + '-' for letter in args.queue]):
     raise ValueError(f"Invalid queue `{args.queue}`: queue names can only include lower-case letters.")
 
 tolerate_missing_build_config = (args.build_config is None)
-build_config = args.build_config if args.build_config is not None else '/etc/interlink/build.conf'
+build_config_file = args.build_config if args.build_config is not None else '/etc/interlink/build.conf'
 
-if not os.path.exists(build_config):
+if not os.path.exists(build_config_file):
     if tolerate_missing_build_config:
-        logging.warning(f"Build configuration file {build_config} does not exist. Using default configuration.")
+        logging.warning(f"Build configuration file {build_config_file} does not exist. Using default configuration.")
         build_config = BuildConfig()
     else:
-        logging.critical(f"Build configuration file {build_config} does not exist.")
+        logging.critical(f"Build configuration file {build_config_file} does not exist.")
         exit(MISSING_BUILD_CONFIG_ERROR_CODE)
 else:
-    with open(build_config, 'rb') as input_file:
+    with open(build_config_file, 'rb') as input_file:
         build_config = BuildConfig(**toml_load(input_file))
 
 provider: BaseNatsProvider = getattr(AllProviders, args.provider)(

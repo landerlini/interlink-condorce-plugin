@@ -47,6 +47,7 @@ class NatsGateway:
         queue = msg.subject.split(".")[-1]
         self._build_configs[queue] = BuildConfig(**orjson.loads(msg.data))
         self.logger.info(f"Received updated configuration for queue {queue}")
+        print (self._build_configs[queue])
 
     @asynccontextmanager
     async def nats_connection(self):

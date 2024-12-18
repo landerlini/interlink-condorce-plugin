@@ -61,6 +61,7 @@ class BaseNatsProvider:
                 )
                 self.logger.info(f"Published build options on subject {config_subject}")
                 self._last_build_config_refresh = datetime.now()
+                print (self._build_config)
 
     async def main_loop(self, time_interval: float = 0.2):
         """Main loop of the NATS responder"""
