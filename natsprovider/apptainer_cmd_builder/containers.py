@@ -40,7 +40,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
     )
 
     executable: Path = Field(
-        default=Path("/usr/bin/apptainer").resolve(),
+        default=Path("/usr/bin/apptainer"),
         description="Relative or absolute path to apptainer, singularity or other compatible replacements"
     )
 
@@ -253,7 +253,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
     def exec(self):
         uid = sanitize_uid(self.uid).upper()
         return " \\\n    ".join([
-            str(self.executable.resolve()),
+            str(self.executable),
             "exec",
             *self.flags,
             f"$IMAGE_{uid}",
