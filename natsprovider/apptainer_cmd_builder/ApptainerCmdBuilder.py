@@ -7,7 +7,7 @@ from . import version
 import textwrap
 
 from . import configuration as cfg
-from .volumes import BaseVolume
+from .volumes import BaseVolume, FuseVolume
 from .containers import ContainerSpec
 from ..utils import generate_uid
 
@@ -114,7 +114,10 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         return '\n'.join([container.finalize() for container in self.init_containers + self.container])
 
     def build_volume_files(self):
-        return '\n'.join([volume.initialize() for volume in self.volumes])
+        ret = '\n'.join([volume.initialize() for volume in self.volumes])
+        if any([v.fuse_enabled_on_host and isinstance(v, FuseVolume) for v in self.volumes])
+            ret += "\nsleep 5;\n"
+        return ret
 
     def cleanup_volume_files(self):
         return '\n'.join([volume.finalize() for volume in self.volumes])

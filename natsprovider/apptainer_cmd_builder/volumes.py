@@ -256,7 +256,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
         if self.fuse_enabled_on_host:
             ret += [
                 f"CACHEDIR={cache_path}/cache " + self.fuse_mount_script_host_path + " \"\" " + host_path + " &",
-                f"FUSE_{sanitize_uid(self.uid).upper()}_PID=$!"
+                f"FUSE_{sanitize_uid(self.uid).upper()}_PID=$!",
             ]
 
         return '\n' + '\n'.join(ret)
