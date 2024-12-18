@@ -115,7 +115,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
 
     def build_volume_files(self):
         ret = '\n'.join([volume.initialize() for volume in self.volumes])
-        if any([v.fuse_enabled_on_host and isinstance(v, FuseVolume) for v in self.volumes])
+        if any([v.fuse_enabled_on_host and isinstance(v, FuseVolume) for v in self.volumes]):
             ret += "\nsleep 5;\n"
         return ret
 
