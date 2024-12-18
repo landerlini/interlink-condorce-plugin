@@ -1,5 +1,3 @@
-import json
-from pprint import pprint
 import os
 import string
 import logging
@@ -13,6 +11,7 @@ from . import configuration as cfg
 from .BaseNatsProvider import BaseNatsProvider
 from .apptainer_cmd_builder import BuildConfig
 
+MISSING_BUILD_CONFIG_ERROR_CODE = 127
 
 class AllProviders:
     @staticmethod
@@ -77,7 +76,7 @@ parser.add_argument(
 parser.add_argument(
     "--build-config", "-f",
     help="Path to a file defining the build config. Defaults to /etc/interlink/build.conf",
-    default='/etc/interlink/build.conf',
+    default=None,
 )
 
 args = parser.parse_args()
@@ -97,11 +96,18 @@ logging.debug("Enabled debug mode.")
 if any([letter not in string.ascii_lowercase + '-' for letter in args.queue]):
     raise ValueError(f"Invalid queue `{args.queue}`: queue names can only include lower-case letters.")
 
-if not os.path.exists(args.build_config):
-    logging.warning(f"Build configuration file {args.build_config} does not exist. Using default configuration.")
-    build_config = BuildConfig()
+tolerate_missing_build_config = (args.build_config is None)
+build_config = args.build_config if args.build_config is not None else '/etc/interlink/build.conf'
+
+if not os.path.exists(build_config):
+    if tolerate_missing_build_config:
+        logging.warning(f"Build configuration file {build_config} does not exist. Using default configuration.")
+        build_config = BuildConfig()
+    else:
+        logging.critical(f"Build configuration file {build_config} does not exist.")
+        exit(MISSING_BUILD_CONFIG_ERROR_CODE)
 else:
-    with open(args.build_config, 'rb') as input_file:
+    with open(build_config, 'rb') as input_file:
         build_config = BuildConfig(**toml_load(input_file))
 
 provider: BaseNatsProvider = getattr(AllProviders, args.provider)(

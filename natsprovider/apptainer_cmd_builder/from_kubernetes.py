@@ -1,7 +1,6 @@
 import os.path
 import base64
 import re
-from pprint import pprint
 from kubernetes import client as k8s
 from typing import Dict, Any, List, Mapping, Optional, Union, Literal
 
@@ -80,7 +79,6 @@ def _make_pod_volume_struct(
                 volumes_counts[volume_mount.name] = 0
             volumes_counts[volume_mount.name] += 1
 
-    pprint (volumes_counts)
     empty_dirs = [v for c in containers_raw for v in (c if c is not None else []).get('emptyDirs') or []]
     empty_dirs = {
         k:  volumes.ScratchArea(**build_config.base_volume_config()) if volumes_counts.get(k, 0) <= 1
@@ -253,18 +251,15 @@ def from_kubernetes(
     """
     if 'kind' in pod_raw.keys() and 'apiVersion' in pod_raw.keys():
         if pod_raw['kind'] != 'Pod' and pod_raw['apiVersion'] != 'v1':
-            pprint(pod_raw)
             raise ValueError("Invalid pod description")
 
     _clean_keys_of_none_values(pod_raw)
 
+    if build_config is None:
+        build_config = BuildConfig()
+
     pod = deserialize_kubernetes(pod_raw, 'V1Pod')
     pod_volumes = _make_pod_volume_struct(pod, containers_raw if containers_raw is not None else [], build_config)
-
-    print ("::: From interlink :::")
-    pprint (containers_raw)
-    print ("::: To kubernetes :::")
-    pprint(pod_volumes)
 
     scratch_area = os.path.join(build_config.volumes.scratch_area, f".interlink.{pod.metadata.uid}")
     return ApptainerCmdBuilder(

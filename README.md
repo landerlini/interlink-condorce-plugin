@@ -58,8 +58,12 @@ backendShubProxyMasterToken: <master token of shub proxy>
 pluginCondorPool: <value one would pass to condor -pool argument, with port>
 pluginCondorScheduler: <value one would pass to condor -name argument>
 
-# hostname
+# Host ingress configuration
 certManagerEmailAddress: <your e-mail>
+
+# Nats server configuration
+natsWebSocketUsername: <pick a username>
+natsWebSocketPassword: <pick a password>
 ```
 
 ### Dependencies 

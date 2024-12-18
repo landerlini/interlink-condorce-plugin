@@ -1,9 +1,11 @@
+import asyncio
 import io
 import tarfile
 import logging
 from io import BytesIO
 from typing import Collection, Dict, List, Union
 from contextlib import asynccontextmanager
+from pprint import pformat
 
 import kubernetes.client
 import zlib
@@ -11,6 +13,8 @@ import zlib
 import orjson
 from fastapi import HTTPException
 import nats, nats.errors, nats.aio.msg
+from requests import delete
+
 from . import interlink
 
 # Local
@@ -25,18 +29,24 @@ class NatsGateway:
         self._nats_subject = nats_subject
         self._nats_timeout_seconds = nats_timeout_seconds
         self._build_configs: Dict[str, BuildConfig] = dict()
-
-        with self.nats_connection() as nc:
-            nc.subscribe(
-                subject=".".join((self._nats_subject, "config", "*")),
-                cb=self.config_callback,
-            )
+        self._nats_subs = dict()
 
         self.logger.info("Starting CondorProvider")
+
+    async def configure_nats_callbacks(self):
+        listener_nc = await nats.connect(servers=self._nats_server)
+        config_subject = ".".join((self._nats_subject, "config", "*"))
+        self._nats_subs['config'] = await listener_nc.subscribe(
+            subject=config_subject,
+            cb=self.config_callback,
+        )
+        self.logger.info(f"Subscribed to config subject {config_subject}")
+        return listener_nc
 
     async def config_callback(self, msg: nats.aio.msg.Msg):
         queue = msg.subject.split(".")[-1]
         self._build_configs[queue] = BuildConfig(**orjson.loads(msg.data))
+        self.logger.info(f"Received updated configuration for queue {queue}")
 
     @asynccontextmanager
     async def nats_connection(self):
@@ -73,6 +83,8 @@ class NatsGateway:
         v1pod = pod.deserialize()
         self.logger.info(f"Create pod {pod}")
         queue = self.retrieve_queue_from_tolerations(v1pod.spec.tolerations)
+        if queue not in self._build_configs.keys():
+            self.logger.error(f"Missing configuration for queue {queue}!")
         builder = from_kubernetes(
             pod.model_dump(),
             [volume.model_dump() for volume in volumes],
@@ -111,10 +123,15 @@ class NatsGateway:
         """
         self.logger.info(f"Delete pod {pod}")
         async with self.nats_connection() as nc:
-            await nc.publish(
+            delete_response = NatsResponse.from_nats(
+                await nc.request(
                     ".".join((self._nats_subject, "delete", get_readable_jobid(pod))),
                     zlib.compress(orjson.dumps(pod.model_dump())),
+                    timeout=self._nats_timeout_seconds,
                 )
+            )
+            delete_response.raise_for_status()
+
 
     async def get_pod_status(self, pod: interlink.PodRequest) -> Union[interlink.PodStatus, None]:
         """
@@ -124,12 +141,17 @@ class NatsGateway:
         v1pod = pod.deserialize()
         job_name = get_readable_jobid(pod)
         async with self.nats_connection() as nc:
-            status_response = NatsResponse.from_nats(
-                await nc.request(
-                    ".".join((self._nats_subject, "status", job_name)),
-                    zlib.compress(orjson.dumps(pod.model_dump())),
+            try:
+                status_response = NatsResponse.from_nats(
+                    await nc.request(
+                        ".".join((self._nats_subject, "status", job_name)),
+                        zlib.compress(orjson.dumps(pod.model_dump())),
+                        timeout=self._nats_timeout_seconds,
+                    )
                 )
-            )
+            except nats.errors.NoRespondersError as e:
+                self.logger.error(f"Failed to retrieve status for job {pod}")
+                return None
 
         status_response.raise_for_status()
         pod_metadata = v1pod.metadata
@@ -206,6 +228,7 @@ class NatsGateway:
                 await nc.request(
                     ".".join((self._nats_subject, "status", job_name)),
                     zlib.compress(orjson.dumps(log_request.model_dump())),
+                    timeout=self._nats_timeout_seconds,
                 )
             )
             status_response.raise_for_status()

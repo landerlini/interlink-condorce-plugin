@@ -10,6 +10,6 @@ NATS_SERVER = os.environ.get("NATS_SERVER", "nats://nats:4222")
 NATS_SUBJECT = os.environ.get("NATS_SUBJECT", "interlink")
 
 # NATS_TIMEOUT_SECONDS is the timeout configured for NATS requests, in seconds. Default: 5 seconds.
-NATS_TIMEOUT_SECONDS = float(os.environ.get("NATS_TIMEOUT_SECONDS", "5"))
+NATS_TIMEOUT_SECONDS = float(os.environ.get("NATS_TIMEOUT_SECONDS", "60"))
 
 

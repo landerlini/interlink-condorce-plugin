@@ -180,7 +180,6 @@ class CondorConfiguration(BaseModel):
 
         if cfg.BEARER_TOKEN_PATH is not None:
             os.environ['BEARER_TOKEN'] = open(cfg.BEARER_TOKEN_PATH).read()
-            print (f"Loaded Bearer token from {cfg.BEARER_TOKEN_PATH}")
         elif last_refresh is None or (datetime.now() - last_refresh).seconds > cfg.TOKEN_VALIDITY_SECONDS:
             os.environ['BEARER_TOKEN'] = CondorConfiguration._refresh_token()
             self.last_token_refresh = datetime.now()
@@ -229,12 +228,13 @@ class CondorConfiguration(BaseModel):
                 ret = schedd.query(constraint=f'JobBatchName == "{job_name}"')
                 if len(ret) == 0:
                     raise HTCondorException(f"Job {job_name} not found.")
-                if len(ret) > 1:
-                    raise HTCondorException(
-                        f"Ambiguous job name {job_name} selecting jobs {', '.join([j['ClusterId'] for j in ret])}."
-                    )
+                # if len(ret) > 1:
+                #     raise HTCondorException(
+                #         f"Ambiguous job name {job_name} selecting jobs "
+                #         f"{', '.join([str(j['ClusterId']) for j in ret])}."
+                #     )
 
-                return ret[0]
+                return ret[-1]
 
             except htcondor.HTCondorIOError as e:
                 if attempt == CONDOR_ATTEMPTS:

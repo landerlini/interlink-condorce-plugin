@@ -53,12 +53,13 @@ class BaseNatsProvider:
                 self._last_build_config_refresh is None or
                 (datetime.now() - self._last_build_config_refresh).total_seconds() > 60
         ):
+            config_subject = '.'.join((self._nats_subject, 'config', self._nats_queue))
             async with self.nats_connection() as nc:
                 await nc.publish(
-                    subject='.'.join((self._nats_subject, 'config', self._nats_queue)),
+                    subject=config_subject,
                     payload=self._build_config.model_dump_json().encode()
                 )
-                self.logger.info(f"Published build options")
+                self.logger.info(f"Published build options on subject {config_subject}")
                 self._last_build_config_refresh = datetime.now()
 
     async def main_loop(self, time_interval: float = 0.2):
@@ -146,13 +147,14 @@ class BaseNatsProvider:
                 cb=self.get_pod_status_and_logs_callback
             )
             # Register delete pod callback
-            delete_subject = '.'.join((self._nats_subject, 'delete', job_name)),
+            delete_subject = '.'.join((self._nats_subject, 'delete', job_name))
             self._subscriptions[delete_subject] = await nc.subscribe(
                 subject=delete_subject,
                 cb=self.delete_pod_callback
             )
 
         try:
+            self.logger.info(f"Submitting job {job_name}")
             job_id_in_backend = await self.create_pod(job_name, job_sh, pod)
         except HTTPException as e:
             self.logger.critical(f"Failed creating job {job_name} \n{pformat(body)}")
@@ -181,6 +183,7 @@ class BaseNatsProvider:
                 NatsResponse(status_code=e.status_code, data=e.detail.encode('utf-8')).to_nats()
             )
         else:
+            self.logger.info(f"Deleted job {job_name}")
             await msg.respond(
                 NatsResponse(status_code=200).to_nats()
             )
@@ -212,6 +215,7 @@ class BaseNatsProvider:
                 NatsResponse(status_code=e.status_code, data=e.detail.encode('utf-8')).to_nats()
             )
         else:
+            self.logger.info(f"Retrieved status of {job_name}: {job_status.phase}")
             await msg.respond(
                 NatsResponse(status_code=200, data=job_status.model_dump()).to_nats()
             )
