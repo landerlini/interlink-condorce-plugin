@@ -157,8 +157,8 @@ class NatsGateway:
         pod_metadata = v1pod.metadata
         job_status = JobStatus(**status_response.data)
         self.logger.info(
-            f"Retrieved status for pod {pod}: {job_status.phase} "
-            f"[{'with' if len(job_status.logs_tarball) else 'without'} logs]"
+            f"Status of {pod}: {job_status.phase} "
+            f"[{'w/' if len(job_status.logs_tarball) else 'w/o'} logs]"
         )
 
         container_statuses = []
@@ -212,6 +212,8 @@ class NatsGateway:
                     )
                 ) for i_container, cs in enumerate(v1pod.spec.containers or [])
             ]
+
+        print (container_statuses)
 
         return interlink.PodStatus(
             name=pod_metadata.name,
