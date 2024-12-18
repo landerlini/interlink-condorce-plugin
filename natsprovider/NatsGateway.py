@@ -213,7 +213,10 @@ class NatsGateway:
                 ) for i_container, cs in enumerate(v1pod.spec.containers or [])
             ]
 
-        print (container_statuses)
+        print (v1pod.spec.containers)
+        if len(container_statuses) == 0:
+            self.logger.critical("Could not retrieve the status of any container!")
+            return None
 
         return interlink.PodStatus(
             name=pod_metadata.name,
