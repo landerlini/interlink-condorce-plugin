@@ -156,6 +156,10 @@ class NatsGateway:
         status_response.raise_for_status()
         pod_metadata = v1pod.metadata
         job_status = JobStatus(**status_response.data)
+        self.logger.info(
+            f"Retrieved status for pod {pod}: {job_status.phase} "
+            f"[{'with' if len(job_status.logs_tarball) else 'without'} logs]"
+        )
 
         container_statuses = []
 
