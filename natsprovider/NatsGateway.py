@@ -47,7 +47,6 @@ class NatsGateway:
         queue = msg.subject.split(".")[-1]
         self._build_configs[queue] = BuildConfig(**orjson.loads(msg.data))
         self.logger.info(f"Received updated configuration for queue {queue}")
-        print (self._build_configs[queue])
 
     @asynccontextmanager
     async def nats_connection(self):
@@ -86,8 +85,6 @@ class NatsGateway:
         queue = self.retrieve_queue_from_tolerations(v1pod.spec.tolerations)
         if queue not in self._build_configs.keys():
             self.logger.error(f"Missing configuration for queue {queue}!")
-        print(f"Now in create_job with queue: {queue}")
-        print(self._build_configs.get(queue, BuildConfig()))
         builder = from_kubernetes(
             pod.model_dump(),
             [volume.model_dump() for volume in volumes],

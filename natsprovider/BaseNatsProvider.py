@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from typing import Dict, Union
+from typing import Dict, Union, List
 
 from datetime import datetime
 import zlib
@@ -61,7 +61,7 @@ class BaseNatsProvider:
                 )
                 self.logger.info(f"Published build options on subject {config_subject}")
                 self._last_build_config_refresh = datetime.now()
-                print (self._build_config)
+
 
     async def main_loop(self, time_interval: float = 0.2):
         """Main loop of the NATS responder"""
@@ -224,4 +224,14 @@ class BaseNatsProvider:
     async def get_pod_status_and_logs(self, job_name: str) -> JobStatus:
         """Override me!"""
         raise NotImplementedError
+
+    @property
+    def subscribed_jobs(self) -> List[str]:
+        """
+        Return a list of job names for which a status subscription is found.
+        """
+        status_prefix = '.'.join((self._nats_subject, 'status'))
+        return [sbj.split(':')[-1] for sbj in self._subscriptions.keys() if sbj.startswith(status_prefix)]
+
+
 

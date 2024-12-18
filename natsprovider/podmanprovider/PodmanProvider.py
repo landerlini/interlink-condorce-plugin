@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
+import tarfile
 from pathlib import Path
 import os.path
 
 import podman
+import podman.errors
 
 
 from copy import copy
@@ -20,6 +22,7 @@ class PodmanProvider(BaseNatsProvider):
         build_config.volumes.scratch_area = "/scratch"
         build_config.volumes.apptainer_cachedir = "/cache"
         build_config.volumes.image_dir = "/images"
+        self._sandbox = cfg.LOCAL_SANDBOX
 
         BaseNatsProvider.__init__(
             self,
@@ -53,8 +56,10 @@ class PodmanProvider(BaseNatsProvider):
         Submit the job to Podman as a container
         """
 
+        sandbox = Path(self._sandbox) / job_name
+
         # Ensure directories exists
-        for dirname in self._volumes.apptainer_cachedir, self._volumes.scratch_area:
+        for dirname in self._volumes.apptainer_cachedir, self._volumes.scratch_area, sandbox:
             Path(dirname).mkdir(parents=True, exist_ok=True)
 
         async with self.podman() as client:
@@ -66,6 +71,7 @@ class PodmanProvider(BaseNatsProvider):
                 privileged=True,
                 mem_limit=compute_pod_resource(pod, resource='memory'),
                 cpu_shares=compute_pod_resource(pod, resource='millicpu'),
+                workdir="/sandbox",
                 mounts=[
                     BindVolume(
                         source=self._volumes.apptainer_cachedir,
@@ -74,6 +80,10 @@ class PodmanProvider(BaseNatsProvider):
                     BindVolume(
                         source=self._volumes.scratch_area,
                         target=self._build_config.volumes.scratch_area,
+                    ).model_dump(),
+                    BindVolume(
+                        source=str(sandbox),
+                        target="/sandbox",
                     ).model_dump(),
                 ] + (
                     # image_dir is only mounted if it exists
@@ -89,3 +99,36 @@ class PodmanProvider(BaseNatsProvider):
             self.logger.info(f"Created podman container with ID {pilot.id}")
 
         return pilot.id
+
+    async def get_pod_status_and_logs(self, job_name: str) -> JobStatus:
+        async with self.podman() as client:
+            try:
+                pilot = client.containers.get(job_name)
+            except podman.errors.exceptions.NotFound:
+                if job_name in self.subscribed_jobs:
+                    self.logger.warning(f"No container found for job {job_name} not found. Maybe it is pending?")
+                    return JobStatus(phase="pending")
+                self.logger.critical(f"Requested status for {job_name}, not among the jobs managed by this instance")
+                return JobStatus(phase="unknown")
+
+            self.logger.info(f"Retrieved job {job_name} running in container {pilot.id}")
+            if pilot.status == "unknown":
+                return JobStatus(phase="unknown")
+
+
+            try:
+                with open(Path(self._sandbox) / job_name / "logs", "rb") as logs_file:
+                    logs = logs_file.read()
+            except FileNotFoundError:
+                if pilot.status == "running":
+                    logs = b""
+                else:
+                    self.logger.error(f"Failed retrieving output structure for job {job_name}")
+                    return JobStatus(phase="failed")
+
+            return JobStatus(phase="running" if pilot.status == 'running' else 'succeeded', logs_tarball=logs)
+
+
+
+
+

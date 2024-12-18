@@ -151,9 +151,6 @@ def _make_container_list(
     if containers is None:
         return []
 
-    print ("Preparing container list for submission")
-    print (build_config)
-
     def _volumes_for_container(container):
         # NB: Uses pod_volumes and use_fake_volumes from outer scope
         if container.volume_mounts is None:
@@ -252,8 +249,6 @@ def from_kubernetes(
     :return:
         An instance of ApptainerCmdBuilder representing the pod
     """
-    print ("Now running 'from_kubernetes' converter...")
-
     if 'kind' in pod_raw.keys() and 'apiVersion' in pod_raw.keys():
         if pod_raw['kind'] != 'Pod' and pod_raw['apiVersion'] != 'v1':
             raise ValueError("Invalid pod description")
