@@ -86,7 +86,7 @@ class NatsGateway:
         queue = self.retrieve_queue_from_tolerations(v1pod.spec.tolerations)
         if queue not in self._build_configs.keys():
             self.logger.error(f"Missing configuration for queue {queue}!")
-        print("Now in create_job")
+        print(f"Now in create_job with queue: {queue}")
         print(self._build_configs.get(queue, BuildConfig()))
         builder = from_kubernetes(
             pod.model_dump(),
