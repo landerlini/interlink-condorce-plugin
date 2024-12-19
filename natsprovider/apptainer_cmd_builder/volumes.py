@@ -43,8 +43,13 @@ class BaseVolume (BaseModel, extra="forbid"):
         description="A script to cleanup the runtime environment at the end of the job (or to upload volume data)"
     )
 
+    fuse_mode: Literal['host', 'container', 'host-privileged'] = Field(
+        default=cfg.FUSE_MODE,
+        description="Indicate how fuse is mounted for the user. Refer to BuildConfig for the docs."
+    )
+
     fuse_enabled_on_host: bool = Field(
-        default=cfg.FUSE_ENABLED_ON_HOST,
+        default=False,
         description="Indicate the executor is privileged enough to mount fuse volumes without userns tricks"
     )
 

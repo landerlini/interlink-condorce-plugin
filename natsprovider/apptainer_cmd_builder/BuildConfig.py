@@ -148,6 +148,7 @@ class BuildConfig(BaseModel):
     def base_volume_config(self):
         """Provide kwargs to configure BaseVolume according to the options defined in BaseVolume"""
         return dict(
+            fuse_mode=self.apptainer.fuse_mode,
             fuse_enabled_on_host=self.apptainer.fuse_enabled_on_host,
             scratch_area=self.volumes.scratch_area,
         )
