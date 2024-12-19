@@ -24,8 +24,8 @@ APPTAINER_FAKEROOT = os.environ.get("APPTAINER_FAKEROOT", "no").lower() in ["tru
 # APPTAINER_CONTAINALL enables --fakeroot flag in apptainer exec
 APPTAINER_CONTAINALL = os.environ.get("APPTAINER_CONTAINALL", "no").lower() in ["true", "yes", "y"]
 
-# FUSE_ENABLED_ON_HOST defines whether the host enables users to use fuse or not
-FUSE_ENABLED_ON_HOST = os.environ.get("FUSE_ENABLED_ON_HOST", "yes").lower() in ["true", "yes", "y"]
+# FUSE_MODE defines how the host enables users to use fuse
+FUSE_MODE = os.environ.get("FUSE_ENABLED_ON_HOST", "host").lower()
 
 # SHUB_PROXY defines the Singularity Hub proxy instance building and caching OCI images. Without protocol (http).
 SHUB_PROXY = os.environ.get("SHUB_PROXY")

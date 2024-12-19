@@ -1,7 +1,7 @@
 import os
 from io import StringIO
 import json
-from typing import List
+from typing import List, Literal
 from pydantic import BaseModel, Field
 
 
@@ -46,12 +46,20 @@ class BuildConfig(BaseModel):
             default_factory=lambda: os.environ.get("APPTAINER_FAKEROOT", "no").lower() in ["true", "yes", "y"],
             description="Enables --containall flag in apptainer exec/run commands",
         )
-        fuse_enabled_on_host: bool = Field(
-            default_factory=lambda: os.environ.get("FUSE_ENABLED_ON_HOST", "yes").lower() in ["true", "yes", "y"],
-            description="Defines whether the host enables users to mount fuse volumes or not"
+        fuse_mode: Literal["container", "host", "host-privileged"] = Field(
+            default_factory=lambda: os.environ.get("FUSE_MODE", "container"),
+            description="""Define the technique to mount fuse volumes to adopt on the host.
+             * host: assumes the executable is available in the host, but uses the unprivileged /dev/fdX trick to mount 
+             * container: assumes the executable is available in the container
+             * host-privileged: assumes the executable is available in the host and that can be run by submitter user
+             
+             The different modes should be preferred in various scenarios as all of them may fail if the submitted 
+             container expects something different. `host` is probably the most secure option, `container` the most 
+             flexible for your user (but with great power...).
+            """
         )
         no_init: bool = Field(
-            default=True,
+            default=False,
             description="Do not propagate umask to the container, set default 0022 umask",
         )
         no_home: bool = Field(
@@ -70,6 +78,11 @@ class BuildConfig(BaseModel):
             default=True,
             description="Clean the environment of the spawned container"
         )
+
+        @property
+        def fuse_enabled_on_host(self):
+            """True if the submitter has sufficient privileges on the host to mount fuse volumes on the host itself"""
+            return self.fuse_mode in ("host-privileged",)
 
     class SingularityHubProxy(BaseModel, extra='forbid'):
         """

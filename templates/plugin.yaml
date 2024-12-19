@@ -35,10 +35,10 @@ data:
     containall = false
 
     ### Defines whether the host enables users to mount fuse volumes or not
-    fuse_enabled_on_host = true
+    fuse_mode = "host-privileged"
 
     ### Do not propagate umask to the container, set default 0022 umask
-    no_init = true
+    no_init = false
 
     ### Do not bind home by default
     no_home = true
