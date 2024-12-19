@@ -113,7 +113,7 @@ class PodmanProvider(BaseNatsProvider):
 
             self.logger.info(f"Retrieved job {job_name} running in container {pilot.id}")
             if pilot.status == "unknown":
-                return JobStatus(phase="unknown")
+                return JobStatus(phase="pending")
 
 
             try:
