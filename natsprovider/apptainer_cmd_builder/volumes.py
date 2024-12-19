@@ -377,7 +377,7 @@ class VolumeBind(BaseModel, extra="forbid"):
         elif self.mount_type in ['scratch']:
             return f"--scratch {self.container_path}"
         elif self.mount_type in ['fuse']:
-            return f"--fusemount \"%(fuse_mode):%(script)s %(sub_path)s %(mount_point)s %(fake_arg)s\"" % dict(
+            return f"--fusemount \"%(fuse_mode)s:%(script)s %(sub_path)s %(mount_point)s %(fake_arg)s\"" % dict(
                 fuse_mode='container' if self.volume.fuse_mode in ('container',) else 'host',
                 sub_path=self.sub_path if self.sub_path is not None else "",
                 script=self.volume.fuse_mount_script_container_path,
