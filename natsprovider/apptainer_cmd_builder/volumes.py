@@ -380,7 +380,11 @@ class VolumeBind(BaseModel, extra="forbid"):
             return f"--fusemount \"%(fuse_mode)s:%(script)s %(sub_path)s %(mount_point)s %(fake_arg)s\"" % dict(
                 fuse_mode='container' if self.volume.fuse_mode in ('container',) else 'host',
                 sub_path=self.sub_path if self.sub_path is not None else "",
-                script=self.volume.fuse_mount_script_container_path,
+                script=(
+                    self.volume.fuse_mount_script_container_path
+                    if self.volume.fuse_mode in ('container',) else
+                    self.volume.fuse_mount_script_host_path
+                ),
                 mount_point=self.container_path,
                 # fake_arg adds a fake last argument in case the host allows using fuse inside the container directly
                 # without /dev/fd tricks. If the argument is not passed, then the last argument is intercepted by
