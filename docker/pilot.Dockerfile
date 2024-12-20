@@ -36,12 +36,14 @@ RUN wget -O pkg.deb https://github.com/sylabs/singularity/releases/download/v4.2
     rm pkg.deb
 
 # Install juicefs
-RUN mkdir /tmp/juicefs && \
-    cd /tmp/juicefs && \
-    wget -O jfs.tar.gz https://github.com/juicedata/juicefs/releases/download/v1.2.2/juicefs-1.2.2-linux-amd64.tar.gz && \
-    tar xfz jfs.tar.gz && \
-    cp juicefs /usr/local/bin && \
-    cd - && \
-    rm -rf /tmp/juicefs
+RUN wget -O /usr/local/bin/juicefs https://pandora.infn.it/public/3423df/dl/juicefs && \
+    chmod a+x /usr/local/bin/juicefs
+## RUN mkdir /tmp/juicefs && \
+##     cd /tmp/juicefs && \
+##     wget -O jfs.tar.gz https://github.com/juicedata/juicefs/releases/download/v1.2.2/juicefs-1.2.2-linux-amd64.tar.gz && \
+##     tar xfz jfs.tar.gz && \
+##     cp juicefs /usr/local/bin && \
+##     cd - && \
+##     rm -rf /tmp/juicefs
 
 
