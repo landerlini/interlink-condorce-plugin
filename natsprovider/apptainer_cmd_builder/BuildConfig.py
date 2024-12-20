@@ -82,7 +82,7 @@ class BuildConfig(BaseModel):
         @property
         def fuse_enabled_on_host(self):
             """True if the submitter has sufficient privileges on the host to mount fuse volumes on the host itself"""
-            return self.fuse_mode in ("host-privileged",)
+            return self.fuse_mode in ("host-privileged", "container-privileged")
 
     class SingularityHubProxy(BaseModel, extra='forbid'):
         """
