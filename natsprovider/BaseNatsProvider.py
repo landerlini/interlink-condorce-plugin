@@ -197,7 +197,7 @@ class BaseNatsProvider:
             }
             for subject, subscription in subscriptions_to_drop.items():
                 self.logger.info(f"Unsubscribe from subject {subject} and delete from subscriptions table")
-                subscription.unsubscribe()
+                await subscription.unsubscribe()
                 del self._subscriptions[subject]
 
     async def delete_pod(self, job_name: str) -> None:
