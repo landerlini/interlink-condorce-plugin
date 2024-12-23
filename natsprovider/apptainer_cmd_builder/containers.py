@@ -299,7 +299,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ]
 
         local_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
-        cached_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
+        cached_image = os.path.join(self.cachedir, self.image.replace(":", "_"))
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
             ret += [
                 f"if [ -f {local_image} ]; then",
