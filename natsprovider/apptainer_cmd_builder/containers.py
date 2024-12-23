@@ -308,6 +308,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 f"     && [ $(($(date +%s) - $(stat -c %Y {cached_image}))) -lt {self.shub_cache_seconds} ]; then",
                 f"  IMAGE_{uid}={cached_image}",
                 f"else",
+                f"  mkdir -p {os.path.dirname(cached_image)}",
                 f"  HTTP_STATUS=$(curl -Lo {cached_image} \\",
                 f"      -w \"%{{http_code}}\" \\",
                 f"      -H \"X-Token: {self.shub_token}\" \\",
