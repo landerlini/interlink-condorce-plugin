@@ -1,4 +1,4 @@
-# Image name: landerlini/interlink-condorce-plugin:v0.0
+# Image name: landerlini/interlink-condorce-plugin:v0.1
 FROM htcondor/mini:latest
 
 RUN dnf install -y \
@@ -13,8 +13,10 @@ RUN pip install \
   "fastapi" \
   "pyyaml" \
   "nats-py" \
+  "orjson" \
   "pytest" \
   "kubernetes" \
   "htcondor" \
-  "git+https://github.com/intertwin-eu/interLink.git@0.3.0#egg=interlink&subdirectory=example"
+  "podman" \
+  "pytest"
 

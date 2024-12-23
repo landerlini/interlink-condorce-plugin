@@ -1,14 +1,14 @@
 import os.path
+from distutils.command.build import build
 
-from interlink import Volume
 from pydantic import BaseModel, Field
 from typing import Dict, Optional, Literal
 import textwrap
 
 from ..utils import embed_ascii_file, embed_binary_file, make_uid_numeric, sanitize_uid
-from . import configuration as cfg
+from . import configuration as cfg, BuildConfig
 
-from condorprovider.utils import generate_uid
+from natsprovider.utils import generate_uid
 
 MountType = Literal['bind', 'scratch', 'fuse']
 
@@ -28,9 +28,9 @@ class BaseVolume (BaseModel, extra="forbid"):
         description="Unique identifier for the volume",
     )
 
-    host_path: str = Field(
-        default_factory=lambda: os.path.join(cfg.SCRATCH_AREA, f".acb.volume.{generate_uid()}"),
-        description="Path where the volume is mounted in the host (if any)"
+    scratch_area: str = Field(
+        default=cfg.SCRATCH_AREA,
+        description="Path where to store temporary data with the volume contents",
     )
 
     init_script: Optional[str] = Field(
@@ -42,6 +42,29 @@ class BaseVolume (BaseModel, extra="forbid"):
         default=None,
         description="A script to cleanup the runtime environment at the end of the job (or to upload volume data)"
     )
+
+    fuse_mode: Literal['host', 'container', 'host-privileged'] = Field(
+        default=cfg.FUSE_MODE,
+        description="Indicate how fuse is mounted for the user. Refer to BuildConfig for the docs."
+    )
+
+    fuse_enabled_on_host: bool = Field(
+        default=False,
+        description="Indicate the executor is privileged enough to mount fuse volumes without userns tricks"
+    )
+
+    host_path_override: Optional[str] = Field(
+        default=None,
+        description="If set, overrides generation of a temporary volume for hosting volume data"
+    )
+
+
+    @property
+    def host_path(self):
+        """Path where the volume is mounted in the host (if any)"""
+        if self.host_path_override is not None:
+            return self.host_path_override
+        return os.path.join(self.scratch_area, f".acb.volume.{self.uid}")
 
     def _parse_script(self, script: Optional[str] = None):
         if script is None:
@@ -235,10 +258,10 @@ class FuseVolume(BaseVolume, extra="forbid"):
         ]
 
         # If possible, will execute the fuse command on host, instead of inside the container
-        if cfg.FUSE_ENABLED_ON_HOST:
+        if self.fuse_enabled_on_host:
             ret += [
                 f"CACHEDIR={cache_path}/cache " + self.fuse_mount_script_host_path + " \"\" " + host_path + " &",
-                f"FUSE_{sanitize_uid(self.uid).upper()}_PID=$!"
+                f"FUSE_{sanitize_uid(self.uid).upper()}_PID=$!",
             ]
 
         return '\n' + '\n'.join(ret)
@@ -249,7 +272,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
 
         ret = []
 
-        if cfg.FUSE_ENABLED_ON_HOST:
+        if self.fuse_enabled_on_host:
             ret += [  f"fusermount -u {host_path} || kill $FUSE_{sanitize_uid(self.uid).upper()}_PID" ]
 
         ret += [f"rm -rf {base_path}"]
@@ -264,7 +287,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
         if read_only:
             raise NotImplementedError("Read-only constrain is fuse-lib specific. Implement it in mount script.")
 
-        if cfg.FUSE_ENABLED_ON_HOST:
+        if self.fuse_enabled_on_host:
             return [
                 VolumeBind(
                     volume=self,
@@ -292,7 +315,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
         ]
 
 
-def make_empty_dir():
+def make_empty_dir(build_config: BuildConfig):
     return BaseVolume(
         init_script=textwrap.dedent(f"""
         rm -rf %(host_path)s
@@ -300,15 +323,17 @@ def make_empty_dir():
         """),
         cleanup_script=textwrap.dedent(f"""
         rm -rf %(host_path)s
-        """)
+        """),
+        **build_config.base_volume_config()
     )
 
-def clone_git_repo(git_repo: str, apptainer_exec: str = "apptainer"):
+def clone_git_repo(git_repo: str, build_config: BuildConfig, apptainer_exec: str = "apptainer"):
     """
     An example of customization: clone a git repository in a directory.
 
     :param git_repo: https path to a git repo
     :param apptainer_exec:
+    :param build_config:
     :return:
     """
     return BaseVolume(
@@ -319,7 +344,8 @@ def clone_git_repo(git_repo: str, apptainer_exec: str = "apptainer"):
         """),
         cleanup_script=textwrap.dedent(f"""
         rm -rf %(host_path)s
-        """)
+        """),
+        **build_config.base_volume_config()
     )
 
 
@@ -351,14 +377,19 @@ class VolumeBind(BaseModel, extra="forbid"):
         elif self.mount_type in ['scratch']:
             return f"--scratch {self.container_path}"
         elif self.mount_type in ['fuse']:
-            return f"--fusemount \"container:%(script)s %(sub_path)s %(mount_point)s %(fake_arg)s\"" % dict(
+            return f"--fusemount \"%(fuse_mode)s:%(script)s %(sub_path)s %(mount_point)s %(fake_arg)s\"" % dict(
+                fuse_mode='container' if self.volume.fuse_mode in ('container', 'container-privileged') else 'host',
                 sub_path=self.sub_path if self.sub_path is not None else "",
-                script=self.volume.fuse_mount_script_container_path,
+                script=(
+                    self.volume.fuse_mount_script_container_path
+                    if self.volume.fuse_mode in ('container', 'container-privileged') else
+                    self.volume.fuse_mount_script_host_path
+                ),
                 mount_point=self.container_path,
                 # fake_arg adds a fake last argument in case the host allows using fuse inside the container directly
                 # without /dev/fd tricks. If the argument is not passed, then the last argument is intercepted by
                 # apptainer and replaced with the /dev/fd device.
-                fake_arg=self.container_path if cfg.FUSE_ENABLED_ON_HOST else '',
+                fake_arg=self.container_path if self.volume.fuse_enabled_on_host else '',
             )
 
         raise KeyError(f"Unexpected mount_type '{self.mount_type}', expect 'bind', 'scratch', or 'fuse'.")

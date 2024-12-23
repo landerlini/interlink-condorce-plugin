@@ -1,4 +1,3 @@
-import string
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -41,7 +40,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
     )
 
     executable: Path = Field(
-        default=Path("/usr/bin/apptainer").resolve(),
+        default=Path("/usr/bin/apptainer"),
         description="Relative or absolute path to apptainer, singularity or other compatible replacements"
     )
 
@@ -69,6 +68,21 @@ class ContainerSpec(BaseModel, extra="forbid"):
         description="Directory to be used for temporary data related to this container set",
     )
 
+    shub_proxy_server: Optional[str] = Field(
+        default=cfg.SHUB_PROXY,
+        description="SingularityHub proxy server without protocol"
+    )
+
+    shub_proxy_master_token: Optional[str] = Field(
+        default=cfg.SHUB_PROXY_MASTER_TOKEN,
+        description="SingularityHub proxy master token used to generate client tokens"
+    )
+
+    shub_cache_seconds: Optional[int] = Field(
+        default=600,
+        description="Time before pre-built docker image cache is invalidated. No check on image hash is performed!",
+    )
+
     return_code: Optional[int] = Field(
         default=None,
         description="Return code of the container, once completed. None otherwise."
@@ -86,26 +100,10 @@ class ContainerSpec(BaseModel, extra="forbid"):
         """,
     )
 
-
-    @property
-    def workdir(self):
-        return os.path.join(self.scratch_area, f".acb.cnt.{self.uid}")
-
-    @property
-    def log_path(self):
-        return os.path.join(self.workdir, f'{self.uid}.log')
-
-    @property
-    def return_code_path(self):
-        return os.path.join(self.workdir, f'{self.uid}.ret')
-
-    @property
-    def env_file_path(self):
-        return os.path.join(self.workdir, '.env')
-
-    @property
-    def executable_path(self):
-        return os.path.join(self.workdir, 'run')
+    cachedir: str = Field(
+        default=cfg.SCRATCH_AREA,
+        description="""Fast writable area shared among multiple instances to store built images"""
+    )
 
     ################################################################################
     # Flags
@@ -188,6 +186,27 @@ class ContainerSpec(BaseModel, extra="forbid"):
         json_schema_extra = dict(arg='--cleanenv'),
     )
 
+    @property
+    def workdir(self):
+        return os.path.join(self.scratch_area, f".acb.cnt.{self.uid}")
+
+    @property
+    def log_path(self):
+        return os.path.join(self.workdir, f'{self.uid}.log')
+
+    @property
+    def return_code_path(self):
+        return os.path.join(self.workdir, f'{self.uid}.ret')
+
+    @property
+    def env_file_path(self):
+        return os.path.join(self.workdir, '.env')
+
+    @property
+    def executable_path(self):
+        return os.path.join(self.workdir, 'run')
+
+
 
     def __hash__(self):
         return make_uid_numeric(self.uid)
@@ -195,14 +214,14 @@ class ContainerSpec(BaseModel, extra="forbid"):
     @property
     def shub_token(self):
         global _GLOBAL_SHUB_PROXY_TOKEN
-        if cfg.SHUB_PROXY is None:
+        if self.shub_proxy_server is None or self.shub_proxy_server == "":
             return None
 
         if _GLOBAL_SHUB_PROXY_TOKEN is not None and (datetime.now() - _GLOBAL_SHUB_PROXY_TOKEN[0]).seconds > 300:
             _GLOBAL_SHUB_PROXY_TOKEN = None   # Expired!
 
-        if _GLOBAL_SHUB_PROXY_TOKEN is None:
-            response = requests.get(f"http://{cfg.SHUB_PROXY}/token", auth=("admin", cfg.SHUB_PROXY_MASTER_TOKEN))
+        if _GLOBAL_SHUB_PROXY_TOKEN is None and _GLOBAL_SHUB_PROXY_TOKEN != "":
+            response = requests.get(f"http://{self.shub_proxy_server}/token", auth=("admin", self.shub_proxy_master_token))
             response.raise_for_status()
 
             _GLOBAL_SHUB_PROXY_TOKEN = (datetime.now(), response.text)
@@ -243,7 +262,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
     def exec(self):
         uid = sanitize_uid(self.uid).upper()
         return " \\\n    ".join([
-            str(self.executable.resolve()),
+            str(self.executable),
             "exec",
             *self.flags,
             f"$IMAGE_{uid}",
@@ -280,17 +299,22 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ]
 
         local_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
+        cached_image = os.path.join(self.cachedir, self.image.replace(":", "_"))
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
             ret += [
                 f"if [ -f {local_image} ]; then",
                 f"  IMAGE_{uid}={local_image}",
+                f"elif [ -f {cached_image} ]"
+                f"     && [ $(($(date +%s) - $(stat -c %Y {cached_image}))) -lt {self.shub_cache_seconds} ]; then",
+                f"  IMAGE_{uid}={cached_image}",
                 f"else",
-                f"  HTTP_STATUS=$(curl -Lo {os.path.join(self.scratch_area, f'.img.{uid}')} \\",
+                f"  mkdir -p {os.path.dirname(cached_image)}",
+                f"  HTTP_STATUS=$(curl -Lo {cached_image} \\",
                 f"      -w \"%{{http_code}}\" \\",
                 f"      -H \"X-Token: {self.shub_token}\" \\",
-                f"      {SHUB_PROXY}/get-docker/{self.image}) ",
+                f"      {self.shub_proxy_server}/get-docker/{self.image}) ",
                 f"  if [[ $HTTP_STATUS -ge 200 && $HTTP_STATUS -lt 300 ]]; then ",
-                f"    IMAGE_{uid}={os.path.join(self.scratch_area, f'.img.{uid}')} ",
+                f"    IMAGE_{uid}={cached_image} ",
                 f"  else ",
                 f"    IMAGE_{uid}={self.formatted_image} ",
                 f"  fi ",

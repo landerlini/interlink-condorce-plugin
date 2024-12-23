@@ -5,15 +5,15 @@ from pydantic import BaseModel, Field
 import subprocess
 import os
 import textwrap
-from typing import Optional, Literal, List
+from typing import Dict, Optional, Literal, List
 import re
 import htcondor
 
 import requests
 import asyncio
 
-from condorprovider.utils import generate_uid
-from condorprovider import configuration as cfg
+from natsprovider.utils import generate_uid
+from natsprovider.condor import configuration as cfg
 
 from enum import Enum
 class JobStatus(Enum):
@@ -180,7 +180,6 @@ class CondorConfiguration(BaseModel):
 
         if cfg.BEARER_TOKEN_PATH is not None:
             os.environ['BEARER_TOKEN'] = open(cfg.BEARER_TOKEN_PATH).read()
-            print (f"Loaded Bearer token from {cfg.BEARER_TOKEN_PATH}")
         elif last_refresh is None or (datetime.now() - last_refresh).seconds > cfg.TOKEN_VALIDITY_SECONDS:
             os.environ['BEARER_TOKEN'] = CondorConfiguration._refresh_token()
             self.last_token_refresh = datetime.now()
@@ -229,12 +228,13 @@ class CondorConfiguration(BaseModel):
                 ret = schedd.query(constraint=f'JobBatchName == "{job_name}"')
                 if len(ret) == 0:
                     raise HTCondorException(f"Job {job_name} not found.")
-                if len(ret) > 1:
-                    raise HTCondorException(
-                        f"Ambiguous job name {job_name} selecting jobs {', '.join([j['ClusterId'] for j in ret])}."
-                    )
+                # if len(ret) > 1:
+                #     raise HTCondorException(
+                #         f"Ambiguous job name {job_name} selecting jobs "
+                #         f"{', '.join([str(j['ClusterId']) for j in ret])}."
+                #     )
 
-                return ret[0]
+                return ret[-1]
 
             except htcondor.HTCondorIOError as e:
                 if attempt == CONDOR_ATTEMPTS:
@@ -288,21 +288,21 @@ class CondorConfiguration(BaseModel):
         job = await self.query_by_name(job_name)
         return JobStatus(job['JobStatus'])
 
-    async def retrieve_by_name(self, job_name: str, cleanup: bool = True):
+    async def retrieve_by_name(self, job_name: str, cleanup: bool = True) -> Dict[str, str]:
         job = await self.query_by_name(job_name)
         files = await self._retrieve_job_output(job, cleanup=cleanup)
         if cleanup:
             await self.delete_by_name(job_name)
         return files
 
-    async def retrieve(self, job_id: int, cleanup: bool = True):
+    async def retrieve(self, job_id: int, cleanup: bool = True) -> Dict[str, str]:
         job = await self.query(job_id)
         files = await self._retrieve_job_output(job, cleanup=cleanup)
         if cleanup:
             await self.delete(job_id)
         return files
 
-    async def _retrieve_job_output(self, job, cleanup: bool):
+    async def _retrieve_job_output(self, job, cleanup: bool) -> Dict[str, str]:
         self._ensure_token()
         condor_dir = os.path.dirname(job['JobSubmitFile'])
         await _shell(f"mkdir -p {condor_dir}; chmod a+w {condor_dir}")

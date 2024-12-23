@@ -1,19 +1,26 @@
 import os.path
 import base64
 import re
-from pprint import pprint
 from kubernetes import client as k8s
 from typing import Dict, Any, List, Mapping, Optional, Union, Literal
 
 from kubernetes.client import V1Container, V1KeyToPath
 
-from condorprovider.apptainer_cmd_builder import ApptainerCmdBuilder, ContainerSpec, volumes, configuration as cfg
-from condorprovider.apptainer_cmd_builder.volumes import BaseVolume
-from condorprovider.utils import deserialize_kubernetes
+from natsprovider.apptainer_cmd_builder import (
+    ApptainerCmdBuilder,
+    ContainerSpec,
+    volumes,
+    BuildConfig,
+)
+from natsprovider.apptainer_cmd_builder.volumes import BaseVolume
+from natsprovider.interlink import deserialize_kubernetes
+
+StaticVolKey = Literal['volume_name', 'items']
 
 def _create_static_volume_dict(
-        volume_source_by_name: Dict[str, Dict[Literal['volume_name', 'items'], Any]],
+        volume_source_by_name: Dict[str, Dict[StaticVolKey, Any]],
         volume_definitions: List[Union[k8s.V1ConfigMap, k8s.V1Secret]],
+        build_config: BuildConfig,
 ):
     """
     Internal. Creates a dictionary mapping the name of each volume to a StaticVolume object that can then
@@ -40,6 +47,7 @@ def _create_static_volume_dict(
 
     return {
         volume_source_by_name[vol.metadata.name]['volume_name']: volumes.StaticVolume(
+            **build_config.base_volume_config(),
             config={
                 _resolve_key2path(volume_source_by_name[vol.metadata.name]['items'], k):
                     volumes.AsciiFileSpec(content=v)
@@ -49,14 +57,15 @@ def _create_static_volume_dict(
                 _resolve_key2path(volume_source_by_name[vol.metadata.name]['items'], k):
                     volumes.BinaryFileSpec(content=base64.b64decode(v.encode('ascii')))
                 for k, v in get_data(vol, 'binary').items()
-            }
+            },
         )
         for vol in volume_definitions if vol.metadata.name in volume_source_by_name.keys()
     }
 
 def _make_pod_volume_struct(
         pod: k8s.V1Pod,
-        containers_raw: List[Dict[str, Any]]
+        containers_raw: List[Dict[str, Any]],
+        build_config: BuildConfig
     ):
     """
     Internal. Create a dictionary mapping the volume name to a BaseVolume object that can then be mounted
@@ -70,30 +79,31 @@ def _make_pod_volume_struct(
                 volumes_counts[volume_mount.name] = 0
             volumes_counts[volume_mount.name] += 1
 
-    pprint (volumes_counts)
     empty_dirs = [v for c in containers_raw for v in (c if c is not None else []).get('emptyDirs') or []]
     empty_dirs = {
-        k: volumes.ScratchArea() if volumes_counts.get(k, 0) <= 1 else volumes.make_empty_dir()
+        k:  volumes.ScratchArea(**build_config.base_volume_config()) if volumes_counts.get(k, 0) <= 1
+            else volumes.make_empty_dir(build_config)
         for k in [os.path.split(dir_path)[-1] for dir_path in set(empty_dirs)]
     }
 
     # Create a mapping for configmaps from the pod.spec.volumes structure: {cfgmap.name: cfgmap}
     config_maps = _create_static_volume_dict(
         volume_source_by_name={
-            v.config_map.name: dict(volume_name=v.name, items=v.config_map.items)
+            str(v.config_map.name): {"volume_name": v.name, "items": v.config_map.items}
             for v in (pod.spec.volumes or []) if v is not None and v.config_map is not None
         },
         volume_definitions=[
             deserialize_kubernetes(cm_raw, 'V1ConfigMap')
             for container in containers_raw
             for cm_raw in container.get('configMaps') or []
-        ]
+        ],
+        build_config=build_config,
     )
 
     # Create a mapping for configmaps from the pod.spec.volumes structure: {secret.name: secret}
     secrets = _create_static_volume_dict(
         volume_source_by_name={
-            v.secret.secret_name: dict(volume_name=v.name, items=v.secret.items)
+            str(v.secret.secret_name): {"volume_name": v.name, "items": v.secret.items}
             for v in (pod.spec.volumes or []) if v is not None and v.secret is not None
         },
         volume_definitions=[
@@ -101,16 +111,17 @@ def _make_pod_volume_struct(
             for container in containers_raw
             for cm_raw in container.get('secrets') or []
         ],
+        build_config=build_config,
     )
 
     fuse_vol = {
-        vol_name: volumes.FuseVolume(fuse_mount_script=ann_val)
+        vol_name: volumes.FuseVolume(fuse_mount_script=ann_val, **build_config.base_volume_config())
         for ann_key, ann_val in (pod.metadata.annotations or {}).items()
         for vol_name in re.findall("fuse.vk.io/([\w-]+)", ann_key)
     }
 
     cvmfs = {
-        vol_name: volumes.BaseVolume(host_path="/cvmfs")
+        vol_name: volumes.BaseVolume(host_path_override="/cvmfs", **build_config.base_volume_config())
         for ann_key, ann_val in (pod.metadata.annotations or {}).items()
         for vol_name in re.findall("cvmfs.vk.io/([\w-]+)", ann_key)
     }
@@ -124,10 +135,10 @@ def _make_pod_volume_struct(
     }
 
 def _make_container_list(
+        build_config: BuildConfig,
         containers: Optional[List[V1Container]] = None,
         pod_volumes: Optional[Mapping[str, BaseVolume]] = None,
         use_fake_volumes: bool = False,
-        scratch_area: str = cfg.SCRATCH_AREA,
         is_init_container: bool = False,
 ) -> List[ContainerSpec]:
     """
@@ -159,7 +170,7 @@ def _make_container_list(
                     )
                     for vm in getattr(container, 'volume_mounts')
                 ],
-                volumes.make_empty_dir().mount(mount_path="/cache", read_only=False),
+                volumes.make_empty_dir(build_config).mount(mount_path="/cache", read_only=False),
             ], [])
 
     prefix = "init-" if is_init_container else "run-"
@@ -171,7 +182,7 @@ def _make_container_list(
             image=c.image,
             volume_binds=_volumes_for_container(c),
             environment={env.name: env.value for env in (c.env or []) if env.value is not None},
-            scratch_area=scratch_area,
+            **build_config.container_spec_config(),
         ) for c in containers
     ]
 
@@ -199,6 +210,7 @@ def from_kubernetes(
         pod_raw: Dict[str, Any],
         containers_raw: Optional[List[Dict[str, Any]]] = None,
         use_fake_volumes: bool = False,
+        build_config: BuildConfig = None,
 ) -> ApptainerCmdBuilder:
     """
     :param pod_raw:
@@ -231,41 +243,43 @@ def from_kubernetes(
         replace all volumes with scratch area, this is mainly used to enable recreating the container structure
         for asynchronous processing of the return code and log that may happen after volumes have been cleaned up.
 
+    :param build_config:
+        defines options to perform the script building
+
     :return:
         An instance of ApptainerCmdBuilder representing the pod
     """
     if 'kind' in pod_raw.keys() and 'apiVersion' in pod_raw.keys():
         if pod_raw['kind'] != 'Pod' and pod_raw['apiVersion'] != 'v1':
-            pprint(pod_raw)
             raise ValueError("Invalid pod description")
 
     _clean_keys_of_none_values(pod_raw)
 
+    if build_config is None:
+        build_config = BuildConfig()
+
     pod = deserialize_kubernetes(pod_raw, 'V1Pod')
-    pod_volumes = _make_pod_volume_struct(pod, containers_raw if containers_raw is not None else [])
+    pod_volumes = _make_pod_volume_struct(pod, containers_raw if containers_raw is not None else [], build_config)
 
-    print ("::: From interlink :::")
-    pprint (containers_raw)
-    print ("::: To kubernetes :::")
-    pprint(pod_volumes)
-
-    scratch_area = os.path.join(cfg.SCRATCH_AREA, f".interlink.{pod.metadata.uid}")
+    scratch_area = os.path.join(build_config.volumes.scratch_area, f".interlink.{pod.metadata.uid}")
     return ApptainerCmdBuilder(
         uid=pod.metadata.name,
         init_containers=_make_container_list(
+            build_config=build_config,
             containers=pod.spec.init_containers,
             pod_volumes=pod_volumes,
             use_fake_volumes=use_fake_volumes,
-            scratch_area=scratch_area,
             is_init_container=True,
         ),
         containers=_make_container_list(
+            build_config=build_config,
             containers=pod.spec.containers,
             pod_volumes=pod_volumes,
             use_fake_volumes=use_fake_volumes,
-            scratch_area=scratch_area,
             is_init_container=False,
         ),
-        scratch_area=scratch_area
+        scratch_area=scratch_area,
+        additional_directories_in_path=build_config.volumes.additional_directories_in_path,
+        cachedir=build_config.volumes.apptainer_cachedir,
     )
 
