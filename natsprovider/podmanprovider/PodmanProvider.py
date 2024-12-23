@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 import tarfile
 from pathlib import Path
+import shutil
 import os.path
 
 import podman
@@ -128,7 +129,21 @@ class PodmanProvider(BaseNatsProvider):
 
             return JobStatus(phase="running" if pilot.status == 'running' else 'succeeded', logs_tarball=logs)
 
+    async def delete_pod(self, job_name: str) -> None:
+        async with self.podman() as client:
+            try:
+                pilot = client.containers.get(job_name)
+            except podman.errors.exceptions.NotFound:
+                self.logger.warning(f"Trying to delete job {job_name}, but no container is found.")
+            else:
+                pilot.remove(force=True)
 
-
-
+        sandbox = Path(self._sandbox) / job_name
+        try:
+            shutil.rmtree(sandbox)
+        except FileNotFoundError:
+            self.logger.warning(f"Trying to delete job {job_name}, but no sandbox volume is found.")
+        except OSError as e:
+            self.logger.critical(f"Failed deleting sandbox for job {job_name}: {sandbox}")
+            self.logger.critical(e, exc_info=True)
 

@@ -38,7 +38,7 @@ podman = ["podman"]
 condor = ["htcondor"]
 
 [project.scripts]
-interlink = "natsprovider:__main__"
+interlink = "natsprovider:__main__.main"
 
 [project.urls]
 Homepage = "https://github.com/landerlini/interlink-condorce-plugin"

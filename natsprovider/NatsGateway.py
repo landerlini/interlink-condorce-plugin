@@ -1,11 +1,9 @@
-import asyncio
 import io
 import tarfile
 import logging
 from io import BytesIO
 from typing import Collection, Dict, List, Union
 from contextlib import asynccontextmanager
-from pprint import pformat
 
 import kubernetes.client
 import zlib
@@ -217,8 +215,6 @@ class NatsGateway:
                 ) for i_container, cs in enumerate(v1pod.spec.containers or [])
             ]
 
-        print (v1pod.spec.containers)
-        print (container_statuses)
         if len(container_statuses) == 0:
             self.logger.critical("Could not retrieve the status of any container!")
             return None
@@ -261,7 +257,7 @@ class NatsGateway:
         with tarfile.open(fileobj=io.BytesIO(job_status.logs_tarball), mode='r:*') as tar:
             for member in tar.getmembers():
                 if member.isfile():
-                    print (f"Pod has log for container {member.name}, requested {log_request.ContainerName}.log")
+                    self.logger.debug(f"Pod has log for container {member.name}, requested {log_request.ContainerName}.log")
                     if member.name in [log_request.ContainerName + ".log", log_request.ContainerName + ".log.init"]:
                         full_log = tar.extractfile(member).read().decode('utf-8')
 
