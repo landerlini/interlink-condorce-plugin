@@ -96,6 +96,13 @@ class BuildConfig(BaseModel):
             default_factory=lambda: os.environ.get("SHUB_PROXY_MASTER_TOKEN", ""),
             description="Master token of the proxy used to request and generate client tokens",
         )
+        cache_validity_seconds: int = Field(
+            default = 600,
+            description="""Automatically cached images are invalidated after this time (expressed in seconds). 
+            Note that image hash is not checked, and cache is based on tag only. 
+            Expiration is the only cache invalidation mechanism.
+            """,
+        )
 
 
     volumes: Volumes = Field(
@@ -128,7 +135,8 @@ class BuildConfig(BaseModel):
             print(f"[{section_name}]", file=ret)
 
             for entry, data in defs.get(ref, {}).get("properties", {}).items():
-                print("\n###", data.get("description"), file=ret)
+                for line in data.get("description", "").split('\n'):
+                    print("\n### ", line, file=ret)
                 value = self.model_dump().get(section_name, {}).get(entry)
                 print(f"{entry} = {json.dumps(value)}", file=ret)
             data = defs.get(ref, {}).get("properties", {})
@@ -161,6 +169,7 @@ class BuildConfig(BaseModel):
             cachedir=self.volumes.apptainer_cachedir,
             shub_proxy_server=self.shub_proxy.server,
             shub_proxy_master_token=self.shub_proxy.master_token,
+            shub_cache_seconds=self.shub_proxy.cache_validity_seconds,
             readonly_image_dir=self.volumes.image_dir,
             fakeroot=self.apptainer.fakeroot,
             containall=self.apptainer.containall,
