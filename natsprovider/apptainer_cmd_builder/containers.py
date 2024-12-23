@@ -78,6 +78,10 @@ class ContainerSpec(BaseModel, extra="forbid"):
         description="SingularityHub proxy master token used to generate client tokens"
     )
 
+    shub_cache_seconds: Optional[int] = Field(
+        default=600,
+        description="Time before pre-built docker image cache is invalidated. No check on image hash is performed!",
+    )
 
     return_code: Optional[int] = Field(
         default=None,
@@ -94,6 +98,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
         description="""Some frequently used image might be cached locally in this read-only directory.
         Image will be looked up as os.path.join(readonly_image_dir, image.replace(":", "_")).
         """,
+    )
+
+    cachedir: str = Field(
+        default=cfg.SCRATCH_AREA,
+        description="""Fast writable area shared among multiple instances to store built images"""
     )
 
     ################################################################################
@@ -290,17 +299,21 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ]
 
         local_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
+        cached_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
             ret += [
                 f"if [ -f {local_image} ]; then",
                 f"  IMAGE_{uid}={local_image}",
+                f"elif [ -f {cached_image} ]"
+                f"     && [ $(($(date +%s) - $(stat -c %Y {cached_image}))) -lt {self.shub_cache_seconds} ]; then",
+                f"  IMAGE_{uid}={cached_image}",
                 f"else",
-                f"  HTTP_STATUS=$(curl -Lo {os.path.join(self.scratch_area, f'.img.{uid}')} \\",
+                f"  HTTP_STATUS=$(curl -Lo {cached_image} \\",
                 f"      -w \"%{{http_code}}\" \\",
                 f"      -H \"X-Token: {self.shub_token}\" \\",
-                f"      {SHUB_PROXY}/get-docker/{self.image}) ",
+                f"      {self.shub_proxy_server}/get-docker/{self.image}) ",
                 f"  if [[ $HTTP_STATUS -ge 200 && $HTTP_STATUS -lt 300 ]]; then ",
-                f"    IMAGE_{uid}={os.path.join(self.scratch_area, f'.img.{uid}')} ",
+                f"    IMAGE_{uid}={cached_image} ",
                 f"  else ",
                 f"    IMAGE_{uid}={self.formatted_image} ",
                 f"  fi ",

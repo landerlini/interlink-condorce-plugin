@@ -158,6 +158,7 @@ class BuildConfig(BaseModel):
         return dict(
             executable=self.apptainer.executable,
             scratch_area=self.volumes.scratch_area,
+            cachedir=self.volumes.apptainer_cachedir,
             shub_proxy_server=self.shub_proxy.server,
             shub_proxy_master_token=self.shub_proxy.master_token,
             readonly_image_dir=self.volumes.image_dir,
