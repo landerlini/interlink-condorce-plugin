@@ -6,7 +6,14 @@ from contextlib import contextmanager
 from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 
-from condorprovider.utils import generate_uid, to_snakecase
+from natsprovider.apptainer_cmd_builder import BuildConfig
+from natsprovider.utils import generate_uid, to_snakecase
+
+build_config_for_tests = BuildConfig(
+    apptainer=BuildConfig.ApptainerOptions(
+        fuse_enabled_on_host=False,
+    )
+)
 
 @contextmanager
 def container_output(builder, test_name: str = "test"):

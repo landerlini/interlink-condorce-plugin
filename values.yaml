@@ -84,6 +84,9 @@ pluginDocker: "landerlini/interlink-condorce-plugin:v0.0"
 # pluginRepository is the git repository of the plugin, kept updated with git-sync
 pluginRepository: "https://github.com/landerlini/interlink-condorce-plugin"
 
+# pluginRepositoryBranch is the git revision (branch, tag or hash) to check out
+pluginRepositoryBranch: "HEAD"
+
 # pluginLivenessInitialDelaySeconds is the initial delay before prompting the plugin healthz.
 pluginLivenessInitialDelaySeconds: 2
  
@@ -170,4 +173,22 @@ natsBastionPort: 30022
 natsBastionImage: binlab/bastion:latest
 
 # natsAuthorizedKeys is the content of the authorized_keys files installed in the bastion service
-natsAuthorizedKeys:
+natsBastionAuthorizedKeys:
+
+# natsShutdownSubject is a subject used to trigger the shutdown (or restart) of plugins "attached" to a ggiven server.
+# In a configuration with a single NATS server providing a messaging layers among multiple interlink servers
+# and multiple resource providers, this subject is used to trigger the restart of the set of providers connected
+# to the affected interlink server.
+natsShutdownSubject: condor
+
+# natsQueue is the queue of providers used to implement work balance in case of multiple equal providers
+natsQueue: condor
+
+# natsTimeoutSeconds is the time in seconds to await for a NATS response before failing. Larger to adsorb bigger peaks.
+natsTimeoutSeconds: 60
+
+# natsWebSocketUsername is the username of the nats server to access through the websocket interface. Mandatory.
+natsWebSocketUsername:
+
+# natsWebSocketPassword is the password of the nats server to access through the websocket interface. Mandatory.
+natsWebSocketPassword:

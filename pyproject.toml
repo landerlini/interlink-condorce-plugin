@@ -1,0 +1,45 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.version]
+source = "file"
+path = "natsprovider/__main__.py"
+
+
+[project]
+name = "interlink-nats-plugin"
+dynamic = ["version"]
+authors = [
+    {name = "Lucio Anderlini", email = "Lucio.Anderlini@fi.infn.it"}
+]
+description = "Interlink submitter for multiple compute backends"
+readme = "README.md"
+requires-python = ">=3.9.18"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache 2 License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "fastapi",
+    "pyyaml",
+    "nats-py",
+    "orjson",
+    "kubernetes",
+    "tomli",
+    "aiohttp"
+]
+
+[project.optional-dependencies]
+test = ["pytest", "podman", "htcondor"]
+podman = ["podman"]
+condor = ["htcondor"]
+
+[project.scripts]
+interlink = "natsprovider:__main__.main"
+
+[project.urls]
+Homepage = "https://github.com/landerlini/interlink-condorce-plugin"
+Issues = "https://github.com/landerlini/interlink-condorce-plugin/issues"

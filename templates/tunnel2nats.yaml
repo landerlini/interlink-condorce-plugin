@@ -1,10 +1,37 @@
+{{ if .Values.natsBastionAuthorizedKeys }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: auth-keys
   namespace: {{ .Release.Namespace }}
 data:
-  bastion: {{ .Values.natsAuthorizedKeys | toJson }}
+  bastion: {{ .Values.natsBastionAuthorizedKeys | toJson }}
+
+---
+{{ end }}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nats-config
+  namespace: {{ .Release.Namespace }}
+data:
+  nats-server-conf: |
+    cluster 
+    {
+      name: interlink-plugin
+    }
+    
+    websocket 
+    {
+      no_tls: true
+      port: 8080
+      authorization 
+      {
+        username: {{ .Values.natsWebSocketUsername | required "Missing natsWebSocketUsername in values" | quote }}
+        password: {{ .Values.natsWebSocketPassword | required "Missing natsWebSocketPassword in values" | quote }}
+      }
+    }
 
 ---
 
@@ -25,6 +52,7 @@ spec:
         app: ssh-nats
     spec:
       containers:
+        {{ if .Values.natsBastionAuthorizedKeys }}
         - name: openssh-server
           image: {{ .Values.natsBastionImage | default "binlab/bastion:latest" }}
           ports:
@@ -54,26 +82,43 @@ spec:
               readOnly: true
             - name: bastion
               mountPath: /usr/etc/ssh
+        {{ end }}
 
 
         - name: nats-server
           image: nats:latest
+          args:
+            - -c
+            - /etc/nats/nats-server.conf
           ports:
             - containerPort: 4222
+            - containerPort: 8080
+          volumeMounts:
+            - name: nats-config
+              mountPath: /etc/nats
       volumes:
+        - name: nats-config
+          configMap:
+            name: nats-config
+            items:
+              - key: nats-server-conf
+                path: nats-server.conf
         - name: bastion
           hostPath:
             path: /opt/ssh-bastion
             type: DirectoryOrCreate
+        {{ if .Values.natsBastionAuthorizedKeys }}
         - name: authorized-keys
           configMap:
             name: auth-keys
             items:
               - key: bastion
                 path: bastion/authorized_keys
+        {{ end }}
 
 ---
 
+{{ if .Values.natsBastionAuthorizedKeys }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -90,6 +135,7 @@ spec:
       nodePort: {{ .Values.natsBastionPort }}
 
 ---
+{{ end }}
 
 apiVersion: v1
 kind: Service
@@ -101,7 +147,12 @@ spec:
 
   type: ClusterIP
   ports:
-    - protocol: TCP
+    - name: nats
+      protocol: TCP
       targetPort: 4222
       port: 4222
+    - name: websocket
+      protocol: TCP
+      targetPort: 8080
+      port: 8080
 

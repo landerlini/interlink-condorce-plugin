@@ -58,8 +58,12 @@ backendShubProxyMasterToken: <master token of shub proxy>
 pluginCondorPool: <value one would pass to condor -pool argument, with port>
 pluginCondorScheduler: <value one would pass to condor -name argument>
 
-# hostname
+# Host ingress configuration
 certManagerEmailAddress: <your e-mail>
+
+# Nats server configuration
+natsWebSocketUsername: <pick a username>
+natsWebSocketPassword: <pick a password>
 ```
 
 ### Dependencies 
@@ -69,13 +73,13 @@ certManagerEmailAddress: <your e-mail>
 ## Specialized plugin
 The plugin is composed of a general package to convert a Kubernetes Pod and a set of volumes into a bash script 
 relying on apptainer (or singularity) for the container runtime interface 
-(see [apptainer_cmd_builder](condorprovider/apptainer_cmd_builder)). 
+(see [apptainer_cmd_builder](natsprovider/apptainer_cmd_builder)). 
 A condor-specific machinery to submit generic payloads to a remote condor backend is coded in the 
-[CondorConfiguration module](condorprovider/CondorConfiguration.py).
-Finally, [CondorProvider](condorprovider/CondorProvider.py) defines methods to convert Kubernetes Pods into 
+[CondorConfiguration module](natsprovider/CondorConfiguration.py).
+Finally, [CondorProvider](natsprovider/CondorProvider.py) defines methods to convert Kubernetes Pods into 
 bash scripts and submit them to the condor backend. 
 
-The CondorProvider is wrapped in a FastAPI application defined in [main.py](main.py) exposing InterLink plugin APIs.
+The CondorProvider is wrapped in a FastAPI application defined in [main.py](natsplugin.py) exposing InterLink plugin APIs.
 
 
 ### Dependencies 
