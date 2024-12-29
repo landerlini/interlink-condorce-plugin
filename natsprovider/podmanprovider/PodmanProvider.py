@@ -10,7 +10,7 @@ import podman.errors
 
 from copy import copy
 from .. import interlink
-from ..utils import  compute_pod_resource, JobStatus
+from ..utils import  compute_pod_resource, JobStatus, Resources
 from . import configuration as cfg
 from ..BaseNatsProvider import BaseNatsProvider
 from ..apptainer_cmd_builder import BuildConfig
@@ -18,7 +18,14 @@ from ..apptainer_cmd_builder import BuildConfig
 from .volumes import BindVolume, TmpFS
 
 class PodmanProvider(BaseNatsProvider):
-    def __init__(self, nats_server: str, nats_pool: str, build_config: BuildConfig, interactive_mode: bool):
+    def __init__(
+            self,
+            nats_server: str,
+            nats_pool: str,
+            build_config: BuildConfig,
+            resources: Resources,
+            interactive_mode: bool
+    ):
         self._volumes = copy(build_config.volumes)
         build_config.volumes.scratch_area = "/scratch"
         build_config.volumes.apptainer_cachedir = "/cache"
@@ -31,6 +38,7 @@ class PodmanProvider(BaseNatsProvider):
             nats_pool=nats_pool,
             interactive_mode=interactive_mode,
             build_config=build_config,
+            resources=resources,
         )
         self._podman_base_url = cfg.PODMAN_BASE_URL
 

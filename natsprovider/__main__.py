@@ -17,14 +17,14 @@ MISSING_BUILD_CONFIG_ERROR_CODE = 127
 
 class AllProviders:
     @staticmethod
-    def condor(nats_server: str, nats_queue: str, build_config: BuildConfig, interactive_mode: bool):
+    def condor(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
         from .condor.CondorProvider import CondorProvider
-        return CondorProvider(nats_server, nats_queue, build_config, interactive_mode)
+        return CondorProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
 
     @staticmethod
-    def podman(nats_server: str, nats_queue: str, build_config: BuildConfig, interactive_mode: bool):
+    def podman(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
         from .podmanprovider.PodmanProvider import PodmanProvider
-        return PodmanProvider(nats_server, nats_queue, build_config, interactive_mode)
+        return PodmanProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
 
 def main():
     parser = ArgumentParser(

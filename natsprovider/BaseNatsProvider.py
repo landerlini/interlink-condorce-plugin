@@ -49,7 +49,7 @@ class BaseNatsProvider:
         self._running = True
         self._latest_tick = dict()
 
-        self._default_resources = resources
+        self._declared_resources = resources
 
     def required_updates(self, timer_key: str, delay_seconds: int):
         if (
@@ -254,7 +254,7 @@ class BaseNatsProvider:
             resources_subject = '.'.join((self._nats_subject, 'resources', self._nats_pool))
             resources = Resources()
 
-            resources.cpu = self._default_resources.cpu or await self.get_allocatable_cpu()
+            resources.cpu = self._declared_resources.cpu or await self.get_allocatable_cpu()
             if resources.cpu is None:
                 resources.cpu = cfg.DEFAULT_ALLOCATABLE_CPU
                 self.logger.warning(
@@ -264,7 +264,7 @@ class BaseNatsProvider:
             else:
                 resources.cpu = str(resources.cpu)
 
-            resources.memory = self._default_resources.memory or await self.get_allocatable_memory()
+            resources.memory = self._declared_resources.memory or await self.get_allocatable_memory()
             if resources.memory is None:
                 resources.memory = cfg.DEFAULT_ALLOCATABLE_MEMORY
                 self.logger.warning(
@@ -274,7 +274,7 @@ class BaseNatsProvider:
             else:
                 resources.memory = str(resources.memory)
 
-            resources.pods = self._default_resources.pods or await self.get_allocatable_pods()
+            resources.pods = self._declared_resources.pods or await self.get_allocatable_pods()
             if resources.pods is None:
                 resources.pods = cfg.DEFAULT_ALLOCATABLE_PODS
                 self.logger.warning(
@@ -284,7 +284,7 @@ class BaseNatsProvider:
             else:
                 resources.pods = int(resources.pods)
 
-            resources.gpus = self._default_resources.pods or await self.get_allocatable_gpus()
+            resources.gpus = self._declared_resources.pods or await self.get_allocatable_gpus()
             if resources.gpus is None:
                 resources.gpus = cfg.DEFAULT_ALLOCATABLE_GPUS
             else:
