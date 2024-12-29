@@ -302,7 +302,7 @@ class BaseNatsProvider:
             async with self.nats_connection() as nc:
                 await nc.publish(
                     subject=resources_subject,
-                    payload=orjson.dumps(resources.to_kubernetes()).encode('utf-8')
+                    payload=orjson.dumps(resources.to_kubernetes())
                 )
                 self.logger.info(f"Published allocatable resources on subject {resources_subject}")
 
