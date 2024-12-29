@@ -6,7 +6,7 @@ class BindVolume(BaseModel, extra="forbid"):
     source: str
     type: Literal["bind"] = Field(default="bind")
     read_only: bool = Field(default=False)
-    relabel: str = Field(default="Z")
+    # relabel: str = Field(default="Z")
 
 
 class TmpFS(BaseModel, extra="forbid"):
