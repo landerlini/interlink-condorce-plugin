@@ -254,7 +254,6 @@ class BaseNatsProvider:
 
     async def maybe_publish_resources(self):
         for _ in self.required_updates('resources', 30):
-            resources_subject = '.'.join((self._nats_subject, 'resources', self._nats_pool))
             resources = Resources()
 
             resources.cpu = self._declared_resources.cpu or await self.get_allocatable_cpu()
@@ -298,6 +297,14 @@ class BaseNatsProvider:
                 resources.gpus = cfg.DEFAULT_ALLOCATABLE_GPUS
             else:
                 resources.gpus = int(resources.gpus)
+
+            resources_subject = '.'.join((self._nats_subject, 'resources', self._nats_pool))
+            async with self.nats_connection() as nc:
+                await nc.publish(
+                    subject=resources_subject,
+                    payload=resources.model_dump_json().encode('utf-8')
+                )
+                self.logger.info(f"Published allocatable resources on subject {resources_subject}")
 
 
     async def get_allocatable_cpu(self) -> Union[int, str, None]:
