@@ -292,7 +292,7 @@ class BaseNatsProvider:
             else:
                 resources.pods = int(resources.pods)
 
-            resources.gpus = self._declared_resources.pods or await self.get_allocatable_gpus()
+            resources.gpus = self._declared_resources.gpus or await self.get_allocatable_gpus()
             if resources.gpus is None:
                 resources.gpus = cfg.DEFAULT_ALLOCATABLE_GPUS
             else:
