@@ -273,7 +273,7 @@ class BaseNatsProvider:
             if resources.memory is None:
                 resources.memory = cfg.DEFAULT_ALLOCATABLE_MEMORY
                 if 'memory' not in self._warned_on_unset_resources:
-                    self._warned_on_unset_resources.append('cpu')
+                    self._warned_on_unset_resources.append('memory')
                     self.logger.warning(
                         f"{self.__class__.__name__} does not implement `get_allocatable_memory`. "
                         f"Specify allocatable memory with --memory argument. Using default: {resources.memory}."
