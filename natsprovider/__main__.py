@@ -89,7 +89,7 @@ def main():
     )
 
     parser.add_argument(
-        "--cpus",
+        "--cpu",
         type=str,
         help="Number of CPUs made available through the interlink protocol, overrides provider assessment (if any).",
         default=None,
@@ -157,7 +157,7 @@ def main():
         build_config=build_config,
         interactive_mode=not args.non_interactive,
         resources=Resources(
-            cpus=args.cpus,
+            cpu=args.cpu,
             memory=args.memory,
             pods=args.pods,
             gpus=args.gpus,
