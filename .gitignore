@@ -2,3 +2,4 @@
 /.idea/**
 *.sif
 /secret.env
+/kubeconfig.yaml

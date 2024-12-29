@@ -14,7 +14,7 @@ from . import interlink
 import orjson
 import nats
 
-from .utils import NatsResponse, JobStatus
+from .utils import NatsResponse, JobStatus, Resources
 from . import configuration as cfg
 
 from .apptainer_cmd_builder import BuildConfig
@@ -26,8 +26,9 @@ class BaseNatsProvider:
     def __init__(
             self,
             nats_server: str,
-            nats_queue: str,
+            nats_pool: str,
             build_config: BuildConfig,
+            resources: Resources,
             interactive_mode: bool = True,
             shutdown_subject: str = None
     ):
@@ -37,41 +38,48 @@ class BaseNatsProvider:
         self._nats_server = nats_server
 
         self._nats_subject = cfg.NATS_SUBJECT
-        self._nats_queue = nats_queue
+        self._nats_pool = nats_pool
         self._nats_connection = None
         self._interactive_mode = interactive_mode
-        self._shutdown_subject = shutdown_subject if shutdown_subject is not None else nats_queue
+        self._shutdown_subject = shutdown_subject if shutdown_subject is not None else nats_pool
         self._build_config = build_config
 
         self._subscriptions = {}
         self._running = True
-        self._last_stop_request = None
-        self._last_build_config_refresh = None
+        self._latest_tick = dict()
+
+        self._default_resources = resources
+
+    def required_updates(self, timer_key: str, delay_seconds: int):
+        if (
+                timer_key not in self._latest_tick.keys() or
+                (datetime.now() - self._latest_tick[timer_key]).total_seconds() > delay_seconds
+        ):
+            self._latest_tick[timer_key] = datetime.now()
+            yield
+
 
     async def maybe_refresh_build_config(self):
-        if (
-                self._last_build_config_refresh is None or
-                (datetime.now() - self._last_build_config_refresh).total_seconds() > 60
-        ):
-            config_subject = '.'.join((self._nats_subject, 'config', self._nats_queue))
+        for _ in self.required_updates('build_config', 60):
+            config_subject = '.'.join((self._nats_subject, 'config', self._nats_pool))
             async with self.nats_connection() as nc:
                 await nc.publish(
                     subject=config_subject,
                     payload=self._build_config.model_dump_json().encode()
                 )
                 self.logger.info(f"Published build options on subject {config_subject}")
-                self._last_build_config_refresh = datetime.now()
+
 
 
     async def main_loop(self, time_interval: float = 0.2):
         """Main loop of the NATS responder"""
-        create_subject = '.'.join((self._nats_subject, 'create', self._nats_queue, '*'))
+        create_subject = '.'.join((self._nats_subject, 'create', self._nats_pool, '*'))
         shutdown_subject = '.'.join((self._nats_subject, 'shutdown', self._shutdown_subject))
         async with self.nats_connection() as nc:
             await self.maybe_refresh_build_config()
             self._subscriptions[create_subject] = await nc.subscribe(
                 subject=create_subject,
-                queue=self._nats_queue,
+                queue=self._nats_pool,
                 cb=self.create_pod_callback
             )
             self.logger.info(f"Subscribed to /create subject: {create_subject}")
@@ -97,23 +105,23 @@ class BaseNatsProvider:
         self._running = False
 
     def maybe_stop(self):
-        if self._last_stop_request is not None and (datetime.now() - self._last_stop_request).total_seconds() < 3:
-            self._running = False
+        for _ in self.required_updates('stop', 3):
+            self.logger.info(f"""Periodic report of {self.__class__.__name__}.
+                NATS Server: {self._nats_server}
+                Pool:       {self._nats_pool}
+                Active subscriptions: 
+                    Total:  {len(self._subscriptions):>10d}
+                    Status: {len([k for k, _ in self._subscriptions.items() if 'status' in k]):>10d}
+                    Delete: {len([k for k, _ in self._subscriptions.items() if 'delete' in k]):>10d}
+            """)
 
-        self._last_stop_request = datetime.now()
-        self.logger.info(f"""Periodic report of {self.__class__.__name__}.
-            NATS Server: {self._nats_server}
-            Queue:       {self._nats_queue}
-            Active subscriptions: 
-                Total:  {len(self._subscriptions):>10d}
-                Status: {len([k for k, _ in self._subscriptions.items() if 'status' in k]):>10d}
-                Delete: {len([k for k, _ in self._subscriptions.items() if 'delete' in k]):>10d}
-        """)
-
-        if self._interactive_mode:
-            print("Press Ctrl+C again to exit. Or Ctrl+\\ to kill.")
+            if self._interactive_mode:
+                print("Press Ctrl+C again to exit. Or Ctrl+\\ to kill.")
+                break
         else:
+            # This is only executed if break is not executed: either two subsequent Ctrl+C or interactive_mode=false.
             self._running = False
+
 
     @asynccontextmanager
     async def nats_connection(self):
@@ -232,6 +240,62 @@ class BaseNatsProvider:
         """
         status_prefix = '.'.join((self._nats_subject, 'status'))
         return [sbj.split(':')[-1] for sbj in self._subscriptions.keys() if sbj.startswith(status_prefix)]
+
+
+    async def maybe_publish_resources(self):
+        for _ in self.required_updates('resources', 30):
+            resources_subject = '.'.join((self._nats_subject, 'resources', self._nats_pool))
+            resources = Resources()
+
+            resources.cpu = self._default_resources.cpu or await self.get_allocatable_cpu()
+            if resources.cpu is None:
+                resources.cpu = cfg.DEFAULT_ALLOCATABLE_CPU
+                self.logger.warning(
+                        f"{self.__class__.__name__} does not implement `get_allocatable_cpu`. "
+                        f"Specify allocatable cpu with --cpu argument. Using default: {resources.cpu}."
+                    )
+            else:
+                resources.cpu = str(resources.cpu)
+
+            resources.memory = self._default_resources.memory or await self.get_allocatable_memory()
+            if resources.memory is None:
+                resources.memory = cfg.DEFAULT_ALLOCATABLE_MEMORY
+                self.logger.warning(
+                    f"{self.__class__.__name__} does not implement `get_allocatable_memory`. "
+                    f"Specify allocatable memory with --memory argument. Using default: {resources.memory}."
+                )
+            else:
+                resources.memory = str(resources.memory)
+
+            resources.pods = self._default_resources.pods or await self.get_allocatable_pods()
+            if resources.pods is None:
+                resources.pods = cfg.DEFAULT_ALLOCATABLE_PODS
+                self.logger.warning(
+                    f"{self.__class__.__name__} does not implement `get_allocatable_pods`. "
+                    f"Specify allocatable number of pods with --pods argument. Using default: {resources.pods}."
+                )
+            else:
+                resources.pods = int(resources.pods)
+
+            resources.gpus = self._default_resources.pods or await self.get_allocatable_gpus()
+            if resources.gpus is None:
+                resources.gpus = cfg.DEFAULT_ALLOCATABLE_GPUS
+            else:
+                resources.gpus = int(resources.gpus)
+
+
+    async def get_allocatable_cpu(self) -> Union[int, str, None]:
+        return None
+
+    async def get_allocatable_memory(self) -> Union[int, str, None]:
+        return None
+
+    async def get_allocatable_pods(self) -> Union[int, None]:
+        return None
+
+    async def get_allocatable_gpus(self) -> Union[int, None]:
+        return None
+
 
 
 

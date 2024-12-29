@@ -10,6 +10,7 @@ from tomli import load as toml_load
 from . import configuration as cfg
 from .BaseNatsProvider import BaseNatsProvider
 from .apptainer_cmd_builder import BuildConfig
+from .utils import Resources
 
 __version__ = "0.0.0"
 MISSING_BUILD_CONFIG_ERROR_CODE = 127
@@ -87,6 +88,34 @@ def main():
         default=None,
     )
 
+    parser.add_argument(
+        "--cpus",
+        type=str,
+        help="Number of CPUs made available through the interlink protocol, overrides provider assessment (if any).",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--memory",
+        type=str,
+        help="RAM memory available through the interlink protocol, overrides provider assessment (if any).",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--pods",
+        type=str,
+        help="Max number of pods executable, overrides provider assessment (if any).",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--gpus",
+        type=str,
+        help="Max number of nVidia GPUs available through interlink, overrides provider assessment (if any).",
+        default=None,
+    )
+
     args = parser.parse_args()
 
     if args.version:
@@ -127,6 +156,12 @@ def main():
         nats_queue=args.queue,
         build_config=build_config,
         interactive_mode=not args.non_interactive,
+        resources=Resources(
+            cpus=args.cpus,
+            memory=args.memory,
+            pods=args.pods,
+            gpus=args.gpus,
+        )
     )
 
     loop = asyncio.get_event_loop()

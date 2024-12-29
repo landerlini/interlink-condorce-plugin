@@ -18,7 +18,7 @@ from ..apptainer_cmd_builder import BuildConfig
 from .volumes import BindVolume, TmpFS
 
 class PodmanProvider(BaseNatsProvider):
-    def __init__(self, nats_server: str, nats_queue: str, build_config: BuildConfig, interactive_mode: bool):
+    def __init__(self, nats_server: str, nats_pool: str, build_config: BuildConfig, interactive_mode: bool):
         self._volumes = copy(build_config.volumes)
         build_config.volumes.scratch_area = "/scratch"
         build_config.volumes.apptainer_cachedir = "/cache"
@@ -28,7 +28,7 @@ class PodmanProvider(BaseNatsProvider):
         BaseNatsProvider.__init__(
             self,
             nats_server=nats_server,
-            nats_queue=nats_queue,
+            nats_pool=nats_pool,
             interactive_mode=interactive_mode,
             build_config=build_config,
         )

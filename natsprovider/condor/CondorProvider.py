@@ -9,11 +9,11 @@ from ..apptainer_cmd_builder import BuildConfig
 CondorConfiguration.initialize_htcondor()
 
 class CondorProvider(BaseNatsProvider):
-    def __init__(self, nats_server: str, nats_queue: str, build_config: BuildConfig, interactive_mode: bool):
+    def __init__(self, nats_server: str, nats_pool: str, build_config: BuildConfig, interactive_mode: bool):
         BaseNatsProvider.__init__(
             self,
             nats_server=nats_server,
-            nats_queue=nats_queue,
+            nats_pool=nats_pool,
             interactive_mode=interactive_mode,
             build_config=build_config,
         )
