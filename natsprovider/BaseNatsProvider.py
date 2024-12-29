@@ -1,3 +1,4 @@
+import re
 import asyncio
 import logging
 import os
@@ -58,6 +59,12 @@ class BaseNatsProvider:
             self._latest_tick[timer_key] = datetime.now()
             yield
 
+    @property
+    def censored_nats_server(self):
+        password = re.findall("\w+://[\w\d-]+:(^@)+@.*", self._nats_server)
+        if len(password):
+            return self._nats_server.replace(password[0], "***")
+        return self._nats_server
 
     async def maybe_refresh_build_config(self):
         for _ in self.required_updates('build_config', 60):
@@ -107,7 +114,7 @@ class BaseNatsProvider:
     def maybe_stop(self):
         for _ in self.required_updates('stop', 3):
             self.logger.info(f"""Periodic report of {self.__class__.__name__}.
-                NATS Server: {self._nats_server}
+                NATS Server: {self.censored_nats_server}
                 Pool:       {self._nats_pool}
                 Active subscriptions: 
                     Total:  {len(self._subscriptions):>10d}
@@ -129,7 +136,7 @@ class BaseNatsProvider:
         Simple context manager to define standard error management with singleton pattern
         """
         if self._nats_connection is None:
-            self.logger.info(f"Connecting to {self._nats_server}")
+            self.logger.info(f"Connecting to {self.censored_nats_server}")
             self._nats_connection = await nats.connect(servers=self._nats_server)
 
             try:
@@ -137,7 +144,7 @@ class BaseNatsProvider:
             finally:
                 await self._nats_connection.drain()
                 self._nats_connection = None
-                self.logger.info(f"Disconnected from {self._nats_server}")
+                self.logger.info(f"Disconnected from {self.censored_nats_server}")
         else:
             yield self._nats_connection
 
