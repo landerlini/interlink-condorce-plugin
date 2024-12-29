@@ -84,6 +84,7 @@ class BaseNatsProvider:
         shutdown_subject = '.'.join((self._nats_subject, 'shutdown', self._shutdown_subject))
         async with self.nats_connection() as nc:
             await self.maybe_refresh_build_config()
+            await self.maybe_publish_resources()
             self._subscriptions[create_subject] = await nc.subscribe(
                 subject=create_subject,
                 queue=self._nats_pool,
@@ -101,6 +102,7 @@ class BaseNatsProvider:
             while self._running:
                 await asyncio.sleep(time_interval)
                 await self.maybe_refresh_build_config()
+                await self.maybe_publish_resources()
 
         print ("Exiting.")
 
