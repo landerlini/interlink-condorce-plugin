@@ -187,11 +187,11 @@ metadata:
   name: cluster-queue-manager
   namespace: kueue-nats
 rules:
-  - apiGroups: [vk.io]
+  - apiGroups: [vk.io/v1]
     resources: [masterqueues]
     verbs: [list, watch, patch, get]
 
-  - apiGroups: [kueue.x-k8s.io]
+  - apiGroups: [kueue.x-k8s.io/v1beta1]
     resources: [clusterqueues, resourceflavors]
     verbs: [list, create, update, patch, get]
 
