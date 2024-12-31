@@ -191,7 +191,7 @@ rules:
     resources: [masterqueues]
     verbs: [list, watch, patch, get]
 
-  - apiGroups: [kueue.x-k8s.io/v1beta1]
+  - apiGroups: [kueue.x-k8s.io]
     resources: [clusterqueues, resourceflavors]
     verbs: [list, create, update, patch, get, delete]
 
@@ -202,6 +202,10 @@ rules:
   - apiGroups: [""]
     resources: [namespaces]
     verbs: [list, watch]
+  - apiGroups: [ "" ]
+    resources: [ events ]
+    verbs: [ create ]
+
 
   # Framework: admission webhook configuration management.
   - apiGroups: [admissionregistration.k8s.io/v1, admissionregistration.k8s.io/v1beta1]
