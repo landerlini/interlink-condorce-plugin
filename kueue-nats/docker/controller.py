@@ -167,7 +167,6 @@ class NatsFlavor(Flavor):
 
     async def update_resources_cb(self, msg: Msg):
         pool = msg.subject.split(".")[-1]
-        logging.getLogger(self.name).info(f"Received resource update for pool `{pool}`")
         if pool in self.pools or (self.pool_reg_exp is not None and len(re.findall(self.pool_reg_exp, pool)) > 0):
             resource_struct = json.loads(msg.data)
             logging.getLogger(self.name).info(f"Processing resource update for pool `{pool}`")
@@ -175,6 +174,10 @@ class NatsFlavor(Flavor):
             if self._pool_timestamps is None:
                 self._pool_timestamps = {}
             self._pool_timestamps[pool] = datetime.now()
+        else:
+            logging.getLogger(self.name).info(
+                f"Ignoring resource update for pool `{pool}`, not in {self.pools} nor matching /{self.pool_reg_exp}/."
+            )
 
     async def ensure_resource_flavors(self):
         resource_flavors = [rf.get('metadata', {}).get('name', '?') for rf in get_list_of_flavors()]
@@ -451,7 +454,6 @@ async def manage_branched_queues(mq: MasterQueue):
                 if body['spec'] != existing_q['spec']:
                     existing_q['spec'] = body['spec']
                     kopf.adopt(existing_q)
-                    logging.info(f"Updating configuration of branched ClusterQueue `{branched_q}`")
                     k8s.client.CustomObjectsApi().replace_cluster_custom_object(
                             group='kueue.x-k8s.io',
                             version='v1beta1',
