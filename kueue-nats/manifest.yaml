@@ -230,7 +230,7 @@ spec:
         app: kueue-nats-controller
     spec:
       serviceAccountName: kueue-nats-controller-account
-      restartPolicy: OnFailure
+      restartPolicy: Always
       containers:
         - name: kopf
           image: landerlini/kueue-nats-controller
