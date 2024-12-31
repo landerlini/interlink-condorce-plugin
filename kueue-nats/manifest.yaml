@@ -167,17 +167,10 @@ spec:
 ---
 
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: kueue-nats
-
----
-
-apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: kueue-nats-controller-account
-  namespace: kueue-nats
+  namespace: kueue-system
 
 ---
 
@@ -185,7 +178,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: cluster-queue-manager
-  namespace: kueue-nats
+  namespace: kueue-system
 rules:
   - apiGroups: [vk.io]
     resources: [masterqueues]
@@ -225,7 +218,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: kueue-nats-controller-account
-    namespace: kueue-nats
+    namespace: kueue-system
 
 ---
 
@@ -233,7 +226,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kueue-nats-controller
-  namespace: kueue-nats
+  namespace: kueue-system
 spec:
   replicas: 1
   strategy:
