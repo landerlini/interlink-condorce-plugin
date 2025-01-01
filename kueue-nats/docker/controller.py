@@ -412,6 +412,9 @@ async def tick_master_queue(body, **kwargs):
     await maybe_update_cluster_queue(name, mq)
     await manage_branched_queues(mq)
 
+    # Debugging
+    logging.info(__MASTER_QUEUES__)
+
 async def manage_branched_queues(mq: MasterQueue):
     current_cluster_queues = get_list_of_cluster_queues()
     current_cq_names = [cq.get('metadata', {}).get('name') for cq in current_cluster_queues]
@@ -421,8 +424,7 @@ async def manage_branched_queues(mq: MasterQueue):
     for branched_q in required_bq_names:
         flavors = []
         for flavor in mq.get_flavors():
-            borrowing_config = [q for q in flavor.can_lend_to if q.queue == branched_q]
-            if len(borrowing_config):
+            for borrowing_config in [q for q in flavor.can_lend_to if q.queue == branched_q]:
                 for kueue_flavor in flavor.kueue_flavors:
                     flavors.append(
                         dict(
@@ -432,8 +434,8 @@ async def manage_branched_queues(mq: MasterQueue):
                                     name=resource_key,
                                     nominalQuota=0,
                                     **(
-                                        {'borrowingLimit': borrowing_config[0].lendingLimit[resource_key]}
-                                        if resource_key in borrowing_config[0].lendingLimit.keys() else {}
+                                        {'borrowingLimit': borrowing_config.lendingLimit[resource_key]}
+                                        if resource_key in borrowing_config.lendingLimit.keys() else {}
                                     ),
                                 )
                                 for resource_key in RESOURCES_KEYS
@@ -452,15 +454,30 @@ async def manage_branched_queues(mq: MasterQueue):
                 existing_q.get('metadata', {}).get('ownerReferences', [{}])[0].get('name', '') == mq.name
             ):
                 if body['spec'] != existing_q['spec']:
-                    existing_q['spec'] = body['spec']
-                    kopf.adopt(existing_q)
-                    k8s.client.CustomObjectsApi().replace_cluster_custom_object(
+                    if len(body['spec']['resourceGroups'][0]['flavors']) > 0:
+                        existing_q['spec'] = body['spec']
+                        kopf.adopt(existing_q)
+                        k8s.client.CustomObjectsApi().replace_cluster_custom_object(
+                                group='kueue.x-k8s.io',
+                                version='v1beta1',
+                                plural='clusterqueues',
+                                name=branched_q,
+                                body=existing_q,
+                        )
+                    else:
+                        logging.warning(f"Branched queue `{branched_q}` has no active flavor. Hold.")
+                        k8s.client.CustomObjectsApi().patch_cluster_custom_object(
                             group='kueue.x-k8s.io',
                             version='v1beta1',
                             plural='clusterqueues',
                             name=branched_q,
-                            body=existing_q,
-                    )
+                            body={
+                                'spec': {
+                                    'stopPolicy': 'Hold',
+                                }
+                            },
+                        )
+
             else:
                 logging.critical(
                     f"Conflict defining branched ClusterQueue `{branched_q}` already owned by MasterQueue "
@@ -479,3 +496,26 @@ async def manage_branched_queues(mq: MasterQueue):
             logging.error(
                 f"Unexpectedly empty flavor list for ClusterQueue `{branched_q}` branched from MasterQueue `{mq.name}`"
             )
+
+    ## Clean up
+    for cluster_queue in current_cluster_queues:
+        if ( # owned and active
+                (cluster_queue.get('metadata', {}).get('ownerReferences', [{}])[0].get('kind', '') == 'MasterQueue') and
+                (cluster_queue.get('metadata', {}).get('ownerReferences', [{}])[0].get('name', '') == mq.name) and
+                ('Hold' not in cluster_queue.get('spec', {}).get('stopPolicy'))
+        ):
+            cq_name = cluster_queue.get('metadata', {}).get('name')
+            if cq_name not in required_bq_names and cq_name != mq.name:
+                logging.warning(f"MasterQueue `{mq.name}` will no longer lend resources to Queue `{cq_name}`. Hold.")
+                k8s.client.CustomObjectsApi().patch_cluster_custom_object(
+                    group='kueue.x-k8s.io',
+                    version='v1beta1',
+                    plural='clusterqueues',
+                    name=cq_name,
+                    body={
+                        'spec': {
+                            'stopPolicy': 'Hold',
+                        }
+                    },
+                )
+

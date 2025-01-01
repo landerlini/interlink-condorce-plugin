@@ -118,6 +118,7 @@ spec:
                               type: string
                             lendingLimit:
                               type: object
+                              default: {}
                               properties:
                                 cpu:
                                   x-kubernetes-int-or-string: true
