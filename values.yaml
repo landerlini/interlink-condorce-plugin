@@ -114,6 +114,14 @@ pluginCondorPool: "ce01t-htc.cr.cnaf.infn.it:9619"
 # pluginSchedulerName is the HTCondor scheduler, usually passed as value of the argument -name to condor CLI
 pluginCondorScheduler: "ce01t-htc.cr.cnaf.infn.it"
 
+# pluginCondorAllocatable defines the allocatable resources of the remote plugin if not other information is available
+pluginCondorAllocatable:
+  cpu: 1
+  memory: 2Gi
+  pods: 10
+  gpus: 0
+
+
 # backendIamIssuer is the IAM issuer to authenticate against the HTCondor backend (via scitokens)
 backendIamIssuer: "https://iam-t1-computing.cloud.cnaf.infn.it"
 

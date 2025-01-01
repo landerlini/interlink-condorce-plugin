@@ -156,6 +156,14 @@ spec:
               value: {{ .Values.natsServer | default "nats://nats:4222" }}
             - name: NATS_TIMEOUT_SECONDS
               value: {{ .Values.natsTimeoutSeconds | default 60 | quote }}
+            - name: DEFAULT_ALLOCATABLE_CPU
+              value: {{ .Values.pluginCondorAllocatable.cpu | quote | default "1" }}
+            - name: DEFAULT_ALLOCATABLE_MEMORY
+              value: {{ .Values.pluginCondorAllocatable.memory | quote | default "2Gi" }}
+            - name: DEFAULT_ALLOCATABLE_PODS
+              value: {{ .Values.pluginCondorAllocatable.pods | quote | default "10" }}
+            - name: DEFAULT_ALLOCATABLE_GPUS
+              value: {{ .Values.pluginCondorAllocatable.gpus | quote | default "0" }}
 
           volumeMounts:
             - name: interlink
