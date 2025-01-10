@@ -63,16 +63,16 @@ class NatsGateway:
         finally:
             await nc.drain()
 
-    def retrieve_queue_from_tolerations(self, tolerations: List[kubernetes.client.V1Toleration]):
-        queues = [t.value for t in tolerations if t.key == 'queue.vk.io']
-        if len(queues) == 0:
-            self.logger.error("Toleration queue.vk.io=<queue>:NoSchedule is mandatory")
-            raise HTTPException(400, "Toleration queue.vk.io=<queue>:NoSchedule is mandatory")
-        if len(queues) > 1:
-            self.logger.error("Multi-queue submission is not supported, yet.")
-            raise HTTPException(400, "Multi-queue submission is not supported, yet.")
+    def retrieve_pool_from_tolerations(self, tolerations: List[kubernetes.client.V1Toleration]):
+        pools = [t.value for t in tolerations if t.key == 'pool.vk.io']
+        if len(pools) == 0:
+            self.logger.error("Toleration pool.vk.io=<pool>:NoSchedule is mandatory")
+            raise HTTPException(400, "Toleration pool.vk.io=<pool>:NoSchedule is mandatory")
+        if len(pools) > 1:
+            self.logger.error("Multi-pool submission is not supported, yet.")
+            raise HTTPException(400, "Multi-pool submission is not supported, yet.")
 
-        return queues[0]
+        return pools[0]
 
     async def create_job(self, pod: interlink.PodRequest, volumes: Collection[interlink.Volume]) -> str:
         """
@@ -80,13 +80,13 @@ class NatsGateway:
         """
         v1pod = pod.deserialize()
         self.logger.info(f"Create pod {pod}")
-        queue = self.retrieve_queue_from_tolerations(v1pod.spec.tolerations)
-        if queue not in self._build_configs.keys():
-            self.logger.error(f"Missing configuration for queue {queue}!")
+        pool = self.retrieve_pool_from_tolerations(v1pod.spec.tolerations)
+        if pool not in self._build_configs.keys():
+            self.logger.error(f"Missing configuration for pool {pool}!")
         builder = from_kubernetes(
             pod.model_dump(),
             [volume.model_dump() for volume in volumes],
-            build_config=self._build_configs.get(queue, BuildConfig()),
+            build_config=self._build_configs.get(pool, BuildConfig()),
         )
 
         nats_payload = dict(
@@ -100,7 +100,7 @@ class NatsGateway:
         )
 
         async with self.nats_connection() as nc:
-            create_subject = ".".join((self._nats_subject, "create", queue, get_readable_jobid(pod)))
+            create_subject = ".".join((self._nats_subject, "create", pool, get_readable_jobid(pod)))
             self.logger.info(f"Submitting payload with subject: `{create_subject}`")
             create_response = NatsResponse.from_nats(
                 await nc.request(
