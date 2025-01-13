@@ -24,4 +24,9 @@ DEFAULT_ALLOCATABLE_PODS = int(os.environ.get("DEFAULT_ALLOCATABLE_PODS", "10"))
 # DEFAULT_ALLOCATABLE_GPUS is the number of allocatable nVidia GPUs if not specified by either the provider or via CLI
 DEFAULT_ALLOCATABLE_GPUS = int(os.environ.get("DEFAULT_ALLOCATABLE_GPUS", "0"))
 
+# NUMBER_OF_GETTING_STATUS_ATTEMPTS is the maximal number of attempts performed to retrieve the status of a pod
+NUMBER_OF_GETTING_STATUS_ATTEMPTS = int(os.environ.get("NUMBER_OF_GETTING_STATUS_ATTEMPTS", "3"))
+
+# MILLISECONDS_BETWEEN_GETTING_STATUS_ATTEMPTS is the time, in milliseconds, between two subsequent attempts
+MILLISECONDS_BETWEEN_GETTING_STATUS_ATTEMPTS = int(os.environ.get("MILLISECONDS_BETWEEN_GETTING_STATUS_ATTEMPTS", "500"))
 

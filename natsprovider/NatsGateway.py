@@ -1,3 +1,4 @@
+import asyncio
 import io
 import tarfile
 import logging
@@ -14,6 +15,7 @@ import nats, nats.errors, nats.aio.msg
 from requests import delete
 
 from . import interlink
+from . import configuration as cfg
 
 # Local
 from .utils import NatsResponse, get_readable_jobid, JobStatus
@@ -138,22 +140,35 @@ class NatsGateway:
         self.logger.info(f"Query status of pod {pod}")
         v1pod = pod.deserialize()
         job_name = get_readable_jobid(pod)
-        async with self.nats_connection() as nc:
-            try:
-                status_response = NatsResponse.from_nats(
-                    await nc.request(
-                        ".".join((self._nats_subject, "status", job_name)),
-                        zlib.compress(orjson.dumps(pod.model_dump())),
-                        timeout=self._nats_timeout_seconds,
+        pod_metadata = v1pod.metadata
+        for i_attempt in range(cfg.NUMBER_OF_GETTING_STATUS_ATTEMPTS):
+            if i_attempt > 0:
+                await asyncio.sleep(cfg.MILLISECONDS_BETWEEN_GETTING_STATUS_ATTEMPTS * 1e-3)
+
+            async with self.nats_connection() as nc:
+                try:
+                    status_response = NatsResponse.from_nats(
+                        await nc.request(
+                            ".".join((self._nats_subject, "status", job_name)),
+                            zlib.compress(orjson.dumps(pod.model_dump())),
+                            timeout=self._nats_timeout_seconds,
+                        )
                     )
-                )
-            except nats.errors.NoRespondersError as e:
-                self.logger.error(f"Failed to retrieve status for job {pod}")
-                return None
+                except nats.errors.NoRespondersError as e:
+                    self.logger.error(f"Failed to retrieve status for job {pod}")
+                    return None
+
+
+            if ( # Conditions triggering a retrial: unknown phase, NotFound error and Server Internal Error
+                    (status_response.data.get('phase', 'unknown') in ['unknown'])
+                or  (status_response.status_code in [404, 500])
+            ):
+                continue
+            break
 
         status_response.raise_for_status()
-        pod_metadata = v1pod.metadata
         job_status = JobStatus(**status_response.data)
+
         self.logger.info(
             f"Status of {pod}: {job_status.phase} "
             f"[{'w/' if len(job_status.logs_tarball) else 'w/o'} logs]"
