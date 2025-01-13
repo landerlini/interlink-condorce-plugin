@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any, Dict, List, Literal
 import os
@@ -65,8 +66,9 @@ async def delete_pod(pod: Dict[str, Any]) -> str:
 async def get_pod_status(pods: List[Dict[str, Any]]) -> List[interlink.PodStatus]:
     logging.info(f"Requested status, number of pods: {len(pods)}")
     pods = [interlink.PodRequest(**p) for p in pods]
-    retrieved_states = [await nats_gateway.get_pod_status(pod) for pod in pods]
-    return [state for state in retrieved_states if state is not None]
+    async with asyncio.TaskGroup() as taskgroup:
+        get_status_tasks = [taskgroup.create_task(nats_gateway.get_pod_status(pod)) for pod in pods]
+    return [task.result() for task in get_status_tasks if task.result() is not None]
 
 
 @app.get("/getLogs")
