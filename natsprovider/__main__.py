@@ -26,6 +26,11 @@ class AllProviders:
         from .podmanprovider.PodmanProvider import PodmanProvider
         return PodmanProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
 
+    @staticmethod
+    def interlink(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
+        from .kubernetesprovider.KubernetesProvider import KubernetesProvider
+        return KubernetesProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
+
 def main():
     parser = ArgumentParser(
         prog="natsprovider",

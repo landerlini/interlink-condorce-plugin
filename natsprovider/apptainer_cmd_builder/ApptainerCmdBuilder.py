@@ -162,6 +162,12 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         %(exec_containers)s
         
         ################################################################################
+        ## Output retrival through stdout 
+        echo "==== OUTPUT BEGIN %(application_token)s ===="
+        echo $(gzip -c $SANDBOX/logs | base64)
+        echo "==== OUTPUT END %(application_token)s ===="
+        
+        ################################################################################
         ## Clean-up section
         %(cleanup_volumes)s
         
@@ -179,7 +185,8 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
             cleanup_volumes=self.cleanup_volume_files(),
             export_of_additional_directories_in_path="" if len(self.additional_directories_in_path) == 0 else (
                 f"export PATH={':'.join(self.additional_directories_in_path)}:$PATH"
-            )
+            ),
+            application_token=cfg.APPLICATION_TOKEN,
         )
 
         script_lines = script.split('\n')

@@ -21,9 +21,9 @@ class CondorProvider(BaseNatsProvider):
             self,
             nats_server=nats_server,
             nats_pool=nats_pool,
-            interactive_mode=interactive_mode,
             build_config=build_config,
             resources=resources,
+            interactive_mode=interactive_mode,
         )
         self.condor = CondorConfiguration()
 

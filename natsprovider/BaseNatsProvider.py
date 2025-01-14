@@ -106,6 +106,7 @@ class BaseNatsProvider:
                 await self.maybe_publish_resources()
 
         print ("Exiting.")
+        await self.close_connections_callback()
 
     async def shutdown_callback(self, msg: nats.aio.msg.Msg):
         self.logger.warning(
@@ -318,6 +319,9 @@ class BaseNatsProvider:
 
     async def get_allocatable_gpus(self) -> Union[int, None]:
         return None
+
+    async def close_connections_callback(self):
+        pass
 
 
 
