@@ -1,9 +1,11 @@
 import random
+from datetime import datetime
 import math
 import os.path
 import string
 import textwrap
 from base64 import b64encode
+from contextlib import contextmanager
 from typing import Any, Dict, Literal, Union, Optional
 import zlib
 from io import BytesIO
@@ -12,6 +14,7 @@ import pickle
 from pydantic import BaseModel, Field
 from kubernetes.utils.quantity import parse_quantity
 from fastapi import HTTPException
+import requests
 
 from . import interlink
 
@@ -218,3 +221,88 @@ def sanitize_uid(uid: str):
     Return a sanitized version of a string, only including letters and digits
     """
     return ''.join([ch for ch in uid if ch in (string.ascii_letters + string.digits)])
+
+
+class TokenManager:
+    """
+    TokenManager refreshes OIDC tokens or load them from a POSIX path if refreshed by an external agent.
+
+    Example with an external manager.
+    ```python
+    token_manager = TokenManager(bearer_token_path="/interlink/token")
+    ...
+    os.environ['BEARER_TOKEN'] = token_manager.token
+    ```
+
+    Example with a refresh token
+    ```python
+    token_manager = TokenManager(
+        iam_issuer=os.environ['IAM_ISSUER'],
+        refresh_token=os.environ['REFRESH_TOKEN'],
+        iam_client_id=os.environ['IAM_CLIENT_ID'],
+        iam_client_secret=os.environ['IAM_CLIENT_SECRET'],
+        token_validity_seconds=600
+    )
+    ...
+    os.environ['BEARER_TOKEN'] = token_manager.token
+    ```
+    """
+
+    def __init__(
+            self,
+            iam_issuer: Optional[str] = None,
+            refresh_token: Optional[str] = None,
+            iam_client_id: Optional[str] = None,
+            iam_client_secret: Optional[str] = None,
+            token_validity_seconds: Optional[int] = None,
+            bearer_token_path: Optional[str] = None,
+    ):
+        self.iam_issuer = iam_issuer
+        self.refresh_token = refresh_token
+        self.iam_client_id = iam_client_id
+        self.iam_client_secret = iam_client_secret
+        self.token_validity_seconds = token_validity_seconds
+        self.bearer_token_path = bearer_token_path
+
+        self._last_token_refresh: Union[datetime, None] = None
+        self._token: Union[str, None] = None
+
+        ## Validation
+        if self.bearer_token_path is not None:
+            self.token_validity_seconds = 0
+            return
+
+        fields = ('iam_issuer', 'refresh_token', 'iam_client_id', 'iam_client_secret', 'token_validity_seconds')
+        null_fields = [f for f in fields if getattr(self, f) is None]
+        if len(null_fields):
+            raise ValueError(
+                f"`bearer_token_path` was not set, but the following fields were found None: {', '.join(null_fields)}"
+            )
+
+    def _refresh_token(self):
+        if self.bearer_token_path is not None:
+            with open(self.bearer_token_path) as f:
+                return f.read()
+
+        response = requests.post(
+            self.iam_issuer + '/token',
+            data={'grant_type': 'refresh_token', 'refresh_token': self.refresh_token},
+            auth=(self.iam_client_id, self.iam_client_secret),
+            )
+        if response.status_code / 100 != 2:
+            print(response.text)
+        response.raise_for_status()
+        return response.json().get("access_token")
+
+    @property
+    def token(self) -> str:
+        """
+        Return a cached version of the token, taking care of refreshing the cache as needed.
+        """
+        ltr = self._last_token_refresh
+        if self._token is None or ltr is None or (datetime.now() - ltr).seconds > self.token_validity_seconds:
+            self._last_token_refresh = datetime.now()
+            self._token = self._refresh_token()
+
+        return self._token
+

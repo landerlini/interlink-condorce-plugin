@@ -1,6 +1,8 @@
 import sys
 from datetime import datetime
 import io
+
+from google.oauth2.reauth import refresh_grant
 from pydantic import BaseModel, Field
 import subprocess
 import os
@@ -12,7 +14,7 @@ import htcondor
 import requests
 import asyncio
 
-from natsprovider.utils import generate_uid
+from natsprovider.utils import generate_uid, TokenManager
 from natsprovider.condor import configuration as cfg
 
 from enum import Enum
@@ -29,6 +31,15 @@ class JobStatus(Enum):
         return Enum.__str__(self).split('.')[1]
 
 CONDOR_ATTEMPTS = 3
+
+token_manager = TokenManager(
+    iam_issuer=cfg.IAM_ISSUER,
+    refresh_token=cfg.REFRESH_TOKEN,
+    iam_client_id=cfg.IAM_CLIENT_ID,
+    iam_client_secret=cfg.IAM_CLIENT_SECRET,
+    token_validity_seconds=cfg.TOKEN_VALIDITY_SECONDS,
+    bearer_token_path=cfg.BEARER_TOKEN_PATH,
+)
 
 class HTCondorException(IOError):
     pass
@@ -155,40 +166,15 @@ class CondorConfiguration(BaseModel):
             '_condor_SEC_CLIENT_AUTHENTICATION_METHODS', 'SCITOKENS'
         )
 
-        if 'BEARER_TOKEN' not in os.environ.keys() and cfg.BEARER_TOKEN_PATH is None:
-            os.environ['BEARER_TOKEN'] = CondorConfiguration._refresh_token()
+        os.environ['BEARER_TOKEN'] = token_manager.token
 
         htcondor.param['SEC_CLIENT_AUTHENTICATION_METHODS'] = 'SCITOKENS'
         htcondor.reload_config()
 
     @staticmethod
-    def _refresh_token():
-        response = requests.post(
-            cfg.IAM_ISSUER + '/token',
-            data={'grant_type': 'refresh_token', 'refresh_token': cfg.REFRESH_TOKEN},
-            auth=(cfg.IAM_CLIENT_ID, cfg.IAM_CLIENT_SECRET),
-        )
-        if response.status_code / 100 != 2:
-            print(response.text)
-        response.raise_for_status()
-        return response.json().get("access_token")
-
-    def _ensure_token(self):
-        last_refresh = self.last_token_refresh
-
-        _log_token = cfg.DEBUG and (os.environ.get('BEARER_TOKEN') is None)
-
-        if cfg.BEARER_TOKEN_PATH is not None:
-            os.environ['BEARER_TOKEN'] = open(cfg.BEARER_TOKEN_PATH).read()
-        elif last_refresh is None or (datetime.now() - last_refresh).seconds > cfg.TOKEN_VALIDITY_SECONDS:
-            os.environ['BEARER_TOKEN'] = CondorConfiguration._refresh_token()
-            self.last_token_refresh = datetime.now()
-
-        htcondor.param['SEC_TOKEN'] = os.environ['BEARER_TOKEN']
-
-        if _log_token:
-            print(f"Bearer token:", os.environ['BEARER_TOKEN'])
-
+    def _ensure_token():
+        os.environ['BEARER_TOKEN'] = token_manager.token
+        os.environ['SEC_TOKEN'] = token_manager.token
 
     async def get_schedd(self):
         self._ensure_token()

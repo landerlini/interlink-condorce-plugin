@@ -23,4 +23,3 @@ IAM_CLIENT_ID = os.environ["IAM_CLIENT_ID"]
 
 # IAM_CLIENT_SECRET is the SECRET of the IAM Client defined through the IAM_ISSUER
 IAM_CLIENT_SECRET = os.environ['IAM_CLIENT_SECRET']
-
