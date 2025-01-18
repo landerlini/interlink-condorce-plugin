@@ -191,7 +191,8 @@ class NatsGateway:
             ]
 
         elif job_status.phase == "unknown":
-            self.logger.error(f"Requested status for a removed job: {job_name}. Returning exitCode 404.")
+            self.logger.error(f"Requested status for job: {job_name} unknown.")
+
             container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
