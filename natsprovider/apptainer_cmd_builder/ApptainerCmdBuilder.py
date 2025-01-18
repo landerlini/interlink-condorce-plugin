@@ -196,8 +196,8 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
             if len(line) + len(next_line)
         ]
 
-        if cfg.DEBUG:
-            print ('\n'.join(script_lines))
+        # if cfg.DEBUG:
+        #    print ('\n'.join(script_lines))
 
         return '\n'.join(script_lines)
 
