@@ -177,8 +177,17 @@ class NatsGateway:
         container_statuses = []
 
         if job_status.phase == "pending":
-            self.logger.error(f"Job {job_name} is being initialized. Returning no information.")
-            return None
+            container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        waiting=interlink.StateWaiting(
+                            reason=job_status.reason if job_status.reason is not None else "Pending",
+                            message="Pending"
+                        )
+                    )
+                ) for cs in (v1pod.spec.containers or []) + (v1pod.spec.init_containers or [])
+            ]
 
         elif job_status.phase == "running":
             container_statuses += [

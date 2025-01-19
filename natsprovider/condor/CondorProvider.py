@@ -51,9 +51,9 @@ class CondorProvider(BaseNatsProvider):
             return JobStatus(phase="unknown")
 
         if status == CondorJobStatus.held:
-            return JobStatus(phase="pending")
+            return JobStatus(phase="pending", reason="held")
         elif status == CondorJobStatus.idle:
-            return JobStatus(phase="pending")
+            return JobStatus(phase="pending", reason="idle")
         elif status == CondorJobStatus.running:
             return JobStatus(phase="running")
         elif status == CondorJobStatus.completed:
