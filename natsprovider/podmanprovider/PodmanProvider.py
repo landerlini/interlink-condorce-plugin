@@ -90,11 +90,19 @@ class PodmanProvider(BaseNatsProvider):
                         source=self._volumes.scratch_area,
                         target=self._build_config.volumes.scratch_area,
                     ).model_dump(),
-                    BindVolume(
-                        source=str(sandbox),
-                        target="/sandbox",
-                    ).model_dump(),
+                   BindVolume(
+                       source=str(sandbox),
+                       target="/sandbox",
+                   ).model_dump(),
                 ] + (
+                    [
+                        BindVolume(
+                            source=cfg.CVMFS_MOUNT_POINT,
+                            target="/cvmfs",
+                            read_only=True,
+                        ).model_dump(),
+                    ] if cfg.CVMFS_MOUNT_POINT else []
+                ) + (
                     # image_dir is only mounted if it exists
                     [
                         BindVolume(
