@@ -45,7 +45,7 @@ class BaseNatsProvider:
         self._interactive_mode = interactive_mode
         self._shutdown_subject = shutdown_subject if shutdown_subject is not None else nats_pool
         self._build_config = build_config
-        self._leader = leader
+        self.leader = leader
 
         self._subscriptions = {}
         self._running = True
@@ -86,7 +86,7 @@ class BaseNatsProvider:
         create_subject = '.'.join((self._nats_subject, 'create', self._nats_pool, '*'))
         shutdown_subject = '.'.join((self._nats_subject, 'shutdown', self._shutdown_subject))
         async with self.nats_connection() as nc:
-            if self._leader:
+            if self.leader:
                 await self.maybe_refresh_build_config()
                 await self.maybe_publish_resources()
             self._subscriptions[create_subject] = await nc.subscribe(
@@ -105,7 +105,7 @@ class BaseNatsProvider:
             self.logger.info(f"Waiting for NATS payloads...")
             while self._running:
                 await asyncio.sleep(time_interval)
-                if self._leader:
+                if self.leader:
                     await self.maybe_refresh_build_config()
                     await self.maybe_publish_resources()
 
@@ -121,7 +121,7 @@ class BaseNatsProvider:
 
     def maybe_stop(self):
         for _ in self.required_updates('stop', 3):
-            if self._leader:
+            if self.leader:
                 self.logger.info(f"""Periodic report of {self.__class__.__name__}.
                     NATS Server: {self.censored_nats_server}
                     Pool:       {self._nats_pool}
@@ -132,7 +132,7 @@ class BaseNatsProvider:
                 """)
 
             if self._interactive_mode:
-                if self._leader:
+                if self.leader:
                     print("Press Ctrl+C again to exit. Or Ctrl+\\ to kill.")
                 break
         else:
