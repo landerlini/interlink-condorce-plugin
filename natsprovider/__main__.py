@@ -200,7 +200,7 @@ def main():
             p.start()
 
     # Main instance
-    _create_and_operate_provider(args, build_config)
+    _create_and_operate_provider(args, build_config, leader=True)
 
     for p in additional_responders:
         p.join()
