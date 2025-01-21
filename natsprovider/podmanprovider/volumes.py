@@ -5,7 +5,8 @@ class BindVolume(BaseModel, extra="forbid"):
     target: str
     source: str
     type: Literal["bind"] = Field(default="bind")
-    extended_mode: List[str] = Field(default=["rslave", "ro"])
+    extended_mode: List[str] = Field(default=["rslave"])
+    read_only: bool = Field(default=False)
     # relabel: str = Field(default="Z")
 
 
@@ -16,3 +17,4 @@ class TmpFS(BaseModel, extra="forbid"):
     chown: bool = Field(default=True)
     size: str = Field(default="1Gi")
 
+uu
