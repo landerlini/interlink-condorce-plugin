@@ -88,7 +88,7 @@ class PodmanProvider(BaseNatsProvider):
                         target=self._build_config.volumes.apptainer_cachedir,
                     ).model_dump(),
                     BindVolume(
-                        source=scratch_area,
+                        source=str(scratch_area),
                         target=self._build_config.volumes.scratch_area,
                     ).model_dump(),
                    BindVolume(
