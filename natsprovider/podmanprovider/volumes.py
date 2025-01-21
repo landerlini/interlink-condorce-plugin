@@ -16,5 +16,3 @@ class TmpFS(BaseModel, extra="forbid"):
     type: Literal["tmpfs"] = Field(default="tmpfs")
     chown: bool = Field(default=True)
     size: str = Field(default="1Gi")
-
-uu
