@@ -187,7 +187,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
     )
 
     unsquash: bool = Field(
-        default=True,
+        default=False,
         description="Convert SIF file to temporary sandbox before running",
         json_schema_extra = dict(arg='--unsquash'),
     )

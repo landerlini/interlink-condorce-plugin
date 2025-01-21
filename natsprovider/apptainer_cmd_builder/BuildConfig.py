@@ -183,4 +183,5 @@ class BuildConfig(BaseModel):
             no_privs=self.apptainer.no_privs,
             nvidia_support=self.apptainer.nvidia_support,
             cleanenv=self.apptainer.cleanenv,
+            unsquash=self.apptainer.unsquash,
         )
