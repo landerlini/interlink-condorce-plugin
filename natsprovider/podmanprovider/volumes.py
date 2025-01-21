@@ -1,11 +1,11 @@
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 class BindVolume(BaseModel, extra="forbid"):
     target: str
     source: str
     type: Literal["bind"] = Field(default="bind")
-    read_only: bool = Field(default=False)
+    extended_mode: List[str] = Field(default=["rslave", "ro"])
     # relabel: str = Field(default="Z")
 
 
