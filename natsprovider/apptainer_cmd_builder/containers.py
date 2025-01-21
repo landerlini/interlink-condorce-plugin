@@ -186,6 +186,12 @@ class ContainerSpec(BaseModel, extra="forbid"):
         json_schema_extra = dict(arg='--cleanenv'),
     )
 
+    unsquash: bool = Field(
+        default=True,
+        description="Convert SIF file to temporary sandbox before running",
+        json_schema_extra = dict(arg='--unsquash'),
+    )
+
     @property
     def workdir(self):
         return os.path.join(self.scratch_area, f".acb.cnt.{self.uid}")

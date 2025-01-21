@@ -76,8 +76,13 @@ class BuildConfig(BaseModel):
         )
         cleanenv: bool = Field(
             default=True,
-            description="Clean the environment of the spawned container"
+            description="Clean the environment of the spawned container",
         )
+        unsquash: bool = Field(
+            default=False,
+            description="Convert SIF file to temporary sandbox before running",
+        )
+
 
         @property
         def fuse_enabled_on_host(self):
