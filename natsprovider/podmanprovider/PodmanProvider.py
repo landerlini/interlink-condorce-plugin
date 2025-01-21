@@ -132,6 +132,8 @@ class PodmanProvider(BaseNatsProvider):
             if pilot.status == "unknown":
                 return JobStatus(phase="pending")
 
+            if pilot.status == 'running':
+                return JobStatus(phase="running")
 
             try:
                 with open(Path(self._sandbox) / job_name / "logs", "rb") as logs_file:
@@ -143,7 +145,8 @@ class PodmanProvider(BaseNatsProvider):
                     self.logger.error(f"Failed retrieving output structure for job {job_name}")
                     return JobStatus(phase="failed")
 
-            return JobStatus(phase="running" if pilot.status == 'running' else 'succeeded', logs_tarball=logs)
+            if pilot.status in ['exited', 'stopped']:
+                return JobStatus(phase="succeeded", logs_tarball=logs)
 
     async def delete_pod(self, job_name: str) -> None:
         async with self.podman() as client:
