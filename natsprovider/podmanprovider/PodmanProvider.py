@@ -66,9 +66,10 @@ class PodmanProvider(BaseNatsProvider):
         """
 
         sandbox = Path(self._sandbox) / job_name
+        scratch_area = Path(self._volumes.scratch_area) / job_name
 
         # Ensure directories exists
-        for dirname in self._volumes.apptainer_cachedir, self._volumes.scratch_area, sandbox:
+        for dirname in self._volumes.apptainer_cachedir, scratch_area, sandbox:
             Path(dirname).mkdir(parents=True, exist_ok=True)
 
         async with self.podman() as client:
@@ -87,7 +88,7 @@ class PodmanProvider(BaseNatsProvider):
                         target=self._build_config.volumes.apptainer_cachedir,
                     ).model_dump(),
                     BindVolume(
-                        source=self._volumes.scratch_area,
+                        source=scratch_area,
                         target=self._build_config.volumes.scratch_area,
                     ).model_dump(),
                    BindVolume(
