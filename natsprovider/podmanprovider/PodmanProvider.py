@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from traceback import format_exc
 import tarfile
 from pathlib import Path
 import shutil
@@ -118,6 +119,9 @@ class PodmanProvider(BaseNatsProvider):
                     self.logger.warning(f"No container found for job {job_name} not found. Maybe it is pending?")
                     return JobStatus(phase="pending")
                 self.logger.critical(f"Requested status for {job_name}, not among the jobs managed by this instance")
+                return JobStatus(phase="unknown")
+            except Exception as e:
+                self.logger.critical(format_exc())
                 return JobStatus(phase="unknown")
 
             self.logger.info(f"Retrieved job {job_name} running in container {pilot.id}")
