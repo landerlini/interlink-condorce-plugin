@@ -1,7 +1,10 @@
+import argparse
+from multiprocessing import Process
 import os
 import string
 import logging
 import asyncio
+from distutils.command.build import build
 from signal import SIGINT, SIGTERM
 from argparse import ArgumentParser
 
@@ -30,6 +33,32 @@ class AllProviders:
     def interlink(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
         from .kubernetesprovider.KubernetesProvider import KubernetesProvider
         return KubernetesProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
+
+def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildConfig, leader: bool = False):
+    """
+    Internal. Simple wrapper initiating and executing a provider, based on the arguments.
+    """
+    provider: BaseNatsProvider = getattr(AllProviders, args.provider)(
+        nats_server=args.server,
+        nats_queue=args.queue,
+        build_config=build_config,
+        interactive_mode=not args.non_interactive,
+        resources=Resources(
+            cpu=args.cpu,
+            memory=args.memory,
+            pods=args.pods,
+            gpus=args.gpus,
+        )
+    )
+
+    # The provider leader(s) is in charge of updating the interlink provider on queue build-config and resources
+    provider.leader = leader
+
+    loop = asyncio.get_event_loop()
+    loop.add_signal_handler(SIGINT, provider.maybe_stop)
+    loop.add_signal_handler(SIGTERM, provider.maybe_stop)
+    loop.run_until_complete(provider.main_loop())
+
 
 def main():
     parser = ArgumentParser(
@@ -121,6 +150,13 @@ def main():
         default=None,
     )
 
+    parser.add_argument(
+        "--responders",
+        type=int,
+        help="Number of nats responders (processes) to execute for load balancing.",
+        default=1,
+    )
+
     args = parser.parse_args()
 
     if args.version:
@@ -156,23 +192,19 @@ def main():
         with open(build_config_file, 'rb') as input_file:
             build_config = BuildConfig(**toml_load(input_file))
 
-    provider: BaseNatsProvider = getattr(AllProviders, args.provider)(
-        nats_server=args.server,
-        nats_queue=args.queue,
-        build_config=build_config,
-        interactive_mode=not args.non_interactive,
-        resources=Resources(
-            cpu=args.cpu,
-            memory=args.memory,
-            pods=args.pods,
-            gpus=args.gpus,
-        )
-    )
+    additional_responders = []
+    if args.responders > 1:
+        for i_responder in range(args.responders - 1):
+            p = Process(target=_create_and_operate_provider, args=(args, build_config))
+            additional_responders.append(p)
+            p.start()
 
-    loop = asyncio.get_event_loop()
-    loop.add_signal_handler(SIGINT, provider.maybe_stop)
-    loop.add_signal_handler(SIGTERM, provider.maybe_stop)
-    loop.run_until_complete(provider.main_loop())
+    # Main instance
+    _create_and_operate_provider(args, build_config, leader=True)
+
+    for p in additional_responders:
+        p.join()
+
 
 
 if __name__ == '__main__':

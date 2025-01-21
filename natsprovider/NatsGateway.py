@@ -214,6 +214,21 @@ class NatsGateway:
                 ) for cs in (v1pod.spec.containers or []) + (v1pod.spec.init_containers or [])
             ]
 
+        elif job_status.phase in ['succeeded', 'failed'] and len(job_status.logs_tarball) == 0:
+            self.logger.error(f"Requested status for job: {job_name} unknown.")
+
+            container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(
+                            exitCode=502,
+                            reason="LostOutput",
+                        )
+                    )
+                ) for cs in (v1pod.spec.containers or []) + (v1pod.spec.init_containers or [])
+            ]
+
         elif job_status.phase in ["succeeded", "failed"]:
             builder = from_kubernetes(pod.model_dump(), use_fake_volumes=True)
             builder.process_logs(BytesIO(job_status.logs_tarball))

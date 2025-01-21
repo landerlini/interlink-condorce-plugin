@@ -25,7 +25,7 @@ class PodmanProvider(BaseNatsProvider):
             nats_pool: str,
             build_config: BuildConfig,
             resources: Resources,
-            interactive_mode: bool
+            interactive_mode: bool,
     ):
         self._volumes = copy(build_config.volumes)
         build_config.volumes.scratch_area = "/scratch"
@@ -67,9 +67,10 @@ class PodmanProvider(BaseNatsProvider):
         """
 
         sandbox = Path(self._sandbox) / job_name
+        scratch_area = Path(self._volumes.scratch_area) / job_name
 
         # Ensure directories exists
-        for dirname in self._volumes.apptainer_cachedir, self._volumes.scratch_area, sandbox:
+        for dirname in self._volumes.apptainer_cachedir, scratch_area, sandbox:
             Path(dirname).mkdir(parents=True, exist_ok=True)
 
         async with self.podman() as client:
@@ -88,14 +89,22 @@ class PodmanProvider(BaseNatsProvider):
                         target=self._build_config.volumes.apptainer_cachedir,
                     ).model_dump(),
                     BindVolume(
-                        source=self._volumes.scratch_area,
+                        source=str(scratch_area),
                         target=self._build_config.volumes.scratch_area,
                     ).model_dump(),
-                    BindVolume(
-                        source=str(sandbox),
-                        target="/sandbox",
-                    ).model_dump(),
+                   BindVolume(
+                       source=str(sandbox),
+                       target="/sandbox",
+                   ).model_dump(),
                 ] + (
+                    [
+                        BindVolume(
+                            source=cfg.CVMFS_MOUNT_POINT,
+                            target="/cvmfs",
+                            read_only=True,
+                        ).model_dump(),
+                    ] if cfg.CVMFS_MOUNT_POINT else []
+                ) + (
                     # image_dir is only mounted if it exists
                     [
                         BindVolume(
@@ -128,6 +137,8 @@ class PodmanProvider(BaseNatsProvider):
             if pilot.status == "unknown":
                 return JobStatus(phase="pending")
 
+            if pilot.status == 'running':
+                return JobStatus(phase="running")
 
             try:
                 with open(Path(self._sandbox) / job_name / "logs", "rb") as logs_file:
@@ -139,7 +150,8 @@ class PodmanProvider(BaseNatsProvider):
                     self.logger.error(f"Failed retrieving output structure for job {job_name}")
                     return JobStatus(phase="failed")
 
-            return JobStatus(phase="running" if pilot.status == 'running' else 'succeeded', logs_tarball=logs)
+            if pilot.status in ['exited', 'stopped']:
+                return JobStatus(phase="succeeded", logs_tarball=logs)
 
     async def delete_pod(self, job_name: str) -> None:
         async with self.podman() as client:
