@@ -24,7 +24,7 @@ class PodmanProvider(BaseNatsProvider):
             nats_pool: str,
             build_config: BuildConfig,
             resources: Resources,
-            interactive_mode: bool
+            interactive_mode: bool,
     ):
         self._volumes = copy(build_config.volumes)
         build_config.volumes.scratch_area = "/scratch"

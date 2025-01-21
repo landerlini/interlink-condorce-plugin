@@ -31,7 +31,8 @@ class BaseNatsProvider:
             build_config: BuildConfig,
             resources: Resources,
             interactive_mode: bool = True,
-            shutdown_subject: str = None
+            shutdown_subject: str = None,
+            leader: bool = False
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.info(f"Starting {self.__class__.__name__}")
@@ -44,6 +45,7 @@ class BaseNatsProvider:
         self._interactive_mode = interactive_mode
         self._shutdown_subject = shutdown_subject if shutdown_subject is not None else nats_pool
         self._build_config = build_config
+        self._leader = leader
 
         self._subscriptions = {}
         self._running = True
@@ -84,8 +86,9 @@ class BaseNatsProvider:
         create_subject = '.'.join((self._nats_subject, 'create', self._nats_pool, '*'))
         shutdown_subject = '.'.join((self._nats_subject, 'shutdown', self._shutdown_subject))
         async with self.nats_connection() as nc:
-            await self.maybe_refresh_build_config()
-            await self.maybe_publish_resources()
+            if self._leader:
+                await self.maybe_refresh_build_config()
+                await self.maybe_publish_resources()
             self._subscriptions[create_subject] = await nc.subscribe(
                 subject=create_subject,
                 queue=self._nats_pool,
@@ -102,8 +105,9 @@ class BaseNatsProvider:
             self.logger.info(f"Waiting for NATS payloads...")
             while self._running:
                 await asyncio.sleep(time_interval)
-                await self.maybe_refresh_build_config()
-                await self.maybe_publish_resources()
+                if self._leader:
+                    await self.maybe_refresh_build_config()
+                    await self.maybe_publish_resources()
 
         print ("Exiting.")
         await self.close_connections_callback()

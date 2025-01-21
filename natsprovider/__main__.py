@@ -34,7 +34,7 @@ class AllProviders:
         from .kubernetesprovider.KubernetesProvider import KubernetesProvider
         return KubernetesProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
 
-def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildConfig):
+def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildConfig, leader: bool = False):
     """
     Internal. Simple wrapper initiating and executing a provider, based on the arguments.
     """
@@ -50,6 +50,9 @@ def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildCo
             gpus=args.gpus,
         )
     )
+
+    # The provider leader(s) is in charge of updating the interlink provider on queue build-config and resources
+    provider.leader = leader
 
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(SIGINT, provider.maybe_stop)
