@@ -121,7 +121,7 @@ class NatsGateway:
         """
         Publish the request to delete jobs from the remote backend. No confirmation is expected by interlink protocol.
         """
-        self.logger.info(f"Delete pod {pod}")
+        self.logger.info(f"Delete pod {pod} [{get_readable_jobid(pod)}]")
         async with self.nats_connection() as nc:
             delete_response = NatsResponse.from_nats(
                 await nc.request(
@@ -137,9 +137,9 @@ class NatsGateway:
         """
         Request through NATS the status of a pod.
         """
-        self.logger.info(f"Query status of pod {pod}")
-        v1pod = pod.deserialize()
         job_name = get_readable_jobid(pod)
+        self.logger.info(f"Query status of pod {pod} [{job_name}]")
+        v1pod = pod.deserialize()
         pod_metadata = v1pod.metadata
         for i_attempt in range(cfg.NUMBER_OF_GETTING_STATUS_ATTEMPTS):
             if i_attempt > 0:
@@ -155,7 +155,7 @@ class NatsGateway:
                         )
                     )
                 except nats.errors.NoRespondersError as e:
-                    self.logger.error(f"Failed to retrieve status for job {pod}")
+                    self.logger.error(f"Failed to retrieve status for job {pod} [{job_name}]")
                     return None
 
 
@@ -170,7 +170,7 @@ class NatsGateway:
         job_status = JobStatus(**status_response.data)
 
         self.logger.info(
-            f"Status of {pod}: {job_status.phase} "
+            f"Status of {pod} [{job_name}]: {job_status.phase} "
             f"[{'w/' if len(job_status.logs_tarball) else 'w/o'} logs]"
         )
 
@@ -271,8 +271,8 @@ class NatsGateway:
         """
         Request through NATS the logs of a pod
         """
-        self.logger.info(f"Requested log of pod {log_request.PodName}.{log_request.Namespace} [{log_request.PodUID}]")
         job_name = get_readable_jobid(log_request)
+        self.logger.info(f"Requested log of pod {log_request.PodName}.{log_request.Namespace} [{job_name}]")
         async with self.nats_connection() as nc:
             status_response = NatsResponse.from_nats(
                 await nc.request(
