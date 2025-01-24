@@ -8,7 +8,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   interlinkconfig.yaml: |
-    InterlinkURL: "http://localhost"
+    InterlinkAddress: "http://localhost"
     InterlinkPort: {{ .Values.serverPort | default 30080 | quote }}
     SidecarURL: "http://{{ .Values.sidecarName | default "condor-plugin" }}.{{ .Release.Namespace }}"
     SidecarPort: {{ .Values.sidecarPort | quote | default "80" }}
