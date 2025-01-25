@@ -197,6 +197,7 @@ class NatsGateway:
                     terminated=interlink.StateTerminated(
                         exitCode=0,
                         reason="Completed",
+                        )
                 ) for cs in (v1pod.spec.init_containers or [])
             ]
             container_statuses += [
