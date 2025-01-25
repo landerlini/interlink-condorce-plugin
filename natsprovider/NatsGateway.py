@@ -194,7 +194,7 @@ class NatsGateway:
             init_container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
-                    stats=interlink.ContainerStates(
+                    state=interlink.ContainerStates(
                         terminated=interlink.StateTerminated(
                             exitCode=0,
                             reason="Completed",
