@@ -295,7 +295,7 @@ class NatsGateway:
             name=pod_metadata.name,
             UID=pod_metadata.uid,
             namespace=pod_metadata.namespace,
-            containers=container_statuses
+            containers=container_statuses,
             initContainers=init_container_statuses
         )
 
