@@ -97,6 +97,7 @@ class PodStatus(BaseModel):
     UID: str
     namespace: str
     containers: List[ContainerStatus]
+    initContainers: List[ContainerStatus]
 
 
 class LogOpts(BaseModel):

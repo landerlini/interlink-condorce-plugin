@@ -175,6 +175,7 @@ class NatsGateway:
         )
 
         container_statuses = []
+        init_container_statuses = []
 
         if job_status.phase == "pending":
             container_statuses += [
@@ -190,17 +191,37 @@ class NatsGateway:
             ]
 
         elif job_status.phase == "running":
+            init_container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        running=interlink.StateRunning()
+                    )
+                ) for cs in (v1pod.spec.init_containers or [])
+            ]
             container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
                     state=interlink.ContainerStates(
                         running=interlink.StateRunning()
                     )
-                ) for cs in (v1pod.spec.containers or []) + (v1pod.spec.init_containers or [])
+                ) for cs in (v1pod.spec.containers or []) 
             ]
 
         elif job_status.phase == "unknown":
             self.logger.error(f"Requested status for job: {job_name} unknown.")
+
+            init_container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(
+                            exitCode=404,
+                            reason="Failed",
+                        )
+                    )
+                ) for cs in (v1pod.spec.init_containers or [])
+            ]
 
             container_statuses += [
                 interlink.ContainerStatus(
@@ -211,12 +232,23 @@ class NatsGateway:
                             reason="Failed",
                         )
                     )
-                ) for cs in (v1pod.spec.containers or []) + (v1pod.spec.init_containers or [])
+                ) for cs in (v1pod.spec.containers or []) 
             ]
 
         elif job_status.phase in ['succeeded', 'failed'] and len(job_status.logs_tarball) == 0:
             self.logger.error(f"Requested status for job: {job_name} unknown.")
 
+            init_container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(
+                            exitCode=502,
+                            reason="LostOutput",
+                        )
+                    )
+                ) for cs in (v1pod.spec.init_containers or [])
+            ]
             container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
@@ -226,13 +258,13 @@ class NatsGateway:
                             reason="LostOutput",
                         )
                     )
-                ) for cs in (v1pod.spec.containers or []) + (v1pod.spec.init_containers or [])
+                ) for cs in (v1pod.spec.containers or []) 
             ]
 
         elif job_status.phase in ["succeeded", "failed"]:
             builder = from_kubernetes(pod.model_dump(), use_fake_volumes=True)
             builder.process_logs(BytesIO(job_status.logs_tarball))
-            container_statuses += [
+            init_container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
                     state=interlink.ContainerStates(
@@ -264,6 +296,7 @@ class NatsGateway:
             UID=pod_metadata.uid,
             namespace=pod_metadata.namespace,
             containers=container_statuses
+            initContainers=init_container_statuses
         )
 
 
