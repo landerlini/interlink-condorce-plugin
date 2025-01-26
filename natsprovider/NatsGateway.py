@@ -121,7 +121,7 @@ class NatsGateway:
         """
         Publish the request to delete jobs from the remote backend. No confirmation is expected by interlink protocol.
         """
-        self.logger.info(f"Delete pod {pod}")
+        self.logger.info(f"Delete pod {pod} [{get_readable_jobid(pod)}]")
         async with self.nats_connection() as nc:
             delete_response = NatsResponse.from_nats(
                 await nc.request(
@@ -137,9 +137,9 @@ class NatsGateway:
         """
         Request through NATS the status of a pod.
         """
-        self.logger.info(f"Query status of pod {pod}")
-        v1pod = pod.deserialize()
         job_name = get_readable_jobid(pod)
+        self.logger.info(f"Query status of pod {pod} [{job_name}]")
+        v1pod = pod.deserialize()
         pod_metadata = v1pod.metadata
         for i_attempt in range(cfg.NUMBER_OF_GETTING_STATUS_ATTEMPTS):
             if i_attempt > 0:
@@ -155,7 +155,7 @@ class NatsGateway:
                         )
                     )
                 except nats.errors.NoRespondersError as e:
-                    self.logger.error(f"Failed to retrieve status for job {pod}")
+                    self.logger.error(f"Failed to retrieve status for job {pod} [{job_name}]")
                     return None
 
 
@@ -170,11 +170,12 @@ class NatsGateway:
         job_status = JobStatus(**status_response.data)
 
         self.logger.info(
-            f"Status of {pod}: {job_status.phase} "
+            f"Status of {pod} [{job_name}]: {job_status.phase} "
             f"[{'w/' if len(job_status.logs_tarball) else 'w/o'} logs]"
         )
 
         container_statuses = []
+        init_container_statuses = []
 
         if job_status.phase == "pending":
             container_statuses += [
@@ -190,17 +191,40 @@ class NatsGateway:
             ]
 
         elif job_status.phase == "running":
+            init_container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(
+                            exitCode=0,
+                            reason="Completed",
+                            )
+                        )
+                ) for cs in (v1pod.spec.init_containers or [])
+            ]
             container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
                     state=interlink.ContainerStates(
                         running=interlink.StateRunning()
                     )
-                ) for cs in (v1pod.spec.containers or []) + (v1pod.spec.init_containers or [])
+                ) for cs in (v1pod.spec.containers or []) 
             ]
 
         elif job_status.phase == "unknown":
             self.logger.error(f"Requested status for job: {job_name} unknown.")
+
+            init_container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(
+                            exitCode=404,
+                            reason="Failed",
+                        )
+                    )
+                ) for cs in (v1pod.spec.init_containers or [])
+            ]
 
             container_statuses += [
                 interlink.ContainerStatus(
@@ -211,12 +235,23 @@ class NatsGateway:
                             reason="Failed",
                         )
                     )
-                ) for cs in (v1pod.spec.containers or []) + (v1pod.spec.init_containers or [])
+                ) for cs in (v1pod.spec.containers or []) 
             ]
 
         elif job_status.phase in ['succeeded', 'failed'] and len(job_status.logs_tarball) == 0:
             self.logger.error(f"Requested status for job: {job_name} unknown.")
 
+            init_container_statuses += [
+                interlink.ContainerStatus(
+                    name=cs.name,
+                    state=interlink.ContainerStates(
+                        terminated=interlink.StateTerminated(
+                            exitCode=502,
+                            reason="LostOutput",
+                        )
+                    )
+                ) for cs in (v1pod.spec.init_containers or [])
+            ]
             container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
@@ -226,13 +261,13 @@ class NatsGateway:
                             reason="LostOutput",
                         )
                     )
-                ) for cs in (v1pod.spec.containers or []) + (v1pod.spec.init_containers or [])
+                ) for cs in (v1pod.spec.containers or []) 
             ]
 
         elif job_status.phase in ["succeeded", "failed"]:
             builder = from_kubernetes(pod.model_dump(), use_fake_volumes=True)
             builder.process_logs(BytesIO(job_status.logs_tarball))
-            container_statuses += [
+            init_container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
                     state=interlink.ContainerStates(
@@ -263,7 +298,8 @@ class NatsGateway:
             name=pod_metadata.name,
             UID=pod_metadata.uid,
             namespace=pod_metadata.namespace,
-            containers=container_statuses
+            containers=container_statuses,
+            initContainers=init_container_statuses
         )
 
 
@@ -271,8 +307,8 @@ class NatsGateway:
         """
         Request through NATS the logs of a pod
         """
-        self.logger.info(f"Requested log of pod {log_request.PodName}.{log_request.Namespace} [{log_request.PodUID}]")
         job_name = get_readable_jobid(log_request)
+        self.logger.info(f"Requested log of pod {log_request.PodName}.{log_request.Namespace} [{job_name}]")
         async with self.nats_connection() as nc:
             status_response = NatsResponse.from_nats(
                 await nc.request(

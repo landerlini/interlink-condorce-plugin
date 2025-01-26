@@ -56,6 +56,8 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         description="Numerical error code to assign in case of failure at retrieving the error code for a container.",
     )
 
+    fuse_sleep_seconds: int = Field(default=5, description="Time in seconds between fuse mount and job execution.")
+
     @property
     def volumes(self) -> List[BaseVolume]:
         all_containers = self.containers + self.init_containers
@@ -116,7 +118,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
     def build_volume_files(self):
         ret = '\n'.join([volume.initialize() for volume in self.volumes])
         if any([v.fuse_enabled_on_host and isinstance(v, FuseVolume) for v in self.volumes]):
-            ret += "\nsleep 5;\n"
+            ret += "\nsleep %d;\n" % self.fuse_sleep_seconds
         return ret
 
     def cleanup_volume_files(self):

@@ -29,6 +29,15 @@ class BuildConfig(BaseModel):
             ).split(":"),
             description="Colon-separated list of directories to include in $PATH to look for executables"
         )
+        fuse_sleep_seconds: int = Field(
+            default_factory=lambda: int(os.environ.get("FUSE_SLEEP_WAIT", "5")),
+            description="""Time in seconds to wait before executing the job payload in case fuse volumes are used.
+            Since the mount command is run in a detached processes, the job may start to look for contents in the 
+            wannabe-mounted volume before fuse actually managed to provide POSIX access. 
+            A sleep command is introduced between the mount command and the actual execution of the job to reduce 
+            the probability that the job starts before the volumes are available. 
+            """
+        )
 
     class ApptainerOptions(BaseModel, extra='forbid'):
         """
@@ -156,6 +165,7 @@ class BuildConfig(BaseModel):
             scratch_area=self.volumes.scratch_area,
             cachedir=self.volumes.apptainer_cachedir,
             additional_directories_in_path=self.volumes.additional_directories_in_path,
+            fuse_sleep_seconds=self.volumes.fuse_sleep_seconds,
         )
 
     def base_volume_config(self):

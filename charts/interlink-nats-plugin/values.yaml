@@ -6,7 +6,7 @@ hostname:
 # InterLink configuration
 
 # serverVersion is the version of the interlink release to retrieve from GitHub
-serverVersion: 0.3.0
+serverVersion: 0.3.7
 
 # serverPort is the internal port number to access the interLink server
 serverPort: 30080
