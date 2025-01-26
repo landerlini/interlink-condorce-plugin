@@ -250,7 +250,9 @@ class NatsGateway:
             ]
 
         elif job_status.phase in ['succeeded', 'failed'] and len(job_status.logs_tarball) == 0:
-            self.logger.error(f"Requested status for job: {job_name} unknown.")
+            self.logger.error(
+                f"Requested status for job: {job_name}. Seems complete but no output is provided. Error 502."
+            )
 
             init_container_statuses += [
                 interlink.ContainerStatus(
