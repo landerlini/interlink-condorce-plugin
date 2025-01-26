@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis
+  namespace: {{ .Release.Namespace }}
+data:
+  redis-config: |
+    requirepass {{ .Values.redisDefaultPassword }}
+    save 600 1
+    appendonly yes
+    appendfsync everysec
+    dir /redis-master-data
+
+---
+
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: redis
+  namespace: redis
+value: 100000
+globalDefault: false
+description: "This priority class should be used for redis service pods only."
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  template:
+    metadata:
+      name: redis
+      namespace: {{ .Release.Namespace }}
+      labels:
+        app.kubernetes.io/name: redis
+        component: redis
+
+    spec:
+      containers:
+      - name: redis
+        image: redis
+        command:
+          - redis-server
+          - "/redis-master/redis.conf"
+        env:
+        - name: MASTER
+          value: "true"
+        ports:
+        - containerPort: 6379
+        - containerPort: 8070
+        resources:
+          requests:
+            cpu: {{ .Values.redisCpuRequest | default "10m" | quote }}
+            memory: {{ .Values.redisMemoryRequest | default "8Mi" | quote }}
+          limits:
+            cpu: {{ .Values.redisCpuLimit | default "1000" | quote }}
+            memory: {{ .Values.redisMemoryLimit | default "16Mi" | quote }}
+        volumeMounts:
+        - mountPath: /redis-master-data
+          name: data
+        - mountPath: /redis-master
+          name: config
+      volumes:
+        - name: data
+          hostPath:
+            path: {{ .Values.redisHostPath | default "/var/lib/redis" }}/{{ .Release.Namespace }}/{{ .Values.nodeName | default .Release.Name }}
+            type: DirectoryOrCreate
+        - name: config
+          configMap:
+            name: redis
+            items:
+            - key: redis-config
+              path: redis.conf
+
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.redisNodeName | required "redisNodeName, defining the node where to run redis, must be defined" }}
+
+      priorityClassName: redis
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-{{ .Values.nodeName | default .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+
+spec:
+  selector:
+    app.kubernetes.io/name: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-{{ .Values.nodeName | default .Release.Name }}-monitoring
+  namespace: {{ .Release.Namespace }}
+
+spec:
+  selector:
+    app.kubernetes.io/name: redis
+  ports:
+    - port: 80
+      targetPort: 8070
+
+

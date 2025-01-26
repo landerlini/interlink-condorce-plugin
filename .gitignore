@@ -3,3 +3,4 @@
 *.sif
 /secret.env
 /kubeconfig.yaml
+*.swp
