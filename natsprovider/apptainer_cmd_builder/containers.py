@@ -314,12 +314,18 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 f"     && [ $(($(date +%s) - $(stat -c %Y {cached_image}))) -lt {self.shub_cache_seconds} ]; then",
                 f"  IMAGE_{uid}={cached_image}",
                 f"else",
+                f"  if [ -f {cached_image} ]; then",
+                f"    touch {cached_image} ", # Avoid concurrent jobs to update the spoiled image
+                f"  fi"
                 f"  mkdir -p {os.path.dirname(cached_image)}",
-                f"  HTTP_STATUS=$(curl -Lo {cached_image} \\",
+                f"  HTTP_STATUS=$(curl -Lo {cached_image}.tmp{uid} \\", # Avoid breaking the image for other jobs
                 f"      -w \"%{{http_code}}\" \\",
                 f"      -H \"X-Token: {self.shub_token}\" \\",
                 f"      {self.shub_proxy_server}/get-docker/{self.image}) ",
                 f"  if [[ $HTTP_STATUS -ge 200 && $HTTP_STATUS -lt 300 ]]; then ",
+                f"    mv {cached_image} {cached_image}.rm{uid} " , # Replace image with metadata operation
+                f"    mv {cached_image}.tmp{uid} {cached_image} ",
+                f"    rm {cached_image}.rm{uid} ", # Clean the old image
                 f"    IMAGE_{uid}={cached_image} ",
                 f"  else ",
                 f"    IMAGE_{uid}={self.formatted_image} ",
