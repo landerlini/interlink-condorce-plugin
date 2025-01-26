@@ -316,7 +316,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 f"else",
                 f"  if [ -f {cached_image} ]; then",
                 f"    touch {cached_image} ", # Avoid concurrent jobs to update the spoiled image
-                f"  fi"
+                f"  fi",
                 f"  mkdir -p {os.path.dirname(cached_image)}",
                 f"  HTTP_STATUS=$(curl -Lo {cached_image}.tmp{uid} \\", # Avoid breaking the image for other jobs
                 f"      -w \"%{{http_code}}\" \\",
