@@ -236,8 +236,6 @@ spec:
             value: ""
           - name: IAM_TOKEN_ENDPOINT
             value: 
-          - name: IAM_TOKEN_ENDPOINT
-            value: 
           - name: IAM_CLIENT_ID
             value: 
           - name: IAM_CLIENT_SECRET

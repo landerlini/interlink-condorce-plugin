@@ -29,7 +29,7 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ssh-nats-deployment
+  name: ssh-nats
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
@@ -113,6 +113,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nats
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
     app: ssh-nats

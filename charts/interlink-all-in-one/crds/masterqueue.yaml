@@ -1,0 +1,167 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: masterqueues.vk.io
+spec:
+  group: vk.io
+  versions:
+    - name: v1
+      # Each version can be enabled/disabled by Served flag.
+      served: true
+      # One and only one version must be marked as the storage version.
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                template:
+                  type: object
+                  required: ["cohort"]
+                  properties:
+                    cohort:
+                      type: string
+                    flavorFungibility:
+                      type: object
+                      properties:
+                        whenCanBorrow:
+                          type: string
+                          default: Borrow
+                          enum:
+                            - Borrow
+                            - TryNextFlavor
+                        whenCanPreempt:
+                          type: string
+                          default: TryNextFlavor
+                          enum:
+                            - Preempt
+                            - TryNextFlavor
+                    preemption:
+                      type: object
+                      properties:
+                        borrowWithinCohort:
+                          type: object
+                          properties:
+                            policy:
+                              type: string
+                              default: LowerPriority
+                              enum:
+                                - Never
+                                - LowerPriority
+                            maxPriorityThreshold:
+                              type: integer
+
+                        reclaimWithinCohort:
+                          type: string
+                          default: Never
+                          enum:
+                            - Never
+                            - LowerPriority
+                            - Any
+
+                        withinClusterQueue:
+                          type: string
+                          default: Never
+                          enum:
+                            - Never
+                            - LowerPriority
+                            - LowerOrNewerEqualPriority
+
+                    stopPolicy:
+                      type: string
+                      default: None
+                      enum:
+                        - None
+                        - Stop
+                        - StopAndHold
+
+                    queueingStrategy:
+                      type: string
+                      default: BestEffortFIFO
+                      enum:
+                        - BestEffortFIFO
+                        - StrictFIFO
+
+                flavors:
+                  type: array
+                  items:
+                    type: object
+                    required: ["name"]
+                    properties:
+                      name:
+                        type: string
+                      nominalQuota:
+                        type: object
+                        properties:
+                          cpu:
+                            x-kubernetes-int-or-string: true
+                            default: 1M
+                          memory:
+                            x-kubernetes-int-or-string: true
+                            default: 1Ei
+                          pods:
+                            default: 100000
+                            type: integer
+                          nvidia.com/gpu:
+                            default: 10000
+                            type: integer
+
+                      canLendTo:
+                        type: array
+                        items:
+                          type: object
+                          required: ['queue']
+                          properties:
+                            queue:
+                              type: string
+                            lendingLimit:
+                              type: object
+                              default: {}
+                              properties:
+                                cpu:
+                                  x-kubernetes-int-or-string: true
+                                memory:
+                                  x-kubernetes-int-or-string: true
+                                pods:
+                                  type: integer
+                                nvidia.com/gpu:
+                                  type: integer
+                      natsFlavor:
+                              type: object
+                              required: ["natsConnector", "natsSubject"]
+                              properties:
+                                natsConnector:
+                                  type: string
+                                natsSubject:
+                                  type: string
+                                virtualNode:
+                                  type: string
+                                pools:
+                                  type: array
+                                  items:
+                                    type: string
+                                poolRegExp:
+                                  type: string
+                                poolTimeout:
+                                  type: integer
+                                  default: 60
+                              oneOf:
+                                - required:
+                                  - pools
+                                - required:
+                                  - poolRegExp
+
+
+                      localFlavor:
+                              type: object
+                              properties: {}
+  scope: Cluster
+  names:
+    plural: masterqueues
+    singular: masterqueue
+    kind: MasterQueue
+    shortNames:
+    - mq
+

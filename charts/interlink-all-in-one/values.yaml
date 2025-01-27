@@ -141,3 +141,11 @@ redisNodeName: null
 # redisHostPath is the location in the host file system where to store redis persitent data
 redisHostPath: /var/lib/redis
 
+
+################################################################################
+## kueue-nats configuration
+
+# kueueNatsEnabled is a flag used to disable the kueue-nats operator 
+kueueNatsEnabled: true
+
+

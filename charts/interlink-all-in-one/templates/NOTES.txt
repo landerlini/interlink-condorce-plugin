@@ -1,0 +1,48 @@
+You may want to configure at least one MasterQueue for your cluster.
+Consider using the following basic template defining the same flavour for all remote pools.
+Note that the caps are per resource pool. Connecting more pools, will increase the caps on the resources.
+
+```yaml
+
+apiVersion: vk.io/v1
+kind: MasterQueue
+metadata:
+  name: masterqueue
+spec:
+  template:
+    cohort: users
+
+  flavors:
+    - name: interlink
+      natsFlavor:
+        natsConnector: "nats://{{ (index .Values.natsUsers 0).username  }}:{{ (index .Values.natsUsers 0).password }}@nats.{{ .Release.Namespace }}:4222"
+        natsSubject: {{ .Values.nodeName | default .Release.Name }}.resources
+        virtualNode: {{ .Values.nodeName | default .Release.Name }} 
+        poolTimeout: 30
+        poolRegExp: ".*"
+      nominalQuota:
+        pods: 100
+      canLendTo:
+        - queue: group1
+          lendingLimit:
+            pods: 30
+
+
+```
+
+
+You can then connect resource pools pointing their NATS server to
+```
+wss://{{ (index .Values.natsUsers 0).username  }}:{{ (index .Values.natsUsers 0).password }}@{{ .Values.hostname }}/{{ .Values.natsWebSocketPrefix | default .Release.Name }}
+```
+
+
+It is a good idea to use different username-password for different nats connections. 
+You can add new users modifying your `values.yaml` and then reload the configuration with the kubectl
+
+```bash
+kubectl exec -n interlink deploy/ssh-nats -- nats-server --signal reload=1
+```
+
+Good luck!
+
