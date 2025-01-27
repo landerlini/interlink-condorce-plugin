@@ -1,0 +1,151 @@
+################################################################################
+## Ingress configuration
+
+# hostname is the FQDN of the master node and it is used to configure the Ingress
+hostname: null 
+
+# certManagerEnabled indicates that this chart should take care of managing TLS certificate for https://`hostname` endpoint (used by NATS ws)
+certManagerEnabled: false
+
+# nodeName is the name of the virtual node to be created and managed with this chart. Release name is used if not specified.
+nodeName: null
+
+  
+################################################################################
+## Interlink API Server configuration
+
+# serverVersion defines the version of the interlink api server
+serverVersion: "0.3.7"
+
+# serverVerboseLogging, if true, enhance verbosity of the interlink api server
+serverVerboseLogging: true
+
+# serverErrorsOnlyLogging, if true, reduces the verbosity of the interlink api server
+serverErrorOnlyLogging: false
+
+# serverExportPodData, if true, configure the interlink api server to exports pod data 
+serverExportPodData: true
+ 
+
+################################################################################
+## Interlink Virtual Kubelet configuration
+  
+# virtualKubeletImage is the docker image of the virtual kubelet container
+virtualKubeletImage: "ghcr.io/intertwin-eu/interlink/virtual-kubelet-inttw:0.3.7"
+
+# virtualKubeletCommandPrefix is a prefix to the interlink command useful to hack the config
+virtualKubeletCommandPrefix: ""
+
+# virtualKubeletExportPodData, if true, exports the pod data
+virtualKubeletExportPodData: true
+
+# virtualKubeletServiceAccountName is the name of the ServiceAccount defining the permissions of the vk pod
+virtualKubeletServiceAccountName: interlink
+
+# virtualKubeletVerboseLogging, if true, enhance the verbosity of the vk pod
+virtualKubeletVerboseLogging: true
+
+# virtualKubeletAllocatableCpu, virtualKubeletAllocatableMemory, virtualKubeletAllocatablePods, virtualKubeletAllocatableGpus: cap to virtual node resources
+virtualKubeletAllocatableCpu: "10000"
+virtualKubeletAllocatableMemory: "2Ei"
+virtualKubeletAllocatablePods: "10000"
+virtualKubeletAllocatableGpus: "10000"
+
+# kubeletPort is the port of the virtualized kubelet
+kubeletPort: 10250
+
+# virtualKubeletCpuLimit, virtualKubeletMemoryLimit set limits to the *container* managing the virtual kubelet (unrelated to allocatable resources)
+virtualKubeletCpuLimit: "1"
+virtualKubeletMemoryLimit: "500Mi"
+
+# virtualKubeletCpuRequest, virtualKubeletMemoryRequest defines requests to the *container* managing the virtual kubelet (unrelated to allocatable resources)
+virtualKubeletCpuRequest: "150m"
+virtualKubeletMemoryRequest: "100Mi"
+ 
+
+################################################################################
+## Interlink NATS Plugin configuration
+
+# On rolling updates, a restart of the plugins is triggered by publishing a shutdown message with subject ".shutdown.`natsShutdownSubject`"
+pluginShutdownSubject: null
+
+# pluginImage is the image of the plugin defining the environment where the plugin is run (as sync'ed from the git repository)
+pluginImage: "landerlini/interlink-condorce-plugin:v0.1" 
+
+# pluginGitRepository and pluginGitRepositoryBranch identify the git branch to pick the nats plugin from
+pluginGitRepository: "https://github.com/landerlini/interlink-condorce-plugin"
+pluginGitRepositoryBranch: HEAD
+
+# pluginGitSyncPeriod is the period of calls to github to check for new a version of the plugin
+pluginGitSyncPeriod: "10s"
+
+# pluginDebug is a flag enhanching verbosity of the pluging log
+pluginDebug: true
+ 
+# pluginLogLevel defines the level of the uvicorn application running the interlink plugin
+pluginLogLevel: "info"
+
+# pluginNatsSubject is the root of the nats subjects identifying the application 
+pluginNatsSubject: "interlink"
+
+# pluginNatsServer is the address of the NATS server
+pluginNatsServer: "nats:4222"
+
+# pluginLivenessProbePeriodSeconds is the initial delay before starting to probe the liveness of the plugin
+pluginLivenessProbePeriodSeconds: 3
+ 
+# pluginLivenessProbePeriodSeconds is the period of the liveness probe 
+pluginLivenessProbePeriodSeconds: 3
+
+
+################################################################################
+## NATS Server configuration
+
+# natsEnabled can be used to disable completely nats if an exteral nats server is used
+natsEnabled: true
+
+# natsWebSocketPrefix is the path of the URL of the NATS websocket, wss://`hostname`/`natsWebSocketPrefix`
+natsWebSocketPrefix: null
+
+# natsUsers is a list of mappings, each mapping has keys "username" and "password". Requires nats-server --signal reload to take effect.
+natsUsers: null
+
+# natsBastionAuthorizedKeys is a multiline string defining the contents of the authorized_keys file of the ssh bastion, if null ssh access is disabled
+natsBastionAuthorizedKeys: null
+
+# natsBastionImage is the bastion image
+natsBastionImage: "binlab/bastion:latest"
+
+ 
+################################################################################
+## Redis configuration
+
+# redisDefaultPassword is the password of the default user
+redisDefaultPassword: null
+
+# redisCpuRequest is the cpu requested by the redis container
+redisCpuRequest:  "10m"
+
+# redisMemoryRequest is the memory requested by the redis container
+redisMemoryRequest:  "8Mi"
+ 
+# redisCpuLimit is the limit on the cpu usable by the redis container
+redisCpuLimit:  "1000m"
+
+# redisMemoryLimit is the limit on the memory usable by the redis container
+redisMemoryLimit:  "16Mi"
+ 
+# redisNodeName is the name of the node where to place redis (relevant to persistence)
+redisNodeName: null
+
+# redisHostPath is the location in the host file system where to store redis persitent data
+redisHostPath: /var/lib/redis
+
+
+################################################################################
+## kueue-nats configuration
+
+# kueueNatsEnabled is a flag used to disable the kueue-nats operator 
+kueueNatsEnabled: true
+
+

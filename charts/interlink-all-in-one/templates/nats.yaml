@@ -1,0 +1,166 @@
+{{ if .Values.natsEnabled }}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nats-config
+  namespace: {{ .Release.Namespace }}
+data:
+  nats-server-conf: |
+    cluster 
+    {
+      name: interlink-plugin
+    }
+    
+    websocket 
+    {
+      no_tls: true
+      port: 8080
+    }
+
+    authorization
+    {
+      users: {{ .Values.natsUsers | toJson }} 
+    }
+
+---
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ssh-nats
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ssh-nats
+
+  template:
+    metadata:
+      labels:
+        app: ssh-nats
+    spec:
+      containers:
+        {{ if .Values.natsBastionAuthorizedKeys }}
+        - name: openssh-server
+          image: {{ .Values.natsBastionImage | default "binlab/bastion:latest" }}
+          ports:
+            - containerPort: 22
+
+          env:
+            - name: PUBKEY_AUTHENTICATION
+              value: "true"
+            - name: PERMIT_TUNNEL
+              value: "false"
+            - name: X11_FORWARDING
+              value: "false"
+            - name: TCP_FORWARDING
+              value: "true"
+            - name: AGENT_FORWARDING
+              value: "false"
+            - name: LISTEN_ADDRESS
+              value: "0.0.0.0"
+            - name: LISTEN_PORT
+              value: "22"
+            - name: AUTHORIZED_KEYS
+              value: /var/lib/bastion/authorized_keys
+
+          volumeMounts:
+            - name: authorized-keys
+              mountPath: /var/lib/
+              readOnly: true
+            - name: bastion
+              mountPath: /usr/etc/ssh
+        {{ end }}
+
+
+        - name: nats-server
+          image: nats:latest
+          args:
+            - -c
+            - /etc/nats/nats-server.conf
+          ports:
+            - containerPort: 4222
+            - containerPort: 8080
+          volumeMounts:
+            - name: nats-config
+              mountPath: /etc/nats
+      volumes:
+        - name: nats-config
+          configMap:
+            name: nats-config
+            items:
+              - key: nats-server-conf
+                path: nats-server.conf
+        - name: bastion
+          hostPath:
+            path: /opt/ssh-bastion
+            type: DirectoryOrCreate
+        {{ if .Values.natsBastionAuthorizedKeys }}
+        - name: authorized-keys
+          configMap:
+            name: auth-keys
+            items:
+              - key: bastion
+                path: bastion/authorized_keys
+        {{ end }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: ssh-nats
+
+  type: ClusterIP
+  ports:
+    - name: nats
+      protocol: TCP
+      targetPort: 4222
+      port: 4222
+    - name: websocket
+      protocol: TCP
+      targetPort: 8080
+      port: 8080
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: lets-issuer
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.org/websocket-services: "nats"
+
+  name: interlink-nats
+  namespace: {{ .Release.Namespace }}
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: {{ .Values.hostname }} 
+    http:
+      paths:
+      - backend:
+          service:
+            name: nats
+            port:
+              name: websocket
+        path: /{{ .Values.natsWebSocketPrefix | default .Release.Name }}
+        pathType: Prefix
+
+  {{ if .Values.certManagerEnabled }}
+  tls:
+  - hosts:
+    - {{ .Values.hostname }}
+    secretName: interlink-tls
+  {{ end }}
+
+{{end}}

@@ -1,0 +1,355 @@
+################################################################################
+## Configuration
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: interlink-{{ .Values.nodeName | default .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+data:
+  api-server.yaml: |
+    InterlinkAddress: "http://localhost"
+    InterlinkPort: 55457
+    SidecarURL: "http://localhost"
+    SidecarPort: 8000
+    VerboseLogging: {{ .Values.serverVerboseLogging | default true }}
+    ErrorsOnlyLogging: {{ .Values.serverErrorsOnlyLogging | default false }}
+    ExportPodData: {{ .Values.serverExportPodData | default true }}
+    DataRootFolder: "~/.interlink"
+
+  virtual-kubelet.yaml: |
+    InterlinkURL: "http://localhost"
+    InterlinkPort: 55457
+    CommandPrefix: {{ .Values.virtualKubeletCommandPrefix | default "" | quote }}
+    ExportPodData: {{ .Values.virtualKubeletExportPodData | default true }}
+    ServiceAccount: {{ .Values.virtualKubeletServiceAccountName | default "interlink" }}
+    Namespace: {{ .Release.Namespace }}
+    VKTokenFile: null
+    VerboseLogging: {{ .Values.virtualKubeletVerboseLogging | default "true" }}
+    CPU: {{ .Values.virtualKubeletAllocatableCpu | default 10000 | quote }}
+    Memory: {{ .Values.virtualKubeletAllocatableMemory | default "2Ei" | quote }}
+    Pods: {{ .Values.virtualKubeletAllocatablePods | default "1000" | quote }}
+    nvidia.com/gpu: {{ .Values.virtualKubeletAllocatableGpus | default "10000" | quote }}
+    HTTP:
+      Insecure: true
+    KubeletHTTP:
+      Insecure: true
+
+---
+
+################################################################################
+## Authorizations
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.nodeName | default .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.nodeName | default .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+rules:
+- apiGroups:
+  - "coordination.k8s.io"
+  resources:
+  - leases
+  verbs:
+  - update
+  - create
+  - get
+  - list
+  - watch
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  - configmaps
+  - secrets
+  - services
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - delete
+  - get
+  - list
+  - watch
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - create
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - nodes/status
+  verbs:
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - pods/status
+  verbs:
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.nodeName | default .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.nodeName | default .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.nodeName | default .Release.Name }}
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: interlink-all-in-one
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: interlink
+    component: bundle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: interlink
+      component: server
+  template:
+    metadata:
+      labels:
+        app: interlink
+        component: server
+    spec:
+      serviceAccountName: {{ .Values.nodeName | default .Release.Name }}
+      initContainers:
+        - name: download-interlink
+          image: radial/busyboxplus:curl
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /interlink/bin
+              mkdir -p /interlink/nats-plugin
+              chmod a+w -R /interlink/nats-plugin
+
+              curl --fail -k -L -o /interlink/bin/interlink https://github.com/interTwin-eu/interLink/releases/download/{{- .Values.serverVersion -}}/interlink_$(uname -s)_$(uname -m) 
+              chmod +x /interlink/bin/interlink
+          
+          volumeMounts: 
+            - name: interlink
+              mountPath: /interlink
+                  
+    
+      containers:
+        - name: interlink-api-server
+          image: ubuntu:latest
+          command: ["/interlink/bin/interlink"]
+          ports:
+            - containerPort: 55457
+
+          volumeMounts: 
+            - name: interlink
+              mountPath: /interlink
+            - name: api-server-config
+              mountPath: /etc/interlink
+
+        - name: plugin-api-server
+          image: {{ .Values.pluginImage | default "landerlini/interlink-condorce-plugin:v0.1" }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cd /interlink/nats-plugin/current
+              python3 -m uvicorn natsplugin:app --reload --host 0.0.0.0 --log-level={{ .Values.pluginLogLevel | default "info" }} --port 8000
+
+          env:
+            - name: DEBUG
+              value: {{ .Values.pluginDebug | default "true" | quote }}
+            - name: NATS_SUBJECT
+              value: {{ .Values.pluginNatsSubject | default "interlink" }}
+            - name: NATS_SERVER
+              value: nats://{{ (index .Values.natsUsers 0).username }}:{{ (index .Values.natsUsers 0).password }}@{{ .Values.pluginNatsServer | default "nats:4222" }}
+            - name: REDIS_CONNECTOR
+              value: "redis://:{{ .Values.redisDefaultPassword }}@redis-{{ .Values.nodeName | default .Release.Name }}:6379"
+          ports:
+            - containerPort: 8000
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: {{ .Values.pluginLivenessInitialDelaySeconds | default 3  }}
+            periodSeconds: {{ .Values.pluginLivenessProbePeriodSeconds | default 3  }}
+
+          volumeMounts:
+            - name: interlink
+              mountPath: /interlink
+              readOnly: true
+
+        - name: virtual-kubelet
+          image: {{ .Values.virtualKubeletImage | default "ghcr.io/intertwin-eu/interlink/virtual-kubelet-inttw:latest" }}
+          imagePullPolicy: Always
+          env:
+          - name: NODENAME
+            value: {{ .Values.nodeName | default .Release.Name }}
+          - name: KUBELET_PORT
+            value: {{ .Values.kubeletPort | default 10250 | quote }}
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: CONFIGPATH
+            value: /etc/interlink/InterLinkConfig.yaml
+          - name: VKTOKENFILE
+            value: ""
+          - name: IAM_TOKEN_ENDPOINT
+            value: 
+          - name: IAM_CLIENT_ID
+            value: 
+          - name: IAM_CLIENT_SECRET
+            value: 
+          - name: IAM_GRANT_TYPE
+            value: client_credentials
+          - name: IAM_REFRESH_TOKEN
+            value: 
+          - name: TOKEN_PATH
+            value: 
+          - name: IAM_VK_AUD
+            value: 
+
+          volumeMounts:
+          - name: virtual-kubelet-config
+            mountPath: /etc/interlink/InterLinkConfig.yaml
+            subPath: InterLinkConfig.yaml
+
+          resources:
+            limits:
+              cpu: {{ .Values.virtualKubeletCpuLimit | default "2000m" }}
+              memory: {{ .Values.virtualKubeletMemoryLimit | default "2Gi" }}
+            requests:
+              cpu: {{ .Values.virtualKubeletCpuRequest | default "100m" }}
+              memory: {{ .Values.virtualKubeletMemoryRequest | default "200Mi" }}
+
+        - name: git-sync
+          image: registry.k8s.io/git-sync/git-sync:v4.2.4
+          args:
+            - --repo={{ .Values.pluginGitRepository | default "https://github.com/landerlini/interlink-condorce-plugin" }}
+            - --ref={{ .Values.pluginGitRepositoryBranch | default "HEAD" }}
+            - --period={{ .Values.pluginGitSyncPeriod | default "10s" }}
+            - --link=current
+            - --root=/interlink/nats-plugin
+            - --webhook-url=http://localhost:8000/shutdown/{{ .Values.pluginShutdownSubject | default .Release.Name }}
+
+          volumeMounts:
+            - name: interlink
+              mountPath: /interlink
+
+          resources:
+            limits:
+              memory: 300Mi
+            requests:
+              memory: 300Mi
+
+      volumes:
+        - name: interlink
+          emptyDir:
+            sizeLimit: 1Gi
+
+        - name: api-server-config
+          configMap:
+            name: interlink-{{ .Values.nodeName | default .Release.Name }}
+            items:
+              - key: api-server.yaml
+                path: InterLinkConfig.yaml  
+
+        - name: virtual-kubelet-config
+          configMap:
+            name: interlink-{{ .Values.nodeName | default .Release.Name }}
+            items:
+              - key: virtual-kubelet.yaml
+                path: InterLinkConfig.yaml  
+            
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: interlink
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: interlink
+    component: server
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: lets-issuer
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.org/websocket-services: "nats"
+
+  name: interlink-nats
+  namespace: {{ .Release.Namespace }}
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: {{ .Values.hostname }} 
+    http:
+      paths:
+      - backend:
+          service:
+            name: nats
+            port:
+              name: websocket
+        path: /nats
+        pathType: Prefix
+
+  {{ if .Values.certManagerEnabled }}
+  tls:
+  - hosts:
+    - {{ .Values.hostname }}
+    secretName: interlink-tls
+  {{ end }}
+
+

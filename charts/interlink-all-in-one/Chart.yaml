@@ -1,0 +1,10 @@
+apiVersion: v2
+name: interlink-all-in-one
+description: A Helm cart for deploying all interlink components in cluster, with nats plugin
+
+type: application
+
+version: 0.0.1
+
+appVersion: "0.0.0"
+
