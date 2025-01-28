@@ -30,6 +30,20 @@ spec:
 
 ```
 
+Then you will need to create the LocalQueues representing the edge between a namespace and a ClusterQueue (named group1)
+in the previous manifest. For example the following LocalQueue enables submitting to `group1` from `default` namespace,
+via a LocalQueue named `gr1`:
+
+```yaml
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  namespace: default
+  name: gr1
+spec:
+  clusterQueue: group1
+```
+
 
 You can then connect resource pools pointing their NATS server to
 ```
