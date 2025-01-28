@@ -84,6 +84,28 @@ spec:
                         - BestEffortFIFO
                         - StrictFIFO
 
+                    namespaceSelector:
+                      type: object
+                      default: {}
+                      properties:
+                        matchExpressions:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              key:
+                                type: string
+                              operator:
+                                type: string
+                              values:
+                                type: array
+                                items:
+                                  type: string
+                        matchLabels:
+                          type: object
+                          additionalProperties:
+                            type: string
+
                 flavors:
                   type: array
                   items:
