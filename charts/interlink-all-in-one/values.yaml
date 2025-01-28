@@ -116,7 +116,15 @@ natsBastionAuthorizedKeys: null
 # natsBastionImage is the bastion image
 natsBastionImage: "binlab/bastion:latest"
 
- 
+# natsClusterIssuerName is the name of the ClusterIssuer resource used to certify the websocket interface
+natsClusterIssuerName: "lets-encrypt"
+
+# natsClusterIssuerEmail is the email of the user taking care of the certification
+natsClusterIssuerEmail: null
+
+# natsClusterACMEServer is the url of the ACME server used for the certification process
+natsClusterIssuerACMEServer: "https://acme-v02.api.letsencrypt.org/directory"
+
 ################################################################################
 ## Redis configuration
 
