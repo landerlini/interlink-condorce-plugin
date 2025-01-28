@@ -11,6 +11,10 @@ to avoid authentication issues between the parties. The deployed plugin is based
 distribute jobs to the actual batch systems that connect to the main server via a web socket 
 or an SSH tunnel.
 
+## Prerequirements
+ * You should [install kueue](https://kueue.sigs.k8s.io/docs/installation/#install-a-released-version)
+ * if this chart has to manage the TLS termination, make sure [cert-manager is installed](https://cert-manager.io/docs/installation/kubectl/).
+
 Here is the minimal `values.yaml` to deploy the chart
 
 ```yaml
@@ -29,5 +33,7 @@ redisDefaultPassword: < a randomly generated token>
 # redisNodeName is the name of the node where to place redis (relevant to persistence)
 redisNodeName: < name of the node where you wish to place the redis persistence >
 
+# natsClusterIssuerEmail is the email of the user taking care of the certification
+natsClusterIssuerEmail: 
 ```
 
