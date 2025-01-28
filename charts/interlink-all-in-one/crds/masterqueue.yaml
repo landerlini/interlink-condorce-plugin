@@ -99,7 +99,8 @@ spec:
                                 type: string
                               values:
                                 type: array
-                                items: string
+                                items:
+                                  type: string
                         matchLabels:
                           type: object
                           additionalProperties:
