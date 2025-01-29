@@ -30,7 +30,8 @@ class ContainerSpec(BaseModel, extra="forbid"):
         description="Unique identifier of the container, mainly used to retrieve logs and status"
     )
 
-    entrypoint: Union[str, Path] = Field(
+    entrypoint: Union[str, Path, None] = Field(
+        default=None,
         description="Entrypoint of the job to be executed within the container"
     )
 
@@ -261,19 +262,32 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [str(vb) for vb in set(self.volume_binds)]
 
         # Executable
-        ret += [f'--bind {self.executable_path}:/mnt/apptainer_cmd_builder/run']
+        if self.entrypoint:
+            ret += [f'--bind {self.executable_path}:/mnt/apptainer_cmd_builder/run']
 
         return ret
 
     def exec(self):
         uid = sanitize_uid(self.uid).upper()
-        return " \\\n    ".join([
-            str(self.executable),
-            "exec",
-            *self.flags,
-            f"$IMAGE_{uid}",
-            '/mnt/apptainer_cmd_builder/run &> ',
-            self.log_path
+        if self.entrypoint is not None:
+            # Execute a custom entrypoint
+            return " \\\n    ".join([
+                str(self.executable),
+                "exec",
+                *self.flags,
+                f"$IMAGE_{uid}",
+                '/mnt/apptainer_cmd_builder/run &> ',
+                self.log_path
+                ])
+        else:
+            # Execute the default entrypoint
+            return " \\\n    ".join([
+                str(self.executable),
+                "run",
+                *self.flags,
+                f"$IMAGE_{uid}",
+                ' '.join(['"%s"' % a for a in self.args]) + ' &> ',
+                self.log_path
             ])
 
 
@@ -285,33 +299,36 @@ class ContainerSpec(BaseModel, extra="forbid"):
             **self.environment,
         )
 
-        entry_point_file = '\n'.join([
-            '#!/bin/sh',
-            self.entrypoint + ' ' + ' '.join([shlex.quote(arg) for arg in self.args])
-        ])
-
         ret = [
             embed_ascii_file(
                 path=self.env_file_path,
                 file_content='\n'.join([f'{k}="{v}"' for k, v in env_dict.items()]),
                 executable=False,
             ),
-
-            embed_ascii_file(
-                path=self.executable_path,
-                file_content=entry_point_file,
-                executable=True,
-            )
         ]
+
+        if self.entrypoint:
+            ret += [
+                embed_ascii_file(
+                    path=self.executable_path,
+                    file_content='\n'.join([
+                        '#!/bin/sh',
+                        self.entrypoint + ' ' + ' '.join([shlex.quote(arg) for arg in self.args])
+                    ]),
+                    executable=True,
+                )
+            ]
 
         local_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
         cached_image = os.path.join(self.cachedir, self.image.replace(":", "_"))
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
             ret += [
                 f"if [ -f {local_image} ]; then",
+                f'  echo "Using local static image from {local_image}"',
                 f"  IMAGE_{uid}={local_image}",
                 f"elif [ -f {cached_image} ]"
                 f"     && [ $(($(date +%s) - $(stat -c %Y {cached_image}))) -lt {self.shub_cache_seconds} ]; then",
+                f'  echo "Using locally cached image from {cached_image}"',
                 f"  IMAGE_{uid}={cached_image}",
                 f"else",
                 f"  if [ -f {cached_image} ]; then",
@@ -327,7 +344,9 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 f"    mv {cached_image}.tmp{uid} {cached_image} ",
                 f"    rm {cached_image}.rm{uid} ", # Clean the old image
                 f"    IMAGE_{uid}={cached_image} ",
+                f'    echo "Successfully obtained and cached image in {cached_image}"',
                 f"  else ",
+                f'    echo "Could not retrieve image from remote cache (error $HTTP_STATUS), will rebuild."',
                 f"    IMAGE_{uid}={self.formatted_image} ",
                 f"  fi ",
                 f"fi",

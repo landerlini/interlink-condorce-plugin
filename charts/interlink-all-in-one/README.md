@@ -14,7 +14,8 @@ or an SSH tunnel.
 ## Prerequirements
  * You should [install kueue](https://kueue.sigs.k8s.io/docs/installation/#install-a-released-version)
  * if this chart has to manage the TLS termination, make sure [cert-manager is installed](https://cert-manager.io/docs/installation/kubectl/).
-
+ 
+## Installing the chart
 Here is the minimal `values.yaml` to deploy the chart
 
 ```yaml
