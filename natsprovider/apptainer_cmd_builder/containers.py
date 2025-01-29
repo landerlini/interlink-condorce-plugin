@@ -262,7 +262,8 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [str(vb) for vb in set(self.volume_binds)]
 
         # Executable
-        ret += [f'--bind {self.executable_path}:/mnt/apptainer_cmd_builder/run']
+        if self.entrypoint:
+            ret += [f'--bind {self.executable_path}:/mnt/apptainer_cmd_builder/run']
 
         return ret
 
