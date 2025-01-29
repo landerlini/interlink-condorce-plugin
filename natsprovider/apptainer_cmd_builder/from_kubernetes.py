@@ -177,8 +177,8 @@ def _make_container_list(
     return [
         ContainerSpec(
             uid=prefix+c.name,
-            entrypoint=c.command[0],
-            args=c.command[1:] + (c.args if c.args is not None else []),
+            entrypoint=c.command[0] if len(c.command) else None,
+            args=(c.command[1:] if len(c.command) else []) + (c.args if c.args is not None else []),
             image=c.image,
             volume_binds=_volumes_for_container(c),
             environment={env.name: env.value for env in (c.env or []) if env.value is not None},
