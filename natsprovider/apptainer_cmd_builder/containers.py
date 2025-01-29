@@ -321,6 +321,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
         local_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
         cached_image = os.path.join(self.cachedir, self.image.replace(":", "_"))
+        rndid = generate_uid()
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
             ret += [
                 f"if [ -f {local_image} ]; then",
@@ -335,14 +336,14 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 f"    touch {cached_image} ", # Avoid concurrent jobs to update the spoiled image
                 f"  fi",
                 f"  mkdir -p {os.path.dirname(cached_image)}",
-                f"  HTTP_STATUS=$(curl -Lo {cached_image}.tmp{uid} \\", # Avoid breaking the image for other jobs
+                f"  HTTP_STATUS=$(curl -Lo {cached_image}-{rndid}.tmp \\", # Avoid breaking the image for other jobs
                 f"      -w \"%{{http_code}}\" \\",
                 f"      -H \"X-Token: {self.shub_token}\" \\",
                 f"      {self.shub_proxy_server}/get-docker/{self.image}) ",
                 f"  if [[ $HTTP_STATUS -ge 200 && $HTTP_STATUS -lt 300 ]]; then ",
-                f"    mv {cached_image} {cached_image}.rm{uid} " , # Replace image with metadata operation
-                f"    mv {cached_image}.tmp{uid} {cached_image} ",
-                f"    rm {cached_image}.rm{uid} ", # Clean the old image
+                f"    mv {cached_image} {cached_image}-{rndid}.rm ",    # Replace image with metadata operation
+                f"    mv {cached_image}-{rndid}.tmp {cached_image} ",
+                f"    rm {cached_image}-{rndid}.rm ",                   # Clean the old image
                 f"    IMAGE_{uid}={cached_image} ",
                 f'    echo "Successfully obtained and cached image in {cached_image}"',
                 f"  else ",
