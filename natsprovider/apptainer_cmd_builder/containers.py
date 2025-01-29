@@ -324,9 +324,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
             ret += [
                 f"if [ -f {local_image} ]; then",
+                f'  echo "Using local static image from {local_image}"',
                 f"  IMAGE_{uid}={local_image}",
                 f"elif [ -f {cached_image} ]"
                 f"     && [ $(($(date +%s) - $(stat -c %Y {cached_image}))) -lt {self.shub_cache_seconds} ]; then",
+                f'  echo "Using locally cached image from {cached_image}"',
                 f"  IMAGE_{uid}={cached_image}",
                 f"else",
                 f"  if [ -f {cached_image} ]; then",
@@ -342,7 +344,9 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 f"    mv {cached_image}.tmp{uid} {cached_image} ",
                 f"    rm {cached_image}.rm{uid} ", # Clean the old image
                 f"    IMAGE_{uid}={cached_image} ",
+                f'    echo "Successfully obtained and cached image in {cached_image}"',
                 f"  else ",
+                f'    echo "Could not retrieve image from remote cache (error $HTTP_STATUS), will rebuild."',
                 f"    IMAGE_{uid}={self.formatted_image} ",
                 f"  fi ",
                 f"fi",
