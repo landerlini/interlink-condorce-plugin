@@ -18,5 +18,6 @@ RUN pip install \
   "kubernetes" \
   "htcondor" \
   "podman" \
-  "pytest"
+  "pytest" \
+  "redis"
 
