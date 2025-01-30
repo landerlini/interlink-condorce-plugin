@@ -82,5 +82,105 @@ spec:
             pods: 30
 ```
 
+This creates two `ClusterQueue` objects belonging to the same cohort `masterqueue`. One named `masterqueue` 
+(as the `MasterQueue` object) has quotas based on the resources published by the various providers, the other, 
+named `group1` has no quota, but a `borrowingLimit` for pods set to 30.
+
+!!! warning
+
+   The limits are specified *per resource pool*. In the example above, if two resource pools are available, the 
+   ClusterQueue `group1` will be entitled to borrow 30 pods from the first one and 30 pods from the second. 
+
+
+## Creating a `LocalQueue`
+To connect a namespace to a `ClusterQueue`, the cluster admins must create `LocalQueue` objects. For example, to 
+enable executing jobs in the `default` namespace in the `group1` ClusterQueue, one may define the `gr1` LocalQueue as
+
+```yaml
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+   namespace: default
+   name: gr1
+spec:
+   clusterQueue: group1
+```
+
+## A test job
+To test the setup, one may submit a test job in the `default` namespace through the queue `gr1`.
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: sample-job-1
+  namespace: default
+  labels:
+    kueue.x-k8s.io/queue-name: gr1
+spec:
+  parallelism: 1
+  completions: 1
+  suspend: true
+  template:
+    spec:
+      containers:
+      - name: dummy-job
+        image:  ghcr.io/grycap/cowsay:latest
+        command: ["/bin/sh", "-c"]
+        args: 
+         - |
+                echo "Hello world!"
+                sleep 30
+
+        resources:
+          requests:
+            cpu: 1
+            memory: "200Mi"
+      tolerations:
+        - key: virtual-node.interlink/no-schedule
+          operator: Exists
+          effect: NoSchedule
+      restartPolicy: Never
+```
+
+Note in particular:
+ * the label `kueue.x-k8s.io/queue-name: gr1` defining the local queue,
+ * the spec `suspend: true` to let Kueue to submit the job once admitted, 
+ * the toleration to the node taint `virtual-node.interlink/no-schedule` marking the job as suitable for offloading.
+
+## Local flavors
+To enable local execution of payloads not suitable for offloading, one may include a local flavor in the `MasterQueue`.
+Local flavors are a simply links to the standard `ResourceFlavor` objects of the Kueue that must be already defined in 
+the cluster and fall outside the range of action of the `kueue-nats` controller.
+
+For example the following `yaml` manifest defines a `ResourceFlavor` and makes it available to the `group1`
+`ClusterQueue` via the `MasterQueue`. 
+
+```yaml
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: "local-cpu"  # <-- Note this name
+
+---
+
+apiVersion: vk.io/v1
+kind: MasterQueue
+metadata:
+   name: masterqueue  
+spec:
+   template:
+      cohort: masterqueue  
+
+   flavors:   
+      - name: local-cpu   # <-- This name should match the ResourceFlavor definition above
+        localFlavor: {}
+        nominalQuota:
+           pods: 100
+        canLendTo:
+           - queue: group1
+             lendingLimit:
+                pods: 30
+```
+
 
 
