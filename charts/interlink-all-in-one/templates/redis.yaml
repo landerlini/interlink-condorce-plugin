@@ -17,7 +17,7 @@ apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
 metadata:
   name: redis
-  namespace: redis
+  namespace: {{ .Release.Namespace }}
 value: 100000
 globalDefault: false
 description: "This priority class should be used for redis service pods only."
