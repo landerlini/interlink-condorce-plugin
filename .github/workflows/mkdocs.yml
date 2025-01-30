@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - landerlini
+    tags:
+      - '*'
 
 jobs:
   build:
