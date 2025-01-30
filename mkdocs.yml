@@ -1,6 +1,7 @@
 site_name: InterLink NATS Plugin
 site_url: https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin
-site_dir: public
+site_dir: site
+docs_dir: docs
 
 theme: readthedocs
 
