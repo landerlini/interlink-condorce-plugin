@@ -70,7 +70,7 @@ virtualKubeletMemoryRequest: "100Mi"
 pluginShutdownSubject: null
 
 # pluginImage is the image of the plugin defining the environment where the plugin is run (as sync'ed from the git repository)
-pluginImage: "landerlini/interlink-condorce-plugin:v0.1" 
+pluginImage: "landerlini/interlink-condorce-plugin:v0.1.1"
 
 # pluginGitRepository and pluginGitRepositoryBranch identify the git branch to pick the nats plugin from
 pluginGitRepository: "https://github.com/landerlini/interlink-condorce-plugin"

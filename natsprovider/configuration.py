@@ -32,3 +32,6 @@ MILLISECONDS_BETWEEN_GETTING_STATUS_ATTEMPTS = int(os.environ.get("MILLISECONDS_
 
 # APPLICATION_TOKEN is a long, unique string that identifies a part of the log that contains machine-readable info
 APPLICATION_TOKEN = os.environ.get("APPLICATION_TOKEN", "w5WU3yaaQiKBzF2HzYhvw9sUAQeg9cACFWN5T6KKJATEnqXYg62852TV3vXk")
+
+# REDIS_CONNECTOR is a connector to redis for subscription persistence
+REDIS_CONNECTOR = os.environ.get("REDIS_CONNECTOR")
