@@ -349,7 +349,7 @@ class NatsGateway:
                     self.logger.debug(f"Pod has log for container {member.name}, requested {log_request.ContainerName}.log")
                     if member.name in [
                             "run-" + log_request.ContainerName + ".log",
-                            "init-" + log_request.ContainerName + ".log.init"
+                            "init-" + log_request.ContainerName + ".log",
                         ]:
                         full_log = tar.extractfile(member).read().decode('utf-8')
 
