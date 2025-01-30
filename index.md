@@ -1,1 +1,0 @@
-# InterLink NATS Plugin
