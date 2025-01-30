@@ -343,6 +343,7 @@ class NatsGateway:
         if job_status.phase not in ["succeeded", "failed"]:
             return f"Error. Cannot return log for job status '{job_name}'"
 
+        full_log = ""
         with tarfile.open(fileobj=io.BytesIO(job_status.logs_tarball), mode='r:*') as tar:
             for member in tar.getmembers():
                 if member.isfile():
