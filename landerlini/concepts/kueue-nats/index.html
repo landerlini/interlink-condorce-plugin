@@ -67,6 +67,12 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#minimal-masterqueue-definition">Minimal MasterQueue definition</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#creating-a-localqueue">Creating a LocalQueue</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#a-test-job">A test job</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#local-flavors">Local flavors</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../build-config/">Build Configuration</a>
@@ -184,6 +190,94 @@ spec:
         - queue: group1
           lendingLimit:
             pods: 30
+</code></pre>
+<p>This creates two <code>ClusterQueue</code> objects belonging to the same cohort <code>masterqueue</code>. One named <code>masterqueue</code> 
+(as the <code>MasterQueue</code> object) has quotas based on the resources published by the various providers, the other, 
+named <code>group1</code> has no quota, but a <code>borrowingLimit</code> for pods set to 30.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+</div>
+<p>The limits are specified <em>per resource pool</em>. In the example above, if two resource pools are available, the 
+   ClusterQueue <code>group1</code> will be entitled to borrow 30 pods from the first one and 30 pods from the second. </p>
+<h2 id="creating-a-localqueue">Creating a <code>LocalQueue</code></h2>
+<p>To connect a namespace to a <code>ClusterQueue</code>, the cluster admins must create <code>LocalQueue</code> objects. For example, to 
+enable executing jobs in the <code>default</code> namespace in the <code>group1</code> ClusterQueue, one may define the <code>gr1</code> LocalQueue as</p>
+<pre><code class="language-yaml">apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+   namespace: default
+   name: gr1
+spec:
+   clusterQueue: group1
+</code></pre>
+<h2 id="a-test-job">A test job</h2>
+<p>To test the setup, one may submit a test job in the <code>default</code> namespace through the queue <code>gr1</code>.</p>
+<pre><code class="language-yaml">apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: sample-job-1
+  namespace: default
+  labels:
+    kueue.x-k8s.io/queue-name: gr1
+spec:
+  parallelism: 1
+  completions: 1
+  suspend: true
+  template:
+    spec:
+      containers:
+      - name: dummy-job
+        image:  ghcr.io/grycap/cowsay:latest
+        command: [&quot;/bin/sh&quot;, &quot;-c&quot;]
+        args: 
+         - |
+                echo &quot;Hello world!&quot;
+                sleep 30
+
+        resources:
+          requests:
+            cpu: 1
+            memory: &quot;200Mi&quot;
+      tolerations:
+        - key: virtual-node.interlink/no-schedule
+          operator: Exists
+          effect: NoSchedule
+      restartPolicy: Never
+</code></pre>
+<p>Note in particular:
+ * the label <code>kueue.x-k8s.io/queue-name: gr1</code> defining the local queue,
+ * the spec <code>suspend: true</code> to let Kueue to submit the job once admitted, 
+ * the toleration to the node taint <code>virtual-node.interlink/no-schedule</code> marking the job as suitable for offloading.</p>
+<h2 id="local-flavors">Local flavors</h2>
+<p>To enable local execution of payloads not suitable for offloading, one may include a local flavor in the <code>MasterQueue</code>.
+Local flavors are a simply links to the standard <code>ResourceFlavor</code> objects of the Kueue that must be already defined in 
+the cluster and fall outside the range of action of the <code>kueue-nats</code> controller.</p>
+<p>For example the following <code>yaml</code> manifest defines a <code>ResourceFlavor</code> and makes it available to the <code>group1</code>
+<code>ClusterQueue</code> via the <code>MasterQueue</code>. </p>
+<pre><code class="language-yaml">apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: &quot;local-cpu&quot;  # &lt;-- Note this name
+
+---
+
+apiVersion: vk.io/v1
+kind: MasterQueue
+metadata:
+   name: masterqueue  
+spec:
+   template:
+      cohort: masterqueue  
+
+   flavors:   
+      - name: local-cpu   # &lt;-- This name should match the ResourceFlavor definition above
+        localFlavor: {}
+        nominalQuota:
+           pods: 100
+        canLendTo:
+           - queue: group1
+             lendingLimit:
+                pods: 30
 </code></pre>
               
             </div>
