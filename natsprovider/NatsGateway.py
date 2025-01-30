@@ -51,12 +51,15 @@ class NatsGateway:
         return listener_nc
 
     async def config_callback(self, msg: nats.aio.msg.Msg):
-        queue = msg.subject.split(".")[-1]
-        self._build_configs[queue] = BuildConfig(**orjson.loads(msg.data))
-        if self._redis is not None:
-            self._redis.hset('build_configs', queue, self._build_configs[queue].model_dump_json())
+        pool = msg.subject.split(".")[-1]
+        if pool in self._build_configs.keys():
+            self.logger.info(f"Received configuration for a new pool: {pool}")
 
-        self.logger.info(f"Received updated configuration for queue {queue}")
+        self._build_configs[pool] = BuildConfig(**orjson.loads(msg.data))
+        if self._redis is not None:
+            self._redis.hset('build_configs', pool, self._build_configs[pool].model_dump_json())
+
+        self.logger.info(f"Received updated configuration for pool {pool}")
 
     @asynccontextmanager
     async def nats_connection(self):
