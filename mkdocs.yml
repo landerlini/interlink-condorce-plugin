@@ -12,10 +12,10 @@ nav:
   - Concepts:
       - NATS messaging layer: 'concepts/nats.md'
       - Authentication: 'concepts/authentication.md'
-      - Kueue integration (MasterQueue): 'concept/kueue-nats.md'
-      - Build Configuration: 'concept/build-config.md'
-      - Pilot Container: 'concept/pilot.md'
-      - Git Sync: 'concept/git-sync.md'
+      - Kueue integration (MasterQueue): 'concepts/kueue-nats.md'
+      - Build Configuration: 'concepts/build-config.md'
+      - Pilot Container: 'concepts/pilot.md'
+      - Git Sync: 'concepts/git-sync.md'
   - Providers:
       - Condor: 'providers/condor.md'
       - Podman: 'providers/podman.md'
