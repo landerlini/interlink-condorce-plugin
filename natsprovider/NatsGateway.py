@@ -347,7 +347,10 @@ class NatsGateway:
             for member in tar.getmembers():
                 if member.isfile():
                     self.logger.debug(f"Pod has log for container {member.name}, requested {log_request.ContainerName}.log")
-                    if member.name in [log_request.ContainerName + ".log", log_request.ContainerName + ".log.init"]:
+                    if member.name in [
+                            "run-" + log_request.ContainerName + ".log",
+                            "init-" + log_request.ContainerName + ".log.init"
+                        ]:
                         full_log = tar.extractfile(member).read().decode('utf-8')
 
         if log_request.Opts.Tail is not None:
