@@ -343,11 +343,15 @@ class NatsGateway:
         if job_status.phase not in ["succeeded", "failed"]:
             return f"Error. Cannot return log for job status '{job_name}'"
 
+        full_log = ""
         with tarfile.open(fileobj=io.BytesIO(job_status.logs_tarball), mode='r:*') as tar:
             for member in tar.getmembers():
                 if member.isfile():
                     self.logger.debug(f"Pod has log for container {member.name}, requested {log_request.ContainerName}.log")
-                    if member.name in [log_request.ContainerName + ".log", log_request.ContainerName + ".log.init"]:
+                    if member.name in [
+                            "run-" + log_request.ContainerName + ".log",
+                            "init-" + log_request.ContainerName + ".log",
+                        ]:
                         full_log = tar.extractfile(member).read().decode('utf-8')
 
         if log_request.Opts.Tail is not None:
