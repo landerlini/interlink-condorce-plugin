@@ -7,6 +7,24 @@ theme: readthedocs
 
 nav:
   - InterLink NATS Plugin: 'index.md'
+  - Architecture: 'architecture.md'
+  - Deployment with Helm: 'deploy.md'
+  - Concepts:
+      - NATS messaging layer: 'concepts/nats.md'
+      - Authentication: 'concepts/authentication.md'
+      - Kueue integration (MasterQueue): 'concept/kueue-nats.md'
+      - Build Configuration: 'concept/build-config.md'
+      - Pilot Container: 'concept/pilot.md'
+      - Git Sync: 'concept/git-sync.md'
+  - Providers:
+      - Condor: 'providers/condor.md'
+      - Podman: 'providers/podman.md'
+      - Slurm: 'providers/slurm.md'
+      - Kubernetes: 'providers/kubernetes.md'
+  - Branches:
+      - main: "https://landerlini.github.io/interlink-condorce-plugin/main/"
+      - L. Anderlini: "https://landerlini.github.io/interlink-condorce-plugin/landerlini/"
+
 
 markdown_extensions:
   - admonition
