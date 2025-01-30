@@ -4,4 +4,52 @@
          <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/</loc>
          <lastmod>2025-01-30</lastmod>
     </url>
+    <url>
+         <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/architecture/</loc>
+         <lastmod>2025-01-30</lastmod>
+    </url>
+    <url>
+         <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/deploy/</loc>
+         <lastmod>2025-01-30</lastmod>
+    </url>
+    <url>
+         <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/concepts/authentication/</loc>
+         <lastmod>2025-01-30</lastmod>
+    </url>
+    <url>
+         <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/concepts/build-config/</loc>
+         <lastmod>2025-01-30</lastmod>
+    </url>
+    <url>
+         <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/concepts/git-sync/</loc>
+         <lastmod>2025-01-30</lastmod>
+    </url>
+    <url>
+         <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/concepts/kueue-nats/</loc>
+         <lastmod>2025-01-30</lastmod>
+    </url>
+    <url>
+         <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/concepts/nats/</loc>
+         <lastmod>2025-01-30</lastmod>
+    </url>
+    <url>
+         <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/concepts/pilot/</loc>
+         <lastmod>2025-01-30</lastmod>
+    </url>
+    <url>
+         <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/providers/condor/</loc>
+         <lastmod>2025-01-30</lastmod>
+    </url>
+    <url>
+         <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/providers/kubernetes/</loc>
+         <lastmod>2025-01-30</lastmod>
+    </url>
+    <url>
+         <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/providers/podman/</loc>
+         <lastmod>2025-01-30</lastmod>
+    </url>
+    <url>
+         <loc>https://landerlini.baltig-pages.infn.it/interlink-condorce-plugin/providers/slurm/</loc>
+         <lastmod>2025-01-30</lastmod>
+    </url>
 </urlset>
