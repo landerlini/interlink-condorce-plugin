@@ -59,6 +59,14 @@
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">Kueue integration (MasterQueue)</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#organizing-flavors">Organizing Flavors</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#natsflavors">natsFlavors</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#minimal-masterqueue-definition">Minimal MasterQueue definition</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../build-config/">Build Configuration</a>
@@ -111,6 +119,72 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="kueue-integration-masterqueue">Kueue integration (<code>MasterQueue</code>)</h1>
+<p>The bidirectional <a href="../nats/">messaging layer provided by NATS</a> enables feedbacks on the status of the 
+resource pools on the resources they may provide. To enable the definition of policies on the resource usage defined 
+at cluster level (rather than at node level) the InterLink resource pools are mapped into kueue 
+<a href="https://kueue.sigs.k8s.io/docs/concepts/resource_flavor/"><code>ResourceFlavor</code>s</a> and organized in 
+<a href="https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/"><code>ClusterQueue</code>s</a>.</p>
+<p>A custom controller, named <code>kueue-nats</code>, connects to the NATS server and subscribe to the subjects under which 
+resource providers publish the available resources. When receiving resource updates, the <code>kueue-nats</code> controller 
+creates or updates <code>ResourceFlavor</code>s the <code>ClusterQueue</code>s accordingly. The configuration of the <code>kueue-nats</code> controller 
+relies on a Kubernetes Custom Resource (CR) named <code>MasterQueue</code>.</p>
+<p>A <code>MasterQueue</code> is supposed to be the cluster-level object collecting all the resource pools made available to the 
+cluster either via InterLink or as local resources. The MasterQueue can then lend resources to groups of users or 
+client applications using the <a href="https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/#cohort">Kueue resource-borrowing mechanism</a>. 
+All the <code>ClusterQueue</code>s spawned by a <code>MasterQueue</code> belong to the same <em>cohort</em>, named by the <code>MasterQueue</code> itself.</p>
+<h2 id="organizing-flavors">Organizing Flavors</h2>
+<p>As mentioned, <code>ResourceFlavor</code>s map resource pools. Since multiple resource pools might be equivalent and 
+interchangeable to the applications running in the cluster (think for example of two Kubernetes clusters running 
+in different sites), <code>kueue-nats</code> introduces <em>groups</em> of <code>ResourceFlavor</code>s, mapping groups of equivalent resource
+pools. </p>
+<p>Groups of resource flavors may fall in two categories: <code>natsFlavor</code>, managed by InterLink via the InterLink NATS plugin,
+or <code>localFlavor</code>, managed by the cluster administrator directly via Kueue and made available to the MasterQueue.</p>
+<h3 id="natsflavors"><code>natsFlavor</code>s</h3>
+<p>A <code>natsFlavor</code> should indicate the following properties:
+ * <code>natsConnector</code>: a string defining the connection to the NATS server. If deploying the NATS plugin with the 
+   <a href="../../deploy/"><em>interlink-in-one</em></a>, this string is provided by Helm itself when installing or updating the chart.
+ * <code>natsSubject</code>: a string representing the NATS subject used by resource pools to publish updates on the available 
+   resources
+ * <code>virtualNode</code>: is the name of the virtual node where to address pods to be submitted with interlink
+ * <code>poolTimeout</code>: an integer defining the timeout in seconds. If no update to the available resources is obtained 
+   after this time interval, the corresponding resource flavor is dropped.</p>
+<p>The names of pools part of the group can be listed explicitly using the <code>pools</code> keyword,</p>
+<pre><code class="language-yaml">pools:
+  - podman-firenze
+  - slurm-cineca
+</code></pre>
+<p>or it can be defined with a regular expression using the <code>poolRegExp</code>, for example</p>
+<pre><code class="language-yaml">poolRegExp: &quot;podman-.*&quot;
+</code></pre>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Note that the regular expression is managed with the <code>re</code> module in Python. </p>
+</div>
+<h2 id="minimal-masterqueue-definition">Minimal <code>MasterQueue</code> definition</h2>
+<p>A minimal example of a MasterQueue is defined below with annotations</p>
+<pre><code class="language-yaml">apiVersion: vk.io/v1
+kind: MasterQueue
+metadata:
+  name: masterqueue  # This is the name of the MasterQueue 
+spec:
+  template:
+    cohort: masterqueue  # This is the name of the cohort. It is suggested to use the same name as for the MasterQueue.
+
+  flavors:   # Here we introduce the list of resource flavors organized in categories. RFs can be either `natsFlavor`s or `localFlavor`s.
+    - name: interlink  # This is the name of the flavor category (not of the flavor itself!)
+      natsFlavor:
+        natsConnector: &quot;nats://user:password@nats.nats:4222&quot;
+        natsSubject: interlink.resources
+        virtualNode: interlink
+        poolTimeout: 30
+        poolRegExp: &quot;.*&quot;
+      nominalQuota:
+        pods: 100
+      canLendTo:
+        - queue: group1
+          lendingLimit:
+            pods: 30
+</code></pre>
               
             </div>
           </div><footer>
