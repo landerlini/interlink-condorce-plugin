@@ -196,9 +196,9 @@ spec:
 named <code>group1</code> has no quota, but a <code>borrowingLimit</code> for pods set to 30.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-</div>
 <p>The limits are specified <em>per resource pool</em>. In the example above, if two resource pools are available, the 
-   ClusterQueue <code>group1</code> will be entitled to borrow 30 pods from the first one and 30 pods from the second. </p>
+ClusterQueue <code>group1</code> will be entitled to borrow 30 pods from the first one and 30 pods from the second. </p>
+</div>
 <h2 id="creating-a-localqueue">Creating a <code>LocalQueue</code></h2>
 <p>To connect a namespace to a <code>ClusterQueue</code>, the cluster admins must create <code>LocalQueue</code> objects. For example, to 
 enable executing jobs in the <code>default</code> namespace in the <code>group1</code> ClusterQueue, one may define the <code>gr1</code> LocalQueue as</p>
