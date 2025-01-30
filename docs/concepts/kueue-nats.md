@@ -88,8 +88,8 @@ named `group1` has no quota, but a `borrowingLimit` for pods set to 30.
 
 !!! warning
 
-   The limits are specified *per resource pool*. In the example above, if two resource pools are available, the 
-   ClusterQueue `group1` will be entitled to borrow 30 pods from the first one and 30 pods from the second. 
+    The limits are specified *per resource pool*. In the example above, if two resource pools are available, the 
+    ClusterQueue `group1` will be entitled to borrow 30 pods from the first one and 30 pods from the second. 
 
 
 ## Creating a `LocalQueue`
