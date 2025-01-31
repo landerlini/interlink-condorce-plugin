@@ -70,6 +70,8 @@
               <ul class="current">
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">Condor</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#kubernetes">Kubernetes</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../podman/">Podman</a>
@@ -111,6 +113,176 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="condor-provider">Condor provider</h1>
+<p>Condor jobs are submitted through a Condor Compute Entrypoint authenticated through Javascript Web Tokens (JWT) 
+provided by an Indigo IAM Instance. </p>
+<p>We report below recipes to configure the condor provider.</p>
+<h2 id="kubernetes">Kubernetes</h2>
+<p>The reported configuration works for INFN-T1 site. Modifications might be needed (especially for paths) in other 
+sites. Then at some point we will have cvmfs.</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: condor-sub-build-conf
+data:
+  interlink.conf: |
+    # Volumes and directories configuring access to executor-local data
+    [volumes]
+
+    ### Area in the executor filesystem to be used for temporary files
+    scratch_area = &quot;/tmp&quot;
+
+    ### Location to cache singularity images in the executor filesystem
+    apptainer_cachedir = &quot;/tmp/cache/apptainer&quot;
+
+    ### Location where to look for pre-built images
+    image_dir = &quot;/opt/exp_software/opssw/budda&quot;
+
+    ### Colon-separated list of directories to include in $PATH to look for executables
+    additional_directories_in_path = [&quot;/opt/exp_software/opssw/mabarbet/bin&quot;]
+
+
+
+    # Options configuring the behavior of apptainer runtime
+    [apptainer]
+
+    ### Enables --fakeroot in apptainer exec/run commands
+    fakeroot = false
+
+    ### Enables --containall flag in apptainer exec/run commands
+    containall = false
+
+    ### Defines whether the host enables users to mount fuse volumes or not
+    fuse_mode = &quot;host-privileged&quot;
+
+    ### Do not propagate umask to the container, set default 0022 umask
+    no_init = false
+
+    ### Do not bind home by default
+    no_home = true
+
+    ### Drop all privileges from root user in container
+    no_privs = true
+
+    ### Enable nVidia GPU support
+    nvidia_support = false
+
+    ### Clean the environment of the spawned container
+    cleanenv = true
+
+
+
+    # Proxy to download pre-build Docker Images instead of rebuilding at each execution
+    [shub_proxy]
+
+    ### shub proxy instance used to retrieve cached singularity images. Without protocol!
+    server = &quot;&lt;insert shub-proxy endpoint&gt;&quot;
+
+    ### Master token of the proxy used to request and generate client tokens
+    master_token = &quot;&lt;insert shub-proxy master token&gt;&quot;
+
+
+  interlink.sh: |
+    echo &quot;Cloning the repo&quot;
+    git clone --quiet --branch main https://github.com/landerlini/interlink-condorce-plugin plugin &amp;&gt; log
+    echo &quot;Repo cloned&quot;
+    cd plugin
+
+    mkdir -p /opt/interlink
+    echo &quot;Starting authentication procedure&quot;
+    python3 -u natsprovider/tests/_auth.py /opt/interlink/refresh_token
+    export REFRESH_TOKEN=$(cat /opt/interlink/refresh_token)
+
+    while true
+    do
+      git pull &amp;&gt;&gt; log
+
+      python3 -um natsprovider condor \
+          --queue &quot;infncnaf&quot; \
+          --shutdown-subject &quot;*&quot; \
+          --non-interactive
+
+    done
+
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: condor-submitter
+  labels:
+    app: interlink
+    component: condor-submitter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: interlink
+      component: condor-submitter
+  template:
+    metadata:
+      labels:
+        app: interlink
+        component: condor-submitter
+    spec:
+      securityContext:
+        fsGroup: 101
+
+      containers:
+        - name: condorprovider
+          image: &quot;landerlini/interlink-condorce-plugin:v0.1.2&quot;
+          command: [&quot;/bin/bash&quot;, &quot;-u&quot;, &quot;/etc/interlink/interlink.sh&quot;]
+
+          env:
+            - name: DEBUG
+              value: &quot;true&quot;
+            - name: TOKEN_VALIDITY_SECONDS
+              value: &quot;1200&quot;
+            - name: _condor_CONDOR_HOST
+              value: &quot;ce01t-htc.cr.cnaf.infn.it:9619&quot;
+            - name: CONDOR_POOL
+              value: &quot;ce01t-htc.cr.cnaf.infn.it:9619&quot;
+            - name: _condor_SCHEDD_HOST
+              value: &quot;ce01t-htc.cr.cnaf.infn.it&quot;
+            - name: CONDOR_SCHEDULER_NAME
+              value: &quot;ce01t-htc.cr.cnaf.infn.it&quot;
+            - name: IAM_ISSUER
+              value: &quot;https://iam-t1-computing.cloud.cnaf.infn.it&quot;
+            - name: IAM_CLIENT_ID
+              value: &lt;iam client id&gt;
+            - name: IAM_CLIENT_SECRET
+              value: &lt;iam client secret&gt;
+            - name: NATS_SUBJECT
+              value: &quot;interlink&quot;
+            - name: NATS_SERVER
+              value: &lt;nats server connector&gt;
+            - name: NATS_TIMEOUT_SECONDS
+              value: &quot;60&quot;
+            - name: DEFAULT_ALLOCATABLE_CPU
+              value: &quot;1&quot;
+            - name: DEFAULT_ALLOCATABLE_MEMORY
+              value: &quot;2Gi&quot;
+            - name: DEFAULT_ALLOCATABLE_PODS
+              value: &quot;10&quot;
+            - name: DEFAULT_ALLOCATABLE_GPUS
+              value: &quot;0&quot;
+
+          volumeMounts:
+            - name: condorplugin-conf
+              mountPath: /etc/interlink
+              readOnly: true
+
+
+      volumes:
+        - name: condorplugin-conf
+          configMap:
+            name: condor-sub-build-conf
+            items:
+              - key: interlink.conf
+                path: build.conf
+              - key: interlink.sh
+                path: interlink.sh
+</code></pre>
               
             </div>
           </div><footer>
