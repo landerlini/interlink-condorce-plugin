@@ -75,7 +75,7 @@ while True:
 
 
 if len(sys.argv) > 1:
-    print(f"Writing refresh token to {refresh_token}")
+    print(f"Writing refresh token to {sys.argv[1]}")
     with open(sys.argv[1], "w") as f:
         print(refresh_token, file=f)
 else:
