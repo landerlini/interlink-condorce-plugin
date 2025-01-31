@@ -75,8 +75,8 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         for container in self.init_containers:
             ret += [
                 container.exec(),
-                "echo -n $? > %s" % (container.return_code_path + ".init"),
-                "cp %s %s" % (container.log_path, container.log_path + ".init"),
+                "echo -n $? > %s" % container.return_code_path,
+                "cp %s %s" % (container.log_path, container.log_path),
             ]
 
         return '\n'.join(ret)
