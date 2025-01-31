@@ -33,9 +33,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "podman", "htcondor"]
+test = ["pytest", "podman", "htcondor", "slurm"]
 podman = ["podman"]
 condor = ["htcondor"]
+slurm = ["slurm"]
 
 [project.scripts]
 interlink = "natsprovider:__main__.main"

@@ -34,6 +34,11 @@ class AllProviders:
         from .kubernetesprovider.KubernetesProvider import KubernetesProvider
         return KubernetesProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
 
+    @staticmethod
+    def slurm(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
+        from .slurmprovider.SlurmProvider import SlurmProvider
+        return SlurmProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
+
 def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildConfig, leader: bool = False):
     """
     Internal. Simple wrapper initiating and executing a provider, based on the arguments.
