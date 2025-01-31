@@ -9,22 +9,8 @@ from ..apptainer_cmd_builder import BuildConfig
 CondorConfiguration.initialize_htcondor()
 
 class CondorProvider(BaseNatsProvider):
-    def __init__(
-            self,
-            nats_server: str,
-            nats_pool: str,
-            build_config: BuildConfig,
-            resources: Resources,
-            interactive_mode: bool
-    ):
-        BaseNatsProvider.__init__(
-            self,
-            nats_server=nats_server,
-            nats_pool=nats_pool,
-            build_config=build_config,
-            resources=resources,
-            interactive_mode=interactive_mode,
-        )
+    def __init__(self, **kwargs):
+        BaseNatsProvider.__init__(self, **kwargs)
         self.condor = CondorConfiguration()
 
     async def create_pod(self, job_name: str, job_sh: str, pod: interlink.PodRequest) -> str:

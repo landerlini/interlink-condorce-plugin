@@ -21,11 +21,8 @@ from .volumes import BindVolume, TmpFS
 class PodmanProvider(BaseNatsProvider):
     def __init__(
             self,
-            nats_server: str,
-            nats_pool: str,
             build_config: BuildConfig,
-            resources: Resources,
-            interactive_mode: bool,
+            **kwargs,
     ):
         self._volumes = copy(build_config.volumes)
         build_config.volumes.scratch_area = "/scratch"
@@ -35,11 +32,8 @@ class PodmanProvider(BaseNatsProvider):
 
         BaseNatsProvider.__init__(
             self,
-            nats_server=nats_server,
-            nats_pool=nats_pool,
-            interactive_mode=interactive_mode,
             build_config=build_config,
-            resources=resources,
+            **kwargs
         )
         self._podman_base_url = cfg.PODMAN_BASE_URL
 

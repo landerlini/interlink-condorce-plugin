@@ -41,6 +41,8 @@ def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildCo
         build_config=build_config,
         interactive_mode=not args.non_interactive,
         shutdown_subject=args.shutdown_subject,
+        # The provider leader(s) is in charge of updating the interlink provider on queue build-config and resources
+        leader=leader,
         resources=Resources(
             cpu=args.cpu,
             memory=args.memory,
@@ -48,9 +50,6 @@ def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildCo
             gpus=args.gpus,
         )
     )
-
-    # The provider leader(s) is in charge of updating the interlink provider on queue build-config and resources
-    provider.leader = leader
 
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(SIGINT, provider.maybe_stop)
