@@ -7,6 +7,7 @@ import asyncio
 from signal import SIGINT, SIGTERM
 from argparse import ArgumentParser
 
+from natsplugin import shutdown
 from . import configuration as cfg
 from .BaseNatsProvider import BaseNatsProvider
 from .apptainer_cmd_builder import BuildConfig
@@ -40,6 +41,7 @@ def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildCo
         nats_queue=args.queue,
         build_config=build_config,
         interactive_mode=not args.non_interactive,
+        shutdown_subject=args.shutdown_subject,
         resources=Resources(
             cpu=args.cpu,
             memory=args.memory,
