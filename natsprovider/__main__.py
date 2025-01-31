@@ -37,11 +37,11 @@ def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildCo
     """
     provider: BaseNatsProvider = getattr(AllProviders, args.provider)(
         nats_server=args.server,
-        nats_queue=args.queue,
+        nats_pool=args.pool,
         build_config=build_config,
         interactive_mode=not args.non_interactive,
         shutdown_subject=args.shutdown_subject,
-        # The provider leader(s) is in charge of updating the interlink provider on queue build-config and resources
+        # The provider leader(s) is in charge of updating the interlink provider on pool build-config and resources
         leader=leader,
         resources=Resources(
             cpu=args.cpu,
@@ -89,9 +89,9 @@ def main():
     )
 
     parser.add_argument(
-        "--queue", "-q",
-        default="default-queue",
-        help="NATS queue or ResourceFlavor defining the NATS subject",
+        "--pool", "-q",
+        default="default-pool",
+        help="NATS pool or ResourceFlavor defining the NATS subject",
     )
 
     parser.add_argument(
@@ -172,8 +172,8 @@ def main():
     )
     logging.debug("Enabled debug mode.")
 
-    if any([letter not in string.ascii_lowercase + '-' for letter in args.queue]):
-        raise ValueError(f"Invalid queue `{args.queue}`: queue names can only include lower-case letters.")
+    if any([letter not in string.ascii_lowercase + '-' for letter in args.pool]):
+        raise ValueError(f"Invalid pool `{args.pool}`: pool names can only include lower-case letters.")
 
     build_config = BuildConfig.from_file(args.build_config)
 
