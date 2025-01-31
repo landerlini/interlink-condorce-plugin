@@ -19,5 +19,6 @@ RUN pip install \
   "htcondor" \
   "podman" \
   "pytest" \
+  "aiohttp" \
   "redis"
 

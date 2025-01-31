@@ -191,8 +191,11 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              cd /interlink/nats-plugin/current
-              python3 -m uvicorn natsplugin:app --reload --host 0.0.0.0 --log-level={{ .Values.pluginLogLevel | default "info" }} --port 8000
+              while true;
+              do
+                cd /interlink/nats-plugin/current
+                python3 -m uvicorn natsplugin:app --host 0.0.0.0 --log-level={{ .Values.pluginLogLevel | default "info" }} --port 8000
+              done
 
           env:
             - name: DEBUG
