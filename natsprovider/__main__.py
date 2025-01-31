@@ -32,9 +32,9 @@ class AllProviders:
         return KubernetesProvider(**kwargs)
 
     @staticmethod
-    def slurm(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
+    def slurm(**kwargs):
         from .slurmprovider.SlurmProvider import SlurmProvider
-        return SlurmProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
+        return SlurmProvider(**kwargs)
 
 def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildConfig, leader: bool = False):
     """
