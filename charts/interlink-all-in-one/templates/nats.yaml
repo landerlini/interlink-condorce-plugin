@@ -130,12 +130,35 @@ spec:
       port: 8080
 
 ---
+{{ if .Values.certManagerEnabled }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.natsClusterIssuerName | default "lets-encrypt" }}
+  namespace: cert-manager
+spec:
+  acme:
+    # The ACME server URL
+    server: {{ .Values.natsClusterIssuerACMEServer | default "https://acme-v02.api.letsencrypt.org/directory" }}
+    # Email address used for ACME registration
+    email:  {{ .Values.natsClusterIssuerEmail | required "natsClusterIssuerEmail is mandatory" }}
+    # Name of a secret used to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt
+    # Enable the HTTP-01 challenge provider
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+
+---
+{{ end }}
 
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    cert-manager.io/cluster-issuer: lets-issuer
+    cert-manager.io/cluster-issuer: {{ .Values.natsClusterIssuerName | default "lets-issuer" }}
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.org/websocket-services: "nats"

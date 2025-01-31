@@ -1,4 +1,5 @@
 import asyncio
+import json
 import io
 import tarfile
 import logging
@@ -12,7 +13,7 @@ import zlib
 import orjson
 from fastapi import HTTPException
 import nats, nats.errors, nats.aio.msg
-from requests import delete
+import redis
 
 from . import interlink
 from . import configuration as cfg
@@ -28,10 +29,16 @@ class NatsGateway:
         self._nats_server = nats_server
         self._nats_subject = nats_subject
         self._nats_timeout_seconds = nats_timeout_seconds
-        self._build_configs: Dict[str, BuildConfig] = dict()
         self._nats_subs = dict()
+        self.logger.info("Starting NatsGateway")
+        self._redis = redis.from_url(cfg.REDIS_CONNECTOR) if cfg.REDIS_CONNECTOR is not None else None
+        self._build_configs: Dict[str, BuildConfig] = dict()
+        if self._redis:
+            self._build_configs = {
+                str(q): BuildConfig(**(json.loads(bc))) for q, bc in self._redis.hgetall('build_configs').items()
+            }
+            self.logger.info(f"Recovered build_configs from DB for pools {', '.join(list(self._build_configs.keys()))}")
 
-        self.logger.info("Starting CondorProvider")
 
     async def configure_nats_callbacks(self):
         listener_nc = await nats.connect(servers=self._nats_server)
@@ -44,9 +51,15 @@ class NatsGateway:
         return listener_nc
 
     async def config_callback(self, msg: nats.aio.msg.Msg):
-        queue = msg.subject.split(".")[-1]
-        self._build_configs[queue] = BuildConfig(**orjson.loads(msg.data))
-        self.logger.info(f"Received updated configuration for queue {queue}")
+        pool = msg.subject.split(".")[-1]
+        if pool in self._build_configs.keys():
+            self.logger.info(f"Received configuration for a new pool: {pool}")
+
+        self._build_configs[pool] = BuildConfig(**orjson.loads(msg.data))
+        if self._redis is not None:
+            self._redis.hset('build_configs', pool, self._build_configs[pool].model_dump_json())
+
+        self.logger.info(f"Received updated configuration for pool {pool}")
 
     @asynccontextmanager
     async def nats_connection(self):
@@ -343,11 +356,15 @@ class NatsGateway:
         if job_status.phase not in ["succeeded", "failed"]:
             return f"Error. Cannot return log for job status '{job_name}'"
 
+        full_log = ""
         with tarfile.open(fileobj=io.BytesIO(job_status.logs_tarball), mode='r:*') as tar:
             for member in tar.getmembers():
                 if member.isfile():
                     self.logger.debug(f"Pod has log for container {member.name}, requested {log_request.ContainerName}.log")
-                    if member.name in [log_request.ContainerName + ".log", log_request.ContainerName + ".log.init"]:
+                    if member.name in [
+                            "run-" + log_request.ContainerName + ".log",
+                            "init-" + log_request.ContainerName + ".log",
+                        ]:
                         full_log = tar.extractfile(member).read().decode('utf-8')
 
         if log_request.Opts.Tail is not None:

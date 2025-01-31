@@ -6,6 +6,8 @@ import signal
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import PlainTextResponse
+
 
 from natsprovider import NatsGateway, interlink
 from natsprovider import configuration as cfg
@@ -70,7 +72,7 @@ async def get_pod_status(pods: List[Dict[str, Any]]) -> List[interlink.PodStatus
     return [result for result in status_results if result is not None]
 
 
-@app.get("/getLogs")
+@app.get("/getLogs", response_class=PlainTextResponse)
 async def get_pod_logs(req: interlink.LogRequest) -> str:
     return await nats_gateway.get_pod_logs(req)
 
