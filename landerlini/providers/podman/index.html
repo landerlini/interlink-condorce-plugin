@@ -72,6 +72,8 @@
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">Podman</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#a-configuration-sample">A configuration sample</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../slurm/">Slurm</a>
@@ -120,7 +122,95 @@ installation.</p>
 <p>To install Podman, please <a href="https://podman.io/docs/installation#installing-on-linux">refer to the official documentation</a>.</p>
 <p>The simplest option to install the submitter is using pip</p>
 <pre><code class="language-yaml">pip install git+https://github.com/landerlini/interlink-condorce-plugin.git
+</code></pre>
+<p>The following script should work</p>
+<pre><code class="language-bash">#!/bin/bash
+export PODMAN_BASE_URL=unix:///run/podman/podman.sock
+export GITREPO=&quot;git+https://github.com/landerlini/interlink-condorce-plugin.git@main&quot;
 
+pip install --update --force-reinstall $GITREPO
+
+while true
+do
+        pip install --force-reinstall --no-deps $GITREPO
+
+        interlink podman \
+                --build-config /data/interlink/podman-recas.cfg \
+                --server wss://&lt;your NATS server here&gt; \
+                --pool podman \
+                --cpu 85 \
+                --memory 1Ti \
+                --pods 123 \
+                --gpus 28 \
+                --responders 1 \
+                &amp;&gt; /data/interlink/logs/plugin.log
+done;
+</code></pre>
+<p>For production environments, it is a good idea to replace <code>@main</code> with a tagged version of the repository.</p>
+<h2 id="a-configuration-sample">A configuration sample</h2>
+<p>This configuration has been used for Podman in a machine hosted at ReCaS Bari.</p>
+<pre><code class="language-yaml"># Volumes and directories configuring access to executor-local data
+[volumes]
+
+### Area in the executor filesystem to be used for temporary files
+scratch_area = &quot;/data/interlink/scratch&quot;
+
+### Location to cache singularity images in the executor filesystem
+apptainer_cachedir = &quot;/data/interlink/cache&quot;
+
+### Location where to look for pre-built images
+image_dir = &quot;/data/interlink/images&quot;
+
+### Colon-separated list of directories to include in $PATH to look for executables
+additional_directories_in_path = []
+
+### Time in seconds between fuse mount and job execution
+fuse_sleep_seconds = 15
+
+
+# Options configuring the behavior of apptainer runtime
+[apptainer]
+
+### Relative or absolute path to apptainer, singularity or other compatible replacements
+executable = &quot;/usr/bin/singularity&quot;
+
+### Enables --fakeroot in apptainer exec/run commands
+fakeroot = false
+
+### Enables --containall flag in apptainer exec/run commands
+containall = false
+
+### Define the technique to mount fuse volumes to adopt on the host.
+
+fuse_mode = &quot;host-privileged&quot;
+
+### Do not propagate umask to the container, set default 0022 umask
+no_init = false
+
+### Do not bind home by default
+no_home = true
+
+### Drop all privileges from root user in container
+no_privs = false
+
+### Enable nVidia GPU support
+nvidia_support = false
+
+### Clean the environment of the spawned container
+cleanenv = true
+
+### Unsquash
+unsquash = false
+
+
+# Proxy to download pre-build Docker Images instead of rebuilding at each execution
+[shub_proxy]
+
+### shub proxy instance used to retrieve cached singularity images. Without protocol!
+server = &quot;&quot;
+
+### Master token of the proxy used to request and generate client tokens
+master_token = &quot;&quot;
 </code></pre>
               
             </div>
