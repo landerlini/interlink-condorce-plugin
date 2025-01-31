@@ -208,26 +208,32 @@ class BuildConfig(BaseModel):
             unsquash=self.apptainer.unsquash,
         )
 
+    @property
+    def logger(self):
+        return logging.getLogger(self.__class__.__name__)
+
+
     @classmethod
     def from_file(cls, filename: Union[str, None]):
         """
         Loads the build config from a TOML file.
         """
+        logger = logging.getLogger(cls.__name__)
         tolerate_missing_file = (filename is None)
         build_config_file = filename if filename is not None else '/etc/interlink/build.conf'
 
         if not os.path.exists(build_config_file):
             if tolerate_missing_file:
-                logging.warning(
+                logger.warning(
                     f"Build configuration file {build_config_file} does not exist. Using default configuration."
                     )
                 return cls()
             else:
-                logging.critical(f"Build configuration file {build_config_file} does not exist.")
+                logger.critical(f"Build configuration file {build_config_file} does not exist.")
                 exit(MISSING_BUILD_CONFIG_ERROR_CODE)
         else:
             with open(build_config_file, 'rb') as input_file:
-                return cls(**toml_load(input_file), input_toml_file=build_config_file)
+                return cls(**toml_load(input_file), input_toml_filename=build_config_file)
 
     def reload(self):
         """
@@ -237,7 +243,7 @@ class BuildConfig(BaseModel):
             build_config = build_config.reload()
         """
         if self.input_toml_filename is None:
-            logging.warning(f"Cannot reload BuildConfig for unknown input file.")
+            self.logger.warning(f"Cannot reload BuildConfig for unknown input file.")
             return self
 
         try:
