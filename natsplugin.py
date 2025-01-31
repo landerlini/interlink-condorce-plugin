@@ -81,6 +81,7 @@ async def get_pod_logs(req: interlink.LogRequest) -> str:
 async def shutdown(subject: str) -> str:
     logging.info("Shutting down")
     await nats_gateway.shutdown(subject)
+    os.kill(os.getpid(), signal.SIGTERM)
     return "Shutting down"
 
 @app.get("/healthz")
