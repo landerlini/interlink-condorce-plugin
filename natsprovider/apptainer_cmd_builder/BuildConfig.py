@@ -227,7 +227,7 @@ class BuildConfig(BaseModel):
                 exit(MISSING_BUILD_CONFIG_ERROR_CODE)
         else:
             with open(build_config_file, 'rb') as input_file:
-                return cls(**toml_load(input_file), input_toml_file=input_file)
+                return cls(**toml_load(input_file), input_toml_file=build_config_file)
 
     def reload(self):
         """
