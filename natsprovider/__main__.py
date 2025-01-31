@@ -17,19 +17,19 @@ MISSING_BUILD_CONFIG_ERROR_CODE = 127
 
 class AllProviders:
     @staticmethod
-    def condor(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
+    def condor(**kwargs):
         from .condor.CondorProvider import CondorProvider
-        return CondorProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
+        return CondorProvider(**kwargs)
 
     @staticmethod
-    def podman(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
+    def podman(**kwargs):
         from .podmanprovider.PodmanProvider import PodmanProvider
-        return PodmanProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
+        return PodmanProvider(**kwargs)
 
     @staticmethod
-    def interlink(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
+    def interlink(**kwargs):
         from .kubernetesprovider.KubernetesProvider import KubernetesProvider
-        return KubernetesProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
+        return KubernetesProvider(**kwargs)
 
 def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildConfig, leader: bool = False):
     """
