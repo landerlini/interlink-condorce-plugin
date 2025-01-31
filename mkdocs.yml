@@ -28,3 +28,4 @@ nav:
 
 markdown_extensions:
   - admonition
+  - pymdownx.snippets

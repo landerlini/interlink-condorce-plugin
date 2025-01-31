@@ -4,11 +4,8 @@ import os
 import string
 import logging
 import asyncio
-from distutils.command.build import build
 from signal import SIGINT, SIGTERM
 from argparse import ArgumentParser
-
-from tomli import load as toml_load
 
 from . import configuration as cfg
 from .BaseNatsProvider import BaseNatsProvider
@@ -20,24 +17,24 @@ MISSING_BUILD_CONFIG_ERROR_CODE = 127
 
 class AllProviders:
     @staticmethod
-    def condor(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
+    def condor(**kwargs):
         from .condor.CondorProvider import CondorProvider
-        return CondorProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
+        return CondorProvider(**kwargs)
 
     @staticmethod
-    def podman(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
+    def podman(**kwargs):
         from .podmanprovider.PodmanProvider import PodmanProvider
-        return PodmanProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
+        return PodmanProvider(**kwargs)
 
     @staticmethod
-    def interlink(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
+    def interlink(**kwargs):
         from .kubernetesprovider.KubernetesProvider import KubernetesProvider
-        return KubernetesProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
+        return KubernetesProvider(**kwargs)
 
     @staticmethod
-    def slurm(nats_server: str, nats_queue: str, build_config: BuildConfig, resources: Resources, interactive_mode: bool):
+    def slurm(**kwargs):
         from .slurmprovider.SlurmProvider import SlurmProvider
-        return SlurmProvider(nats_server, nats_queue, build_config, resources, interactive_mode)
+        return SlurmProvider(**kwargs)
 
 def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildConfig, leader: bool = False):
     """
@@ -45,9 +42,12 @@ def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildCo
     """
     provider: BaseNatsProvider = getattr(AllProviders, args.provider)(
         nats_server=args.server,
-        nats_queue=args.queue,
+        nats_pool=args.pool,
         build_config=build_config,
         interactive_mode=not args.non_interactive,
+        shutdown_subject=args.shutdown_subject,
+        # The provider leader(s) is in charge of updating the interlink provider on pool build-config and resources
+        leader=leader,
         resources=Resources(
             cpu=args.cpu,
             memory=args.memory,
@@ -55,9 +55,6 @@ def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildCo
             gpus=args.gpus,
         )
     )
-
-    # The provider leader(s) is in charge of updating the interlink provider on queue build-config and resources
-    provider.leader = leader
 
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(SIGINT, provider.maybe_stop)
@@ -97,14 +94,14 @@ def main():
     )
 
     parser.add_argument(
-        "--queue", "-q",
-        default="default-queue",
-        help="NATS queue or ResourceFlavor defining the NATS subject",
+        "--pool", "-q",
+        default="default-pool",
+        help="NATS pool or ResourceFlavor defining the NATS subject",
     )
 
     parser.add_argument(
         "--shutdown-subject", "-k",
-        default=None,
+        default="*",
         help="NATS subject triggering a shutdown (and possibly a restart) of this service",
     )
 
@@ -180,22 +177,10 @@ def main():
     )
     logging.debug("Enabled debug mode.")
 
-    if any([letter not in string.ascii_lowercase + '-' for letter in args.queue]):
-        raise ValueError(f"Invalid queue `{args.queue}`: queue names can only include lower-case letters.")
+    if any([letter not in string.ascii_lowercase + '-' for letter in args.pool]):
+        raise ValueError(f"Invalid pool `{args.pool}`: pool names can only include lower-case letters.")
 
-    tolerate_missing_build_config = (args.build_config is None)
-    build_config_file = args.build_config if args.build_config is not None else '/etc/interlink/build.conf'
-
-    if not os.path.exists(build_config_file):
-        if tolerate_missing_build_config:
-            logging.warning(f"Build configuration file {build_config_file} does not exist. Using default configuration.")
-            build_config = BuildConfig()
-        else:
-            logging.critical(f"Build configuration file {build_config_file} does not exist.")
-            exit(MISSING_BUILD_CONFIG_ERROR_CODE)
-    else:
-        with open(build_config_file, 'rb') as input_file:
-            build_config = BuildConfig(**toml_load(input_file))
+    build_config = BuildConfig.from_file(args.build_config)
 
     additional_responders = []
     if args.responders > 1:

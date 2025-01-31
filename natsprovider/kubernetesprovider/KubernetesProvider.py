@@ -17,11 +17,8 @@ from . import configuration as cfg
 class KubernetesProvider(BaseNatsProvider):
     def __init__(
             self,
-            nats_server: str,
-            nats_pool: str,
             build_config: BuildConfig,
-            resources: Resources,
-            interactive_mode: bool,
+            **kwargs,
     ):
         self._volumes = copy(build_config.volumes)
         build_config.volumes.scratch_area = "/scratch"
@@ -37,11 +34,8 @@ class KubernetesProvider(BaseNatsProvider):
 
         BaseNatsProvider.__init__(
             self,
-            nats_server=nats_server,
-            nats_pool=nats_pool,
             build_config=build_config,
-            resources=resources,
-            interactive_mode=interactive_mode,
+            **kwargs,
         )
 
     async def close_connections_callback(self):

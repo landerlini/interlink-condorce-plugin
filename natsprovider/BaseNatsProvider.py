@@ -71,6 +71,7 @@ class BaseNatsProvider:
 
     async def maybe_refresh_build_config(self):
         for _ in self.required_updates('build_config', 60):
+            self._build_config = self._build_config.reload()
             config_subject = '.'.join((self._nats_subject, 'config', self._nats_pool))
             async with self.nats_connection() as nc:
                 await nc.publish(
