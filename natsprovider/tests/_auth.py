@@ -12,26 +12,29 @@ The script generate a .env file that must be passed to pytest to define the vari
 the user against the CNAF Tier-1 to the purpose of running the tests.
 """
 
+import json
 import requests
 import textwrap
 import time
 import os
+import sys
 
 IAM_ISSUER = os.environ.get("IAM_ISSUER")
 IAM_CLIENT_ID = os.environ.get("IAM_CLIENT_ID")
 IAM_CLIENT_SECRET = os.environ.get("IAM_CLIENT_SECRET")
 
-SCOPES = [
-        'openid',
-        'profile',
-        'offline_access',
-        'wlcg.groups',
-        'wlcg',
-        'compute.create',
-        'compute.modify',
-        'compute.read',
-        'compute.cancel',
-    ]
+default_scopes = [
+    'openid',
+    'profile',
+    'offline_access',
+    'wlcg.groups',
+    'wlcg',
+    'compute.create',
+    'compute.modify',
+    'compute.read',
+    'compute.cancel',
+]
+SCOPES = json.loads(os.environ.get("IAM_SCOPES", json.dumps(default_scopes)))
 
 response = requests.post(
     os.environ["IAM_ISSUER"] + '/devicecode',
@@ -70,6 +73,12 @@ while True:
     else:
         token_response.raise_for_status()
 
+
+if len(sys.argv) > 1:
+    with open(sys.argv[1], "w") as f:
+        print(refresh_token, file=f)
+else:
+    print(f"Warning. No output file was set. Creating secret.env file.")
 
 with open("secret.env", "w") as f:
     print(textwrap.dedent(f"""
