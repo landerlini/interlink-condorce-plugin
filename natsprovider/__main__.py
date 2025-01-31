@@ -4,11 +4,8 @@ import os
 import string
 import logging
 import asyncio
-from distutils.command.build import build
 from signal import SIGINT, SIGTERM
 from argparse import ArgumentParser
-
-from tomli import load as toml_load
 
 from . import configuration as cfg
 from .BaseNatsProvider import BaseNatsProvider
@@ -178,19 +175,7 @@ def main():
     if any([letter not in string.ascii_lowercase + '-' for letter in args.queue]):
         raise ValueError(f"Invalid queue `{args.queue}`: queue names can only include lower-case letters.")
 
-    tolerate_missing_build_config = (args.build_config is None)
-    build_config_file = args.build_config if args.build_config is not None else '/etc/interlink/build.conf'
-
-    if not os.path.exists(build_config_file):
-        if tolerate_missing_build_config:
-            logging.warning(f"Build configuration file {build_config_file} does not exist. Using default configuration.")
-            build_config = BuildConfig()
-        else:
-            logging.critical(f"Build configuration file {build_config_file} does not exist.")
-            exit(MISSING_BUILD_CONFIG_ERROR_CODE)
-    else:
-        with open(build_config_file, 'rb') as input_file:
-            build_config = BuildConfig(**toml_load(input_file))
+    build_config = BuildConfig.from_file(args.build_config)
 
     additional_responders = []
     if args.responders > 1:
