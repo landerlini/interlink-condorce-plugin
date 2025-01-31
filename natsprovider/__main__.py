@@ -7,7 +7,6 @@ import asyncio
 from signal import SIGINT, SIGTERM
 from argparse import ArgumentParser
 
-from natsplugin import shutdown
 from . import configuration as cfg
 from .BaseNatsProvider import BaseNatsProvider
 from .apptainer_cmd_builder import BuildConfig
