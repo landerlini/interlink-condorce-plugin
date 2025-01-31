@@ -96,7 +96,7 @@ def main():
 
     parser.add_argument(
         "--shutdown-subject", "-k",
-        default=None,
+        default="*",
         help="NATS subject triggering a shutdown (and possibly a restart) of this service",
     )
 
