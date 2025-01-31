@@ -238,7 +238,7 @@ class BuildConfig(BaseModel):
         """
         if self.input_toml_filename is None:
             logging.warning(f"Cannot reload BuildConfig for unknown input file.")
-            return
+            return self
 
         try:
             return BuildConfig.from_file(self.input_toml_filename)
