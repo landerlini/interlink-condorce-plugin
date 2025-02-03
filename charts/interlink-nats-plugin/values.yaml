@@ -79,7 +79,7 @@ oauth2ProxyCookieSecret:
 # Plugin configuration
 
 # pluginDocker image where to download from GitHub and run the condor-ce plugin
-pluginDocker: "landerlini/interlink-condorce-plugin:v0.0"
+pluginImage: "landerlini/interlink-condorce-plugin:v0.1.2"
 
 # pluginRepository is the git repository of the plugin, kept updated with git-sync
 pluginRepository: "https://github.com/landerlini/interlink-condorce-plugin"

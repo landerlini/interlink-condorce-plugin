@@ -1,4 +1,4 @@
-# Image name: landerlini/interlink-condorce-plugin:v0.1
+# Image name: landerlini/interlink-condorce-plugin:v0.1.2
 FROM htcondor/mini:latest
 
 RUN dnf install -y \
@@ -20,5 +20,6 @@ RUN pip install \
   "podman" \
   "pytest" \
   "aiohttp" \
-  "redis"
+  "redis" \
+  "jsonpath-ng"
 
