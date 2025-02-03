@@ -6,6 +6,7 @@ a [Virtual Kubelet](https://virtual-kubelet.io/) provider designed to execute
 Kubernetes pods in batch-job providers.
 
 The InterLink NATS Plugin is built on two core ideas:
+
  * a NATS overlay, accessed via TLS-terminated WebSockets, enable a bidirectional communication between the login- 
    or edge-nodes of the resource providers without the need for network ingress rules. 
  * the job is converted into a bash script with the same Python code for all execution backends; the job script is 
@@ -18,6 +19,9 @@ the InterLink NATS plugin relies on Kueue. A simple operator, named `kueue-nats`
 providers into Kueue [ResourceFlavors](https://kueue.sigs.k8s.io/docs/concepts/resource_flavor/) and 
 [ClusterQueues](https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/) following the directives defined in a 
 custom resource named `MasterQueue` and the available resource as published via NATS from the submitters. 
+
+For details on the definition of a `MasterQueue` and on the `kueue-nats` controller, check the dedicated 
+[documentation](./concepts/kueue-nats.md).
 
 A schematic representation of the architecture is presented below.
 
@@ -53,4 +57,4 @@ job and let's discuss the steps of its admission and submission.
 6. **Job submission.** Finally, the job received by the *backend-specific submitter* which submits it to the actual
    backend.
 
-
+## BuildConfig
