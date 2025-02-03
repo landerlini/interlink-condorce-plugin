@@ -182,7 +182,7 @@ class BaseNatsProvider:
 
         if cfg.DEBUG:
             with open(f"/tmp/{job_name}", "w") as f:
-                podspec = pformat(pod.get('pod', dict()))
+                podspec = pformat(body.get('pod', dict()))
                 podspec = "\n".join([f"# {line}" for line in podspec.split('\n')])
                 print("\n".join((podspec, job_sh)), file=f)
 
