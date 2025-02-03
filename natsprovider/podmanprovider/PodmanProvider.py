@@ -19,28 +19,12 @@ from ..apptainer_cmd_builder import BuildConfig
 from .volumes import BindVolume, TmpFS
 
 class PodmanProvider(BaseNatsProvider):
-    def __init__(
-            self,
-            build_config: BuildConfig,
-            **kwargs,
-    ):
-        self._volumes = copy(build_config.volumes)
-        build_config.volumes.scratch_area = "/scratch"
-        build_config.volumes.apptainer_cachedir = "/cache"
-        build_config.volumes.image_dir = "/images"
+    def __init__(self, **kwargs):
+        BaseNatsProvider.__init__(self, **kwargs)
+
         self._sandbox = cfg.LOCAL_SANDBOX
-
-        BaseNatsProvider.__init__(
-            self,
-            build_config=build_config,
-            **kwargs
-        )
         self._podman_base_url = cfg.PODMAN_BASE_URL
-
-        if len(build_config.volumes.additional_directories_in_path):
-            self.logger.warning(
-                "Build configuration additional_directories_in_path will be ignored. Define a CUSTOM_PILOT instead."
-            )
+        self._volumes = copy(self.build_config.volumes)
 
         with podman.PodmanClient(base_url=self._podman_base_url) as client:
             if not client.ping():
@@ -48,6 +32,19 @@ class PodmanProvider(BaseNatsProvider):
             self.logger.info(f"Pulling image {cfg.CUSTOM_PILOT}")
             client.images.pull(*(cfg.CUSTOM_PILOT.split(":")))
 
+
+    def customize_build_config(self, build_config: BuildConfig):
+        build_config = build_config.model_copy(deep=True)
+        build_config.volumes.scratch_area = "/scratch"
+        build_config.volumes.apptainer_cachedir = "/cache"
+        build_config.volumes.image_dir = "/images"
+
+        if len(build_config.volumes.additional_directories_in_path):
+            self.logger.warning(
+                "Build configuration additional_directories_in_path will be ignored. Define a CUSTOM_PILOT instead."
+            )
+
+        return build_config
 
     @asynccontextmanager
     async def podman(self):

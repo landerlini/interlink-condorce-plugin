@@ -29,6 +29,7 @@ class BaseNatsProvider:
             nats_server: str,
             nats_pool: str,
             build_config: BuildConfig,
+            provider_config_key: str,
             resources: Resources,
             interactive_mode: bool = True,
             shutdown_subject: str = None,
@@ -45,6 +46,7 @@ class BaseNatsProvider:
         self._interactive_mode = interactive_mode
         self._shutdown_subject = shutdown_subject if shutdown_subject is not None else nats_pool
         self._build_config = build_config
+        self._provider_config_key = provider_config_key
         self.leader = leader
 
         self._subscriptions = {}
@@ -53,6 +55,16 @@ class BaseNatsProvider:
 
         self._declared_resources = resources
         self._warned_on_unset_resources = list()
+
+    @property
+    def config(self):
+        if not hasattr(self._build_config, self._provider_config_key):
+            raise KeyError(f"BuildConfig does not configure provider `{self._provider_config_key}`")
+        return hasattr(self._build_config, self._provider_config_key)
+
+    @property
+    def build_config(self):
+        return self._build_config
 
     def required_updates(self, timer_key: str, delay_seconds: int):
         if (
@@ -69,6 +81,10 @@ class BaseNatsProvider:
             return self._nats_server.replace(password[0], "***")
         return self._nats_server
 
+    def customize_build_config(self, build_config: BuildConfig):
+        """Override this function to fix the build config with provider-specific logics"""
+        return build_config
+
     async def maybe_refresh_build_config(self):
         for _ in self.required_updates('build_config', 60):
             self._build_config = self._build_config.reload()
@@ -76,7 +92,7 @@ class BaseNatsProvider:
             async with self.nats_connection() as nc:
                 await nc.publish(
                     subject=config_subject,
-                    payload=self._build_config.model_dump_json().encode()
+                    payload=self.customize_build_config(self._build_config).model_dump_json().encode()
                 )
                 self.logger.info(f"Published build options on subject {config_subject}")
 
