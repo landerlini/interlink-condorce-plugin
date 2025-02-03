@@ -57,4 +57,11 @@ job and let's discuss the steps of its admission and submission.
 6. **Job submission.** Finally, the job received by the *backend-specific submitter* which submits it to the actual
    backend.
 
-## BuildConfig
+## Build Configuration and Allocatable Resources
+To inform the InterLink API Plugin of the requested configuration to generate the bash script running the job and 
+to inform the `kueue-nats` controller of the resources available in the node, NATS is used. 
+When launched, and then at periodic intervals, the submitters publish the `BuildConfig` object and the locally 
+available resources.
+The `BuildConfig` for each pod is optionally cached in a redis database to avoid disruption of the service in case 
+of restart of the plugin api-server.
+
