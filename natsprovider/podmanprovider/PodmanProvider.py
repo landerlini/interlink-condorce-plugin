@@ -24,7 +24,6 @@ class PodmanProvider(BaseNatsProvider):
 
         self._sandbox = cfg.LOCAL_SANDBOX
         self._podman_base_url = cfg.PODMAN_BASE_URL
-        self._volumes = copy(self.build_config.volumes)
 
         with podman.PodmanClient(base_url=self._podman_base_url) as client:
             if not client.ping():
@@ -58,10 +57,14 @@ class PodmanProvider(BaseNatsProvider):
         """
 
         sandbox = Path(self._sandbox) / job_name
-        scratch_area = Path(self._volumes.scratch_area) / job_name
+        apptainer_cachedir = Path(self.build_config.volumes.apptainer_cachedir)
+        scratch_area = Path(self.build_config.volumes.scratch_area) / job_name
+
+        target_build_config = self.customize_build_config(self.build_config)
+
 
         # Ensure directories exists
-        for dirname in self._volumes.apptainer_cachedir, scratch_area, sandbox:
+        for dirname in self.build_config.apptainer_cachedir, scratch_area, sandbox:
             Path(dirname).mkdir(parents=True, exist_ok=True)
 
         async with self.podman() as client:
@@ -76,12 +79,12 @@ class PodmanProvider(BaseNatsProvider):
                 workdir="/sandbox",
                 mounts=[
                     BindVolume(
-                        source=self._volumes.apptainer_cachedir,
-                        target=self._build_config.volumes.apptainer_cachedir,
+                        source=str(apptainer_cachedir),
+                        target=target_build_config.volumes.apptainer_cachedir,
                     ).model_dump(),
                     BindVolume(
                         source=str(scratch_area),
-                        target=self._build_config.volumes.scratch_area,
+                        target=target_build_config.volumes.scratch_area,
                     ).model_dump(),
                    BindVolume(
                        source=str(sandbox),
@@ -99,11 +102,11 @@ class PodmanProvider(BaseNatsProvider):
                     # image_dir is only mounted if it exists
                     [
                         BindVolume(
-                            source=self._volumes.image_dir,
-                            target=self._build_config.volumes.image_dir,
+                            source=self.build_config.volumes.image_dir,
+                            target=target_build_config.volumes.image_dir,
                             read_only=True
                         ).model_dump(),
-                    ] if os.path.exists(self._volumes.image_dir) else []
+                    ] if os.path.exists(self.build_config.volumes.image_dir) else []
                 )
             )
             self.logger.info(f"Created podman container with ID {pilot.id}")
