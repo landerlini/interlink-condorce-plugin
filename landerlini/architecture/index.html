@@ -48,7 +48,7 @@
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#the-lifecycle-of-a-job">The lifecycle of a job</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#buildconfig">BuildConfig</a>
+    <li class="toctree-l2"><a class="reference internal" href="#build-configuration-and-allocatable-resources">Build Configuration and Allocatable Resources</a>
     </li>
     </ul>
                 </li>
@@ -166,7 +166,13 @@ job and let's discuss the steps of its admission and submission.</p>
 <li><strong>Job submission.</strong> Finally, the job received by the <em>backend-specific submitter</em> which submits it to the actual
    backend.</li>
 </ol>
-<h2 id="buildconfig">BuildConfig</h2>
+<h2 id="build-configuration-and-allocatable-resources">Build Configuration and Allocatable Resources</h2>
+<p>To inform the InterLink API Plugin of the requested configuration to generate the bash script running the job and 
+to inform the <code>kueue-nats</code> controller of the resources available in the node, NATS is used. 
+When launched, and then at periodic intervals, the submitters publish the <code>BuildConfig</code> object and the locally 
+available resources.
+The <code>BuildConfig</code> for each pod is optionally cached in a redis database to avoid disruption of the service in case 
+of restart of the plugin api-server.</p>
               
             </div>
           </div><footer>
