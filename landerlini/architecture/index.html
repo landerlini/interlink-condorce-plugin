@@ -46,6 +46,8 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="#">Architecture</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#the-lifecycle-of-a-job">The lifecycle of a job</a>
+    </li>
     </ul>
                 </li>
               </ul>
@@ -110,6 +112,54 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="architecture">Architecture</h1>
+<p>As you may probably guess, the InterLink NATS Plugin is a <em>plugin</em> for 
+<a href="https://intertwin-eu.github.io/interLink/">InterLink</a>, 
+a <a href="https://virtual-kubelet.io/">Virtual Kubelet</a> provider designed to execute 
+Kubernetes pods in batch-job providers.</p>
+<p>The InterLink NATS Plugin is built on two core ideas:
+ * a NATS overlay, accessed via TLS-terminated WebSockets, enable a bidirectional communication between the login- 
+   or edge-nodes of the resource providers without the need for network ingress rules. 
+ * the job is converted into a bash script with the same Python code for all execution backends; the job script is 
+   sent by the plugin via NATS and submitted by a thin script to one of the queues; this approach reduces the 
+   duplication of the logics translating a Kubernetes pod in a bash script (which comes with a price in terms of 
+   supported features).</p>
+<p>To manage the submission of payloads to multiple sites, possibly with different prices, features and limitations,
+the InterLink NATS plugin relies on Kueue. A simple operator, named <code>kueue-nats</code>, takes care of mapping the resource
+providers into Kueue <a href="https://kueue.sigs.k8s.io/docs/concepts/resource_flavor/">ResourceFlavors</a> and 
+<a href="https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/">ClusterQueues</a> following the directives defined in a 
+custom resource named <code>MasterQueue</code> and the available resource as published via NATS from the submitters. </p>
+<p>A schematic representation of the architecture is presented below.</p>
+<p><img alt="architecture.png" src="../images/interlink-nats-plugin.png" /></p>
+<h2 id="the-lifecycle-of-a-job">The lifecycle of a job</h2>
+<p>To ease understanding the steps entering the submission and the execution of a Job, let's consider an example 
+job and let's discuss the steps of its admission and submission.</p>
+<ol>
+<li><strong>Job creation.</strong> A <code>batch/V1Job</code> resource is created by some <em>Workload manager</em> or by <code>kubectl</code>. 
+   It should include the Kueue-specific annotations defining the target <code>LocalQueue</code> and, if intended for
+   offloading, it must feature the standard InterLink toleration for the taint 
+   <code>virtual-node.interlink/no-schedule=true:NoSchedule</code>.</li>
+<li><strong>Job admission.</strong> When the <code>ClusterQueue</code> the job has been submitted to has sufficient resources it admits the 
+   workload, assigning the highest-priority, compatible <code>ResourceFlavor</code>. 
+   Kueue defines the resource pool to which the payload is destined with the toleration <code>pool.vk.io</code>. It will be 
+   responsibility of the plugin to submit the payload with the correct NATS subject to make the submitters of the 
+   right pool to receive and process it.
+   Note that a <code>ClusterQueue</code> can include both
+   local and interlink-related flavors, so a job tolerating offloading can be executed locally if the remote providers
+   are either not available or completely committed or their corresponding <code>ResourceFlavors</code> are defined in the 
+   ClusterQueue logic at lower priority. Clearly, jobs not tolerating offloading will be mapped on local
+   <code>ResourceFlavors</code> only.</li>
+<li><strong>Job transmission.</strong> Once the Job is assigned to a <em>VirtualKubelet</em>, it is propagated to the InterLink API server
+   and then to the InterLink NATS Plugin. In Helm chart made available in this repository, the three components are run
+   in three containers of the same pod and communicate through a loopback network interface. Other architectures 
+   splitting the containers in different Pods, or even cluster, with OAuth2-proxy for authentication have been tested 
+   successfully, but they are too complex for being centrally maintained.</li>
+<li><strong>Job translation.</strong> Once the job reaches the plugin, it gets translated into a bash script. Note that the target 
+   pool is known at conversion time, and the generation of the script can be tweaked via a <code>BuildConfig</code> that the 
+   submitter publish periodically via NATS. This enables defining custom caches or singularity flags.</li>
+<li><strong>Job request.</strong> The Job is sent to the submitter through a NATS request, using a subject including the pod name.</li>
+<li><strong>Job submission.</strong> Finally, the job received by the <em>backend-specific submitter</em> which submits it to the actual
+   backend.</li>
+</ol>
               
             </div>
           </div><footer>
