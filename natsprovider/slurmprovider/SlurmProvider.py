@@ -30,15 +30,10 @@ class SlurmProvider(BaseNatsProvider):
 
         BaseNatsProvider.__init__(self, build_config=build_config, **kwargs)
 
-        # log the build config
-        self.logger.info(f"Build config: {build_config}")
-
     async def create_pod(self, job_name: str, job_sh: str, pod: interlink.PodRequest) -> str:
         """
         Submit the job to Slurm
         """
-
-        self.logger.info(f"Creating pod {job_name}")
 
         sandbox = Path(self._sandbox) / job_name
         scratch_area = Path(self._volumes.scratch_area) / job_name
@@ -58,6 +53,8 @@ class SlurmProvider(BaseNatsProvider):
 
         self.logger.info(f"Start creation of slurm script for job {job_name}")
 
+        # WIP: check for annotations in the build config
+
         # Create the Slurm script
         slurm_script = f"""#!/bin/bash
 #SBATCH --job-name={job_name}
@@ -67,7 +64,7 @@ class SlurmProvider(BaseNatsProvider):
 singularity --quiet --silent exec \\
     --pwd /sandbox \\
     --bind {self._volumes.apptainer_cachedir}:{self._build_config.volumes.apptainer_cachedir} \\
-    --bind {scratch_area}:{self._build_config.volumes.scratch_area} \\
+    --bind {scratch_area}:/scratch \\
     --bind {sandbox}:/sandbox \\
     --bind {job_script_path}:/sandbox/job_script.sh \\
     {"--bind " + cfg.CVMFS_MOUNT_POINT + ":/cvmfs" if cfg.CVMFS_MOUNT_POINT else ""} \\
@@ -171,11 +168,11 @@ singularity --quiet --silent exec \\
                     self.logger.info(f"Canceling Slurm job {job_id} (name: {job_name})")
                     subprocess.run(["scancel", job_id], check=True)
             else:
-                self.logger.warning(f"No active Slurm jobs found with name {job_name}")
+                self.logger.info(f"No active Slurm jobs found with name {job_name}")
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Failed to query or cancel Slurm job {job_name}: {e.stderr}")
         
-        # Cleanup
+        # Cleanup the sandbox directory in the host
         try:
             shutil.rmtree(sandbox)
             self.logger.info(f"Successfully deleted sandbox for job {job_name}")
@@ -183,5 +180,16 @@ singularity --quiet --silent exec \\
             self.logger.warning(f"Trying to delete job {job_name}, but no sandbox volume is found.")
         except OSError as e:
             self.logger.critical(f"Failed deleting sandbox for job {job_name}: {sandbox}")
+            self.logger.critical(e, exc_info=True)
+
+        # Cleanup the scratch area in the host
+        scratch_area = Path(self._volumes.scratch_area) / job_name
+        try:
+            shutil.rmtree(scratch_area)
+            self.logger.info(f"Successfully deleted scratch area for job {job_name}")
+        except FileNotFoundError:
+            self.logger.warning(f"Trying to delete job {job_name}, but no scratch area volume is found.")
+        except OSError as e:
+            self.logger.critical(f"Failed deleting scratch area for job {job_name}: {scratch_area}")
             self.logger.critical(e, exc_info=True)
 

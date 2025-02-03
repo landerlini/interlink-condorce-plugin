@@ -45,6 +45,88 @@ class BuildConfig(BaseModel):
             """
         )
 
+    class SlurmOptions(BaseModel, extra='forbid'):
+        """
+        Options configuring the behavior of SLURM runtime.
+        """
+        executable: str = Field(
+            default="/usr/bin/sbatch",
+            description="Relative or absolute path to sbatch",
+        )
+        ntasks: int = Field(
+            default=1,
+            description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
+        )
+        cpus_per_task: int = Field(
+            default=1,
+            description="Number of CPUs per task (SLURM flag: --cpus-per-task)",
+        )
+        mem_per_cpu: str = Field(
+            default="1G",
+            description="Memory per CPU (SLURM flag: --mem-per-cpu)",
+        )
+        partition: str = Field(
+            default="batch",
+            description="Partition to submit the job to (SLURM flag: --partition or -p)",
+        )
+        time: str = Field(
+            default="1:00:00",
+            description="Time limit for the job (SLURM flag: --time or -t)",
+        )
+        qos: str = Field(
+            default="normal",
+            description="Quality of service (SLURM flag: --qos)",
+        )
+        account: str = Field(
+            default="",
+            description="Account to charge the job to (SLURM flag: --account or -A)",
+        )
+        job_name: str = Field(
+            default="",
+            description="Name of the job (SLURM flag: --job-name or -J)",
+        )
+        mail_user: str = Field(
+            default="",
+            description="Email address to send notifications to (SLURM flag: --mail-user)",
+        )
+        mail_type: str = Field(
+            default="END",
+            description="Type of notifications to send (SLURM flag: --mail-type)",
+        )
+        output: str = Field(
+            default="",
+            description="Output file (SLURM flag: --output or -o)",
+        )
+        error: str = Field(
+            default="",
+            description="Error file (SLURM flag: --error or -e)",
+        )
+        log_dir: str = Field(
+            default="",
+            description="Directory where to store logs (No direct SLURM flag, but can be used in paths for output/error logs)",
+        )
+        image: str = Field(
+            default="",
+            description="Singularity image to use",
+        )
+        bind: List[str] = Field(
+            default_factory=lambda: os.environ.get("BIND", "").split(":"),
+            description="Colon-separated list of directories to bind mount",
+        )
+        env: List[str] = Field(
+            default_factory=lambda: os.environ.get("ENV", "").split(":"),
+            description="Colon-separated list of environment variables to set (The same of using --export or environment variables before sbatch)",
+        )
+        flags: List[str] = Field(
+            default_factory=lambda: os.environ.get("FLAGS", "").split(":"),
+            description="Colon-separated list of additional flags (Custom, not a direct SLURM flag)",
+        )
+        slurm_flags: List[str] = Field(
+            default_factory=lambda: os.environ.get("SLURM_FLAGS", "").split(":"),
+            description="Colon-separated list of additional SLURM flags (Can include any SLURM command-line options)",
+        )
+
+
     class ApptainerOptions(BaseModel, extra='forbid'):
         """
         Options configuring the behavior of apptainer runtime
