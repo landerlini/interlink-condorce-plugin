@@ -64,7 +64,7 @@ class PodmanProvider(BaseNatsProvider):
 
 
         # Ensure directories exists
-        for dirname in self.build_config.apptainer_cachedir, scratch_area, sandbox:
+        for dirname in self.build_config.volumes.apptainer_cachedir, scratch_area, sandbox:
             Path(dirname).mkdir(parents=True, exist_ok=True)
 
         async with self.podman() as client:
