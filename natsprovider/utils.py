@@ -296,7 +296,10 @@ class TokenManager:
         if response.status_code / 100 != 2:
             print(response.text)
         response.raise_for_status()
-        return response.json().get("access_token")
+
+        access_token = response.json().get("access_token")
+        print (access_token, file=open(".token", "w"))
+        return access_token
 
     @property
     def token(self) -> str:
