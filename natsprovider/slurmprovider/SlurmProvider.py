@@ -33,8 +33,8 @@ class SlurmProvider(BaseNatsProvider):
     async def create_pod(self, job_name: str, job_sh: str, pod: interlink.PodRequest) -> str:
         """
         Submit the job to Slurm
-        """
-
+        """        
+    
         sandbox = Path(self._sandbox) / job_name
         scratch_area = Path(self._volumes.scratch_area) / job_name
         job_script_path = sandbox / "job_script.sh"  # Define the job script path
@@ -53,15 +53,50 @@ class SlurmProvider(BaseNatsProvider):
 
         self.logger.info(f"Start creation of slurm script for job {job_name}")
 
-        # WIP: check for annotations in the build config
+        if self._build_config.slurm is None:
+            self.logger.info("No slurm configuration specified in the build config. Using default values.")
+
+        # Default executable paths
+        singularity_executable = "/usr/bin/singularity"
+        sbatch_executable = "/usr/local/bin/sbatch"
+
+        # Default Slurm output and error log paths
+        sbatch_output_flag = f"#SBATCH --output={sandbox}/stdout.log"
+        sbatch_error_flag = f"#SBATCH --error={sandbox}/stderr.log"
+
+        # Generate Slurm sbatch flags dynamically
+        slurm_config = self._build_config.slurm
+        sbatch_flags = "\n".join(
+            f"#SBATCH --{flag}={value}"
+            for flag, value in {
+                "time": slurm_config.time,
+                "ntasks": slurm_config.ntasks,
+                "cpus-per-task": slurm_config.cpus_per_task,
+                "mem-per-cpu": slurm_config.mem_per_cpu,
+                "partition": slurm_config.partition,
+                "qos": slurm_config.qos,
+                "account": slurm_config.account,
+                "mail-user": slurm_config.mail_user,
+                "mail-type": slurm_config.mail_type,
+            }.items()
+            if value is not None
+        )
+
+        # Override defaults if specified in the Slurm config
+        if slurm_config:
+            sbatch_output_flag = f"#SBATCH --output={slurm_config.output}" if slurm_config.output else sbatch_output_flag
+            sbatch_error_flag = f"#SBATCH --error={slurm_config.error}" if slurm_config.error else sbatch_error_flag
+            singularity_executable = slurm_config.singularity_executable or singularity_executable
+            sbatch_executable = slurm_config.sbatch_executable or sbatch_executable
 
         # Create the Slurm script
         slurm_script = f"""#!/bin/bash
 #SBATCH --job-name={job_name}
-#SBATCH --output={sandbox}/stdout.log
-#SBATCH --error={sandbox}/stderr.log
+{sbatch_output_flag}
+{sbatch_error_flag}
+{sbatch_flags}
 
-singularity --quiet --silent exec \\
+{singularity_executable} --quiet --silent exec \\
     --pwd /sandbox \\
     --bind {self._volumes.apptainer_cachedir}:{self._build_config.volumes.apptainer_cachedir} \\
     --bind {scratch_area}:/scratch \\
@@ -70,7 +105,7 @@ singularity --quiet --silent exec \\
     {"--bind " + cfg.CVMFS_MOUNT_POINT + ":/cvmfs" if cfg.CVMFS_MOUNT_POINT else ""} \\
     {"--bind " + self._volumes.image_dir + ":" + self._build_config.volumes.image_dir if os.path.exists(self._volumes.image_dir) else ""} \\
     {cfg.CUSTOM_PILOT} /bin/bash /sandbox/job_script.sh
-"""
+        """
 
         self.logger.info(f"Slurm script for job {job_name}:\n{slurm_script}")
 
@@ -85,7 +120,7 @@ singularity --quiet --silent exec \\
         # Submit the job using sbatch
         try:
             result = subprocess.run(
-                ["sbatch", str(slurm_script_path)], # WIP: here the absolute path to sbatch should be taken from the build config
+                [f"{sbatch_executable}", str(slurm_script_path)], # WIP: here the absolute path to sbatch should be taken from the build config
                 capture_output=True,
                 text=True,
                 check=True

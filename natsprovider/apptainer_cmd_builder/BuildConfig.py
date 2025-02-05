@@ -49,64 +49,68 @@ class BuildConfig(BaseModel):
         """
         Options configuring the behavior of SLURM runtime.
         """
-        executable: str = Field(
-            default="/usr/bin/sbatch",
+        sbatch_executable: str = Field(
+            default=None,
             description="Relative or absolute path to sbatch",
         )
+        singularity_executable: str = Field(
+            default=None,
+            description="Relative or absolute path to singularity",
+        )
         ntasks: int = Field(
-            default=1,
+            default=None,
             description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
         )
         cpus_per_task: int = Field(
-            default=1,
+            default=None,
             description="Number of CPUs per task (SLURM flag: --cpus-per-task)",
         )
         mem_per_cpu: str = Field(
-            default="1G",
+            default=None,
             description="Memory per CPU (SLURM flag: --mem-per-cpu)",
         )
         partition: str = Field(
-            default="batch",
+            default=None,
             description="Partition to submit the job to (SLURM flag: --partition or -p)",
         )
         time: str = Field(
-            default="1:00:00",
+            default=None,
             description="Time limit for the job (SLURM flag: --time or -t)",
         )
         qos: str = Field(
-            default="normal",
+            default=None,
             description="Quality of service (SLURM flag: --qos)",
         )
         account: str = Field(
-            default="",
+            default=None,
             description="Account to charge the job to (SLURM flag: --account or -A)",
         )
         job_name: str = Field(
-            default="",
+            default=None,
             description="Name of the job (SLURM flag: --job-name or -J)",
         )
         mail_user: str = Field(
-            default="",
+            default=None,
             description="Email address to send notifications to (SLURM flag: --mail-user)",
         )
         mail_type: str = Field(
-            default="END",
+            default=None,
             description="Type of notifications to send (SLURM flag: --mail-type)",
         )
         output: str = Field(
-            default="",
+            default=None,
             description="Output file (SLURM flag: --output or -o)",
         )
         error: str = Field(
-            default="",
+            default=None,
             description="Error file (SLURM flag: --error or -e)",
         )
         log_dir: str = Field(
-            default="",
+            default=None,
             description="Directory where to store logs (No direct SLURM flag, but can be used in paths for output/error logs)",
         )
         image: str = Field(
-            default="",
+            default=None,
             description="Singularity image to use",
         )
         bind: List[str] = Field(
@@ -219,6 +223,10 @@ class BuildConfig(BaseModel):
         default=SingularityHubProxy(),
         description=SingularityHubProxy.__doc__
     )
+    slurm: SlurmOptions = Field(
+        default=SlurmOptions(),
+        description=SlurmOptions.__doc__
+    )
 
     input_toml_filename: Optional[str] = Field(
         default=None,
@@ -234,21 +242,24 @@ class BuildConfig(BaseModel):
         for section_name, section in properties.items():
             if section_name.startswith("$"):
                 continue
-            ref = section['$ref'].split("/")[-1]
-            section_description = defs.get(ref, {}).get("description")
-            if section_description is not None:
-                section_description = "\n".join([f"# {line}" for line in section_description.split("\n") if len(line)])
-                print(section_description, file=ret)
+            try:
+                ref = section['$ref'].split("/")[-1]
+                section_description = defs.get(ref, {}).get("description")
+                if section_description is not None:
+                    section_description = "\n".join([f"# {line}" for line in section_description.split("\n") if len(line)])
+                    print(section_description, file=ret)
 
-            print(f"[{section_name}]", file=ret)
+                print(f"[{section_name}]", file=ret)
 
-            for entry, data in defs.get(ref, {}).get("properties", {}).items():
-                for line in data.get("description", "").split('\n'):
-                    print("\n### ", line, file=ret)
-                value = self.model_dump().get(section_name, {}).get(entry)
-                print(f"{entry} = {json.dumps(value)}", file=ret)
-            data = defs.get(ref, {}).get("properties", {})
-            print("\n" * 2, file=ret)
+                for entry, data in defs.get(ref, {}).get("properties", {}).items():
+                    for line in data.get("description", "").split('\n'):
+                        print("\n### ", line, file=ret)
+                    value = self.model_dump().get(section_name, {}).get(entry)
+                    print(f"{entry} = {json.dumps(value)}", file=ret)
+                data = defs.get(ref, {}).get("properties", {})
+                print("\n" * 2, file=ret)
+            except KeyError:
+                pass
 
         ret.seek(0)
         return ret.read()
@@ -260,6 +271,30 @@ class BuildConfig(BaseModel):
             cachedir=self.volumes.apptainer_cachedir,
             additional_directories_in_path=self.volumes.additional_directories_in_path,
             fuse_sleep_seconds=self.volumes.fuse_sleep_seconds,
+        )
+
+    def slurm_config(self):
+        return dict(
+            singularity_executable=self.slurm.singularity_executable,
+            sbatch_executable=self.slurm.sbatch_executable,
+            ntasks=self.slurm.ntasks,
+            cpus_per_task=self.slurm.cpus_per_task,
+            mem_per_cpu=self.slurm.mem_per_cpu,
+            partition=self.slurm.partition,
+            time=self.slurm.time,
+            qos=self.slurm.qos,
+            account=self.slurm.account,
+            job_name=self.slurm.job_name,
+            mail_user=self.slurm.mail_user,
+            mail_type=self.slurm.mail_type,
+            output=self.slurm.output,
+            error=self.slurm.error,
+            log_dir=self.slurm.log_dir,
+            image=self.slurm.image,
+            bind=self.slurm.bind,
+            env=self.slurm.env,
+            flags=self.slurm.flags,
+            slurm_flags=self.slurm.slurm_flags,
         )
 
     def base_volume_config(self):
