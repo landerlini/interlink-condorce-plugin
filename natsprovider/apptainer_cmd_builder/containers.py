@@ -324,7 +324,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         cached_image = os.path.join(self.cachedir, self.image.replace(":", "_"))
         rndid = generate_uid()
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
-            ret += dedent(f"""
+            ret += [dedent(f"""
                 REMOTE_IMAGE_MD5=$(curl -vs {self.shub_proxy_server}/get-docker-md5/{self.image} -H \"X-Token: {self.shub_token}\" )
                 if [ -f {local_image} ]; then
                     echo "Using local static image from {local_image}"
@@ -354,7 +354,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
                     fi 
                 fi
                 """
-            )
+            )]
         else:
             ret += [
                 f"if [ -f {local_image} ]; then",
