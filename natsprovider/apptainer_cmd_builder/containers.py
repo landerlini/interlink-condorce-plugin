@@ -329,7 +329,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 if [ -f {local_image} ]; then
                     echo "Using local static image from {local_image}"
                     IMAGE_{uid}={local_image}
-                elif [ -f {cached_image} ] && [[ "$REMOTE_IMAGE_MD5" == "$(md5sum {cached_image} | cut -d ' ' -f 1)" ]]; 
+                elif [ -f {cached_image} ] && [[ "$REMOTE_IMAGE_MD5" == "$(md5sum {cached_image} | cut -d ' ' -f 1)" ]]; then
                     IMAGE_{uid}={cached_image}
                 else
                     if [ -f {cached_image} ]; then
