@@ -119,8 +119,7 @@ class BuildConfig(BaseModel):
         cache_validity_seconds: int = Field(
             default = 600,
             description="""Automatically cached images are invalidated after this time (expressed in seconds). 
-            Note that image hash is not checked, and cache is based on tag only. 
-            Expiration is the only cache invalidation mechanism.
+            DEPRECATED and IGNORED: replaced with a check on the image hash.
             """,
         )
 

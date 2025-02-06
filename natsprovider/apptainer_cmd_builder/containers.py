@@ -1,4 +1,5 @@
 from datetime import datetime
+from textwrap import dedent
 
 from pydantic import BaseModel, Field
 import os.path
@@ -81,7 +82,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
     shub_cache_seconds: Optional[int] = Field(
         default=600,
-        description="Time before pre-built docker image cache is invalidated. No check on image hash is performed!",
+        description="Time before pre-built docker image cache is invalidated. DEPRECATED and IGNORED.",
     )
 
     return_code: Optional[int] = Field(
@@ -323,35 +324,37 @@ class ContainerSpec(BaseModel, extra="forbid"):
         cached_image = os.path.join(self.cachedir, self.image.replace(":", "_"))
         rndid = generate_uid()
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
-            ret += [
-                f"if [ -f {local_image} ]; then",
-                f'  echo "Using local static image from {local_image}"',
-                f"  IMAGE_{uid}={local_image}",
-                f"elif [ -f {cached_image} ]"
-                f"     && [ $(($(date +%s) - $(stat -c %Y {cached_image}))) -lt {self.shub_cache_seconds} ]; then",
-                f'  echo "Using locally cached image from {cached_image}"',
-                f"  IMAGE_{uid}={cached_image}",
-                f"else",
-                f"  if [ -f {cached_image} ]; then",
-                f"    touch {cached_image} ", # Avoid concurrent jobs to update the spoiled image
-                f"  fi",
-                f"  mkdir -p {os.path.dirname(cached_image)}",
-                f"  HTTP_STATUS=$(curl -Lo {cached_image}-{rndid}.tmp \\", # Avoid breaking the image for other jobs
-                f"      -w \"%{{http_code}}\" \\",
-                f"      -H \"X-Token: {self.shub_token}\" \\",
-                f"      {self.shub_proxy_server}/get-docker/{self.image}) ",
-                f"  if [[ $HTTP_STATUS -ge 200 && $HTTP_STATUS -lt 300 ]]; then ",
-                f"    mv {cached_image} {cached_image}-{rndid}.rm ",    # Replace image with metadata operation
-                f"    mv {cached_image}-{rndid}.tmp {cached_image} ",
-                f"    rm {cached_image}-{rndid}.rm ",                   # Clean the old image
-                f"    IMAGE_{uid}={cached_image} ",
-                f'    echo "Successfully obtained and cached image in {cached_image}"',
-                f"  else ",
-                f'    echo "Could not retrieve image from remote cache (error $HTTP_STATUS), will rebuild."',
-                f"    IMAGE_{uid}={self.formatted_image} ",
-                f"  fi ",
-                f"fi",
-            ]
+            ret += dedent(f"""
+                REMOTE_IMAGE_MD5=$(curl -vs {self.shub_proxy_server}/get-docker-md5/{self.image} -H \"X-Token: {self.shub_token}\" )
+                if [ -f {local_image} ]; then
+                    echo "Using local static image from {local_image}"
+                    IMAGE_{uid}={local_image}
+                elif [ -f {cached_image} ] && [[ "$REMOTE_IMAGE_MD5" == "$(md5sum {cached_image} | cut -d ' ' -f 1)" ]]; do
+                    IMAGE_{uid}={cached_image}
+                else
+                    if [ -f {cached_image} ]; then
+                        touch {cached_image}  # Avoid concurrent jobs to update the spoiled image
+                    fi
+                    mkdir -p {os.path.dirname(cached_image)}
+                    HTTP_STATUS=$(curl -Lo {cached_image}-{rndid}.tmp \\ # Avoid breaking the image for other jobs
+                        -w \"%{{http_code}}\" \\
+                        -H \"X-Token: {self.shub_token}\" \\
+                        {self.shub_proxy_server}/get-docker/{self.image}) 
+                    if [[ $HTTP_STATUS -ge 200 && $HTTP_STATUS -lt 300 ]] \\
+                            && [[ "$REMOTE_IMAGE_MD5" == "$(md5sum {cached_image}-{rndid}.tmp | cut -d ' ' -f 1)" ]]; then 
+                        mv {cached_image} {cached_image}-{rndid}.rm     # Replace image with metadata operation
+                        mv {cached_image}-{rndid}.tmp {cached_image} 
+                        rm -f {cached_image}-{rndid}.rm                 # Clean the old image
+                        IMAGE_{uid}={cached_image} 
+                        echo "Successfully obtained and cached image in {cached_image}"
+                    else 
+                        echo "Could not retrieve image from remote cache (error $HTTP_STATUS), will rebuild."
+                        rm -f {cached_image}-{rndid}.tmp                    # Clean the corrupted image
+                        IMAGE_{uid}={self.formatted_image} 
+                    fi 
+                fi
+                """
+            )
         else:
             ret += [
                 f"if [ -f {local_image} ]; then",

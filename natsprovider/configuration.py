@@ -9,8 +9,8 @@ NATS_SERVER = os.environ.get("NATS_SERVER", "nats://nats:4222")
 # NATS_SUBJECT is the NATS subject for this plugin (recommended: `interlink`)
 NATS_SUBJECT = os.environ.get("NATS_SUBJECT", "interlink")
 
-# NATS_TIMEOUT_SECONDS is the timeout configured for NATS requests, in seconds. Default: 5 seconds.
-NATS_TIMEOUT_SECONDS = float(os.environ.get("NATS_TIMEOUT_SECONDS", "60"))
+# NATS_TIMEOUT_SECONDS is the timeout configured for NATS requests, in seconds. Default: 5 minutes.
+NATS_TIMEOUT_SECONDS = float(os.environ.get("NATS_TIMEOUT_SECONDS", "300"))
 
 # DEFAULT_ALLOCATABLE_CPU is the number of allocatable CPUs if not specified by either the provider or via CLI
 DEFAULT_ALLOCATABLE_CPU = os.environ.get("DEFAULT_ALLOCATABLE_CPU", "1")
