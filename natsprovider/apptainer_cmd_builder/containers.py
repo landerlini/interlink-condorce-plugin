@@ -336,7 +336,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
                         touch {cached_image}  # Avoid concurrent jobs to update the spoiled image
                     fi
                     mkdir -p {os.path.dirname(cached_image)}
-                    HTTP_STATUS=$(curl -Lo {cached_image}-{rndid}.tmp \\ # Avoid breaking the image for other jobs
+                    HTTP_STATUS=$(curl -Lo {cached_image}-{rndid}.tmp \\
                         -w \"%{{http_code}}\" \\
                         -H \"X-Token: {self.shub_token}\" \\
                         {self.shub_proxy_server}/get-docker/{self.image}) 
