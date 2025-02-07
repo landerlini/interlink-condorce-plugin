@@ -3,6 +3,7 @@ import json
 import io
 import tarfile
 import logging
+import time
 from io import BytesIO
 from typing import Collection, Dict, List, Union
 from contextlib import asynccontextmanager
@@ -63,19 +64,23 @@ class NatsGateway:
         self.logger.info(f"Received updated configuration for pool {pool}")
 
     @asynccontextmanager
-    @metrics.histograms['nats_response_time'].time()
     async def nats_connection(self):
         """
         Simple context manager to define standard error management
         """
         nc = await nats.connect(servers=self._nats_server)
         try:
+            start = time.monotonic_ns()
             yield nc
+            stop = time.monotonic_ns()
+            metrics.histograms['nats_response_time'].observe(stop - start)
         except nats.errors.NoRespondersError as e:
             self.logger.error(str(e))
+            metrics.counters['nats_errors'].labels('No backend').inc()
             raise HTTPException(502, "No compute backend is configured to manage the request")
         except nats.errors.TimeoutError as e:
             self.logger.error(str(e))
+            metrics.counters['nats_errors'].labels('Timeout').inc()
             raise HTTPException(504, "Compute backend timeout")
         finally:
             await nc.drain()
