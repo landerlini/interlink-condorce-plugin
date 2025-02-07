@@ -362,5 +362,5 @@ spec:
   selector:
     matchExpressions:
       - key: app
-        operator: Equals
-        value: interlink
+        operator: In
+        values: [interlink]
