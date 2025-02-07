@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
-c = Counter("create_pod_counter")
+c = Counter("create_pod_counter", "pippo pluto")
 
 
 log_format = '%(asctime)-22s %(name)-10s %(levelname)-8s %(message)-90s'
