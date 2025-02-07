@@ -21,5 +21,5 @@ RUN pip install \
   "pytest" \
   "aiohttp" \
   "redis" \
-  "jsonpath-ng"
+  "prometheus-client"
 
