@@ -329,11 +329,38 @@ kind: Service
 metadata:
   name: plugin-{{ .Release.Name }}
   namespace: {{ .Release.Namespace }}
+  labels:
+    app: interlink
+    component: server
 spec:
   selector:
     app: interlink
     component: server
   ports:
-    - protocol: TCP
+    - name: metrics
+      protocol: TCP
       port: 80
       targetPort: 8000
+
+---
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: plugin-service-monitor
+  namespace: {{ .Release.Namespace }}
+spec:
+  endpoints:
+    - interval: 10s
+      path: /metrics
+      port: metrics
+      scheme: http
+  jobLabel: interlink-nats
+  namespaceSelector:
+    any: true
+  sampleLimit: 1000
+  selector:
+    matchExpressions:
+      - key: app
+        operator: Equals
+        value: interlink
