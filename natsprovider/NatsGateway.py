@@ -17,6 +17,7 @@ import redis
 
 from . import interlink
 from . import configuration as cfg
+from . import metrics
 
 # Local
 from .utils import NatsResponse, get_readable_jobid, JobStatus
@@ -62,6 +63,7 @@ class NatsGateway:
         self.logger.info(f"Received updated configuration for pool {pool}")
 
     @asynccontextmanager
+    @metrics.histograms['nats_response_time'].time()
     async def nats_connection(self):
         """
         Simple context manager to define standard error management
