@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
 
+from prometheus_client import make_asgi_app, Counter
 
 from natsprovider import NatsGateway, interlink
 from natsprovider import configuration as cfg
@@ -27,7 +28,8 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI app
 app = FastAPI(lifespan=lifespan)
-
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
 
 log_format = '%(asctime)-22s %(name)-10s %(levelname)-8s %(message)-90s'
 logging.basicConfig(
@@ -38,6 +40,9 @@ logging.debug("Enabled debug mode.")
 
 @app.post("/create")
 async def create_pod(pods: List[Dict[Literal['pod', 'container'], Any]]) -> interlink.CreateStruct:
+    c = Counter("create_pod_counter")
+    c.inc()
+
     if len(pods) != 1:
         raise HTTPException(402, f"Can only treat one pod creation at once. {len(pods)} were requested.")
 
