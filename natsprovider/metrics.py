@@ -37,6 +37,11 @@ counters = MetricStore(
             description="Number of NATS errors",
             labels=['type'],
         ),
+        MetricSpec(
+            name="build_config_updates",
+            description="Updates from resource pools",
+            labels=['pool'],
+        ),
     ]
 )
 

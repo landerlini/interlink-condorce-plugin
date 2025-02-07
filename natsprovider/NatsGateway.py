@@ -57,6 +57,8 @@ class NatsGateway:
         if pool in self._build_configs.keys():
             self.logger.info(f"Received configuration for a new pool: {pool}")
 
+        metrics.counters['build_config_updates'].labels(pool).inc()
+
         self._build_configs[pool] = BuildConfig(**orjson.loads(msg.data))
         if self._redis is not None:
             self._redis.hset('build_configs', pool, self._build_configs[pool].model_dump_json())
