@@ -75,7 +75,7 @@ class NatsGateway:
             start = time.monotonic_ns()
             yield nc
             stop = time.monotonic_ns()
-            metrics.histograms['nats_response_time'].observe(stop - start)
+            metrics.summaries['nats_response_time'].observe(stop - start)
         except nats.errors.NoRespondersError as e:
             self.logger.error(str(e))
             metrics.counters['nats_errors'].labels('No backend').inc()

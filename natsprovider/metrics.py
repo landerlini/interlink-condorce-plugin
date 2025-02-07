@@ -1,4 +1,4 @@
-from prometheus_client import Counter, Gauge, Histogram
+from prometheus_client import Counter, Gauge, Histogram, Summary
 from typing import List
 from pydantic import BaseModel
 
@@ -58,6 +58,11 @@ gauges = MetricStore(
 
 histograms = MetricStore(
     metric_class=Histogram,
+    entries=[],
+)
+
+summaries = MetricStore(
+    metric_class=Summary,
     entries=[
         MetricSpec(
             name="nats_response_time",
