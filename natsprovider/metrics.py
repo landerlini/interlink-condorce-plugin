@@ -10,11 +10,12 @@ class MetricSpec(BaseModel):
 
 class MetricStore:
     def __init__(self, metric_class, entries: List[MetricSpec]):
+        self.metric_class = metric_class
         self._data = {e.name: Counter(e.name, e.description) for e in entries}
 
     def __getitem__(self, metric):
         if metric not in self._data:
-           self._data[metric] = Counter(metric, metric)
+           self._data[metric] = self.metric_class(metric, metric)
 
         return self._data[metric]
 
