@@ -26,10 +26,13 @@ async def lifespan(app: FastAPI):
     yield
     await nats_connection.drain()
 
+
 # Initialize FastAPI app
 app = FastAPI(lifespan=lifespan)
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
+c = Counter("create_pod_counter")
+
 
 log_format = '%(asctime)-22s %(name)-10s %(levelname)-8s %(message)-90s'
 logging.basicConfig(
@@ -40,7 +43,6 @@ logging.debug("Enabled debug mode.")
 
 @app.post("/create")
 async def create_pod(pods: List[Dict[Literal['pod', 'container'], Any]]) -> interlink.CreateStruct:
-    c = Counter("create_pod_counter")
     c.inc()
 
     if len(pods) != 1:
