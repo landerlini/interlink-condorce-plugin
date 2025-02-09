@@ -55,7 +55,7 @@ counters = MetricStore(
         MetricSpec(
             name="pod_transitions",
             description="Transition of the state of a pod. Transitions can be: started, succeeded, failed, cleared, or lost",
-            labels=['transition'],
+            labels=['transition', 'pool'],
         ),
         MetricSpec(
             name="status_retrival_errors",
