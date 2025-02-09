@@ -42,6 +42,21 @@ counters = MetricStore(
             description="Updates from resource pools",
             labels=['pool'],
         ),
+        MetricSpec(
+            name="awaiting_nats",
+            description="Number of NATS responses being awaited",
+            labels=[],
+        ),
+        MetricSpec(
+            name="pod_transitions",
+            description="Transition of the state of a pod. Transitions can be: started, succeeded, failed, cleared, or lost",
+            labels=['transition'],
+        ),
+        MetricSpec(
+            name="status_retrival_errors",
+            description="Errors while retrieving pod status",
+            labels=['status_code'],
+        ),
     ]
 )
 
@@ -52,6 +67,11 @@ gauges = MetricStore(
             name="pod_status",
             description="Status of the pods",
             labels=['type'],
+        ),
+        MetricSpec(
+            name="status_retrival_attempts",
+            description="Number of attempts to retrieve status",
+            labels=[],
         ),
     ]
 )
@@ -68,6 +88,11 @@ summaries = MetricStore(
             name="nats_response_time",
             description="NATS response time in nanoseconds",
             labels=[],
+        ),
+        MetricSpec(
+            name="nats_response_time_per_subject",
+            description="NATS response time in nanoseconds",
+            labels=['subject', 'pool'],
         ),
     ]
 )

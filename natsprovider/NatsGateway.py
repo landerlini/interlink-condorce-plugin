@@ -73,6 +73,7 @@ class NatsGateway:
         nc = await nats.connect(servers=self._nats_server)
         try:
             start = time.monotonic_ns()
+            metrics.counters['awaiting_nats'].inc()
             yield nc
             stop = time.monotonic_ns()
             metrics.summaries['nats_response_time'].observe(stop - start)
@@ -86,6 +87,7 @@ class NatsGateway:
             raise HTTPException(504, "Compute backend timeout")
         finally:
             await nc.drain()
+            metrics.counters['awaiting_nats'].dec()
 
     def retrieve_pool_from_tolerations(self, tolerations: List[kubernetes.client.V1Toleration]):
         pools = [t.value for t in tolerations if t.key == 'pool.vk.io']
@@ -107,6 +109,11 @@ class NatsGateway:
         pool = self.retrieve_pool_from_tolerations(v1pod.spec.tolerations)
         if pool not in self._build_configs.keys():
             self.logger.error(f"Missing configuration for pool {pool}!")
+
+        if self._redis:
+            self._redis.hset('pod:pool', get_readable_jobid(pod), pool)
+            self._redis.hset('pod:status', get_readable_jobid(pod), 'creating')
+
         builder = from_kubernetes(
             pod.model_dump(),
             [volume.model_dump() for volume in volumes],
@@ -126,6 +133,8 @@ class NatsGateway:
         async with self.nats_connection() as nc:
             create_subject = ".".join((self._nats_subject, "create", pool, get_readable_jobid(pod)))
             self.logger.info(f"Submitting payload with subject: `{create_subject}`")
+
+            start = time.monotonic_ns()
             create_response = NatsResponse.from_nats(
                 await nc.request(
                     create_subject,
@@ -133,9 +142,13 @@ class NatsGateway:
                     timeout=self._nats_timeout_seconds,
                 )
             )
+            metrics.summaries['nats_response_time_per_subject'].labels(create_subject, pool)\
+                .observe(time.monotonic_ns() - start)
             create_response.raise_for_status()
 
         self.logger.info(f"Payload `{create_subject}` submitted successfully")
+        if self._redis:
+            self._redis.hset('pod:status', get_readable_jobid(pod), 'created')
         # create_response should be the job name for the compute backend
         return create_response.text
 
@@ -144,15 +157,25 @@ class NatsGateway:
         Publish the request to delete jobs from the remote backend. No confirmation is expected by interlink protocol.
         """
         self.logger.info(f"Delete pod {pod} [{get_readable_jobid(pod)}]")
+        if self._redis:
+            self._redis.hset('pod:status', get_readable_jobid(pod), 'deleting')
         async with self.nats_connection() as nc:
+            start = time.monotonic_ns()
+            delete_subject = ".".join((self._nats_subject, "delete", get_readable_jobid(pod)))
             delete_response = NatsResponse.from_nats(
                 await nc.request(
-                    ".".join((self._nats_subject, "delete", get_readable_jobid(pod))),
+                    delete_subject,
                     zlib.compress(orjson.dumps(pod.model_dump())),
                     timeout=self._nats_timeout_seconds,
                 )
             )
+            pool = (self._redis.hget('pod:pool', get_readable_jobid(pod)) or 'unknown') if self._redis else 'unknown'
+            metrics.summaries['nats_response_time_per_subject'].labels(delete_subject, pool) \
+                .observe(time.monotonic_ns() - start)
             delete_response.raise_for_status()
+
+        if self._redis:
+            self._redis.hset('pod:status', get_readable_jobid(pod), 'deleted')
 
 
     async def get_pod_status(self, pod: interlink.PodRequest) -> Union[interlink.PodStatus, None]:
@@ -162,6 +185,7 @@ class NatsGateway:
         job_name = get_readable_jobid(pod)
         self.logger.info(f"Query status of pod {pod} [{job_name}]")
         v1pod = pod.deserialize()
+        pool = self.retrieve_pool_from_tolerations(v1pod.spec.tolerations)
         pod_metadata = v1pod.metadata
         for i_attempt in range(cfg.NUMBER_OF_GETTING_STATUS_ATTEMPTS):
             if i_attempt > 0:
@@ -169,13 +193,17 @@ class NatsGateway:
 
             async with self.nats_connection() as nc:
                 try:
+                    start = time.monotonic_ns()
+                    status_subject = ".".join((self._nats_subject, "status", job_name))
                     status_response = NatsResponse.from_nats(
                         await nc.request(
-                            ".".join((self._nats_subject, "status", job_name)),
+                            status_subject,
                             zlib.compress(orjson.dumps(pod.model_dump())),
                             timeout=self._nats_timeout_seconds,
                         )
                     )
+                    metrics.summaries['nats_response_time_per_subject'].labels(status_subject, pool) \
+                        .observe(time.monotonic_ns() - start)
                 except nats.errors.NoRespondersError as e:
                     self.logger.error(f"Failed to retrieve status for job {pod} [{job_name}]")
                     return None
@@ -185,8 +213,12 @@ class NatsGateway:
                     (status_response.data.get('phase', 'unknown') in ['unknown'])
                 or  (status_response.status_code in [404, 500])
             ):
+                metrics.counters['status_retrival_errors'].labels(str(status_response.status_code)).inc()
                 continue
+
+            metrics.gauges['status_retrival_attempts'].set(i_attempt+1)
             break
+
 
         status_response.raise_for_status()
         job_status = JobStatus(**status_response.data)
@@ -200,6 +232,9 @@ class NatsGateway:
         init_container_statuses = []
 
         if job_status.phase == "pending":
+            if self._redis:
+                self._redis.hset('pod:status', get_readable_jobid(pod), 'pending')
+
             init_container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
@@ -224,6 +259,12 @@ class NatsGateway:
             ]
 
         elif job_status.phase == "running":
+            if self._redis:
+                current_status = self._redis.hget('pod:status', get_readable_jobid(pod)) or 'creating'
+                if current_status in ['pending', 'creating', 'created']:
+                    metrics.counters['pod_transitions'].labels('start', pool)
+                self._redis.hset('pod:status', get_readable_jobid(pod), 'running')
+
             init_container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
@@ -275,6 +316,13 @@ class NatsGateway:
             self.logger.error(
                 f"Requested status for job: {job_name}. Seems complete but no output is provided. Error 502."
             )
+            if self._redis:
+                current_status = self._redis.hget('pod:status', get_readable_jobid(pod)) or 'creating'
+                if current_status in ['pending', 'creating', 'created', 'running']:
+                    metrics.counters['pod_transitions'].labels('lost', pool)
+                if current_status in ['succeeded', 'failed']:
+                    metrics.counters['pod_transitions'].labels('cleared', pool)
+                self._redis.hset('pod:status', get_readable_jobid(pod), 'lost')
 
             init_container_statuses += [
                 interlink.ContainerStatus(
@@ -302,6 +350,16 @@ class NatsGateway:
         elif job_status.phase in ["succeeded", "failed"]:
             builder = from_kubernetes(pod.model_dump(), use_fake_volumes=True)
             builder.process_logs(BytesIO(job_status.logs_tarball))
+
+            all_containers = list(builder.init_containers)+list(builder.containers)
+            phase = 'succeeded' if all([c.return_code == 0 for c in all_containers]) else 'failed'
+
+            if self._redis:
+                current_status = self._redis.hget('pod:status', get_readable_jobid(pod)) or 'creating'
+                if current_status in ['pending', 'creating', 'created', 'running']:
+                    metrics.counters['pod_transitions'].labels('lost', pool)
+                self._redis.hset('pod:status', get_readable_jobid(pod), phase)
+
             init_container_statuses += [
                 interlink.ContainerStatus(
                     name=cs.name,
@@ -327,6 +385,7 @@ class NatsGateway:
 
         if len(container_statuses) == 0:
             self.logger.critical("Could not retrieve the status of any container!")
+            metrics.counters['status_retrival_errors'].labels('no_container').inc()
             return None
 
         return interlink.PodStatus(
@@ -345,13 +404,19 @@ class NatsGateway:
         job_name = get_readable_jobid(log_request)
         self.logger.info(f"Requested log of pod {log_request.PodName}.{log_request.Namespace} [{job_name}]")
         async with self.nats_connection() as nc:
+            status_subject = ".".join((self._nats_subject, "status", job_name))
+            start = time.monotonic_ns()
             status_response = NatsResponse.from_nats(
                 await nc.request(
-                    ".".join((self._nats_subject, "status", job_name)),
+                    status_subject,
                     zlib.compress(orjson.dumps(log_request.model_dump())),
                     timeout=self._nats_timeout_seconds,
                 )
             )
+            pool = (self._redis.hget('pod:pool', job_name) or 'unknown') if self._redis else 'unknown'
+
+            metrics.summaries['nats_response_time_per_subject'].labels(status_subject, pool) \
+                .observe(time.monotonic_ns() - start)
             status_response.raise_for_status()
 
         job_status = JobStatus(**status_response.data)
