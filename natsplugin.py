@@ -84,6 +84,7 @@ async def get_pod_status(pods: List[Dict[str, Any]]) -> List[interlink.PodStatus
     status_results = await asyncio.gather(*[nats_gateway.get_pod_status(pod) for pod in pods])
     ret = [result for result in status_results if result is not None]
     metrics.gauges['pod_status'].labels('responses').set(len(ret))
+    metrics.gauges['pod_status'].labels('missing').set(len([r for r in status_results if r is None]))
     return ret
 
 @app.get("/getLogs", response_class=PlainTextResponse)
