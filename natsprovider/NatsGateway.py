@@ -142,7 +142,7 @@ class NatsGateway:
                     timeout=self._nats_timeout_seconds,
                 )
             )
-            metrics.summaries['nats_response_time_per_subject'].labels(create_subject, pool)\
+            metrics.summaries['nats_response_time_per_subject'].labels('create', pool)\
                 .observe(time.monotonic_ns() - start)
             create_response.raise_for_status()
 
@@ -174,7 +174,7 @@ class NatsGateway:
                 if self._redis else 'unknown'
             )
 
-            metrics.summaries['nats_response_time_per_subject'].labels(delete_subject, pool) \
+            metrics.summaries['nats_response_time_per_subject'].labels('delete', pool) \
                 .observe(time.monotonic_ns() - start)
             delete_response.raise_for_status()
 
@@ -206,7 +206,7 @@ class NatsGateway:
                             timeout=self._nats_timeout_seconds,
                         )
                     )
-                    metrics.summaries['nats_response_time_per_subject'].labels(status_subject, pool) \
+                    metrics.summaries['nats_response_time_per_subject'].labels('status', pool) \
                         .observe(time.monotonic_ns() - start)
                 except nats.errors.NoRespondersError as e:
                     self.logger.error(f"Failed to retrieve status for job {pod} [{job_name}]")
@@ -424,7 +424,7 @@ class NatsGateway:
             )
             pool = (str(self._redis.hget('pod:pool', job_name), 'utf-8') or 'unknown') if self._redis else 'unknown'
 
-            metrics.summaries['nats_response_time_per_subject'].labels(status_subject, pool) \
+            metrics.summaries['nats_response_time_per_subject'].labels('logs', pool) \
                 .observe(time.monotonic_ns() - start)
             status_response.raise_for_status()
 
