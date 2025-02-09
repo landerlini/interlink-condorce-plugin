@@ -231,6 +231,9 @@ class NatsGateway:
         container_statuses = []
         init_container_statuses = []
 
+        if not self._redis:
+            self.logger.warning(f"Redis database was not configured. Tracking pod status is disabled.")
+
         if job_status.phase == "pending":
             if self._redis:
                 self._redis.hset('pod:status', get_readable_jobid(pod), 'pending')
