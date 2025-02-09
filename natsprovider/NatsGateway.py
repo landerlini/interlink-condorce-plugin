@@ -262,7 +262,7 @@ class NatsGateway:
             if self._redis:
                 current_status = self._redis.hget('pod:status', get_readable_jobid(pod)) or 'creating'
                 if current_status in ['pending', 'creating', 'created']:
-                    metrics.counters['pod_transitions'].labels('start', pool)
+                    metrics.counters['pod_transitions'].labels('start', pool).inc()
                 self._redis.hset('pod:status', get_readable_jobid(pod), 'running')
 
             init_container_statuses += [
@@ -319,9 +319,9 @@ class NatsGateway:
             if self._redis:
                 current_status = self._redis.hget('pod:status', get_readable_jobid(pod)) or 'creating'
                 if current_status in ['pending', 'creating', 'created', 'running']:
-                    metrics.counters['pod_transitions'].labels('lost', pool)
+                    metrics.counters['pod_transitions'].labels('lost', pool).inc()
                 if current_status in ['succeeded', 'failed']:
-                    metrics.counters['pod_transitions'].labels('cleared', pool)
+                    metrics.counters['pod_transitions'].labels('cleared', pool).inc()
                 self._redis.hset('pod:status', get_readable_jobid(pod), 'lost')
 
             init_container_statuses += [
@@ -357,7 +357,7 @@ class NatsGateway:
             if self._redis:
                 current_status = self._redis.hget('pod:status', get_readable_jobid(pod)) or 'creating'
                 if current_status in ['pending', 'creating', 'created', 'running']:
-                    metrics.counters['pod_transitions'].labels('lost', pool)
+                    metrics.counters['pod_transitions'].labels('lost', pool).inc()
                 self._redis.hset('pod:status', get_readable_jobid(pod), phase)
 
             init_container_statuses += [
