@@ -365,7 +365,7 @@ class NatsGateway:
             if self._redis:
                 current_status = str(self._redis.hget('pod:status', get_readable_jobid(pod)), 'utf-8') or 'creating'
                 if current_status in ['pending', 'creating', 'created', 'running']:
-                    metrics.counters['pod_transitions'].labels('lost', pool).inc()
+                    metrics.counters['pod_transitions'].labels(phase, pool).inc()
                 self._redis.hset('pod:status', get_readable_jobid(pod), phase)
 
             init_container_statuses += [
