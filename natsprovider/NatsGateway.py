@@ -268,8 +268,8 @@ class NatsGateway:
         elif job_status.phase == "running":
             if self._redis:
                 current_status = str(self._redis.hget('pod:status', get_readable_jobid(pod)), 'utf-8') or 'creating'
-                self.logger.info(f"Registering transition to running state to redis from: {current_status}")
                 if current_status in ['pending', 'creating', 'created']:
+                    self.logger.info(f"Registering transition to running state to redis from: {current_status}")
                     metrics.counters['pod_transitions'].labels('start', pool).inc()
                 self._redis.hset('pod:status', get_readable_jobid(pod), 'running')
 
@@ -328,9 +328,10 @@ class NatsGateway:
                 current_status = str(self._redis.hget('pod:status', get_readable_jobid(pod)), 'utf-8') or 'creating'
                 if current_status in ['pending', 'creating', 'created', 'running']:
                     metrics.counters['pod_transitions'].labels('lost', pool).inc()
-                if current_status in ['succeeded', 'failed']:
+                    self._redis.hset('pod:status', get_readable_jobid(pod), 'lost')
+                elif current_status in ['succeeded', 'failed']:
                     metrics.counters['pod_transitions'].labels('cleared', pool).inc()
-                self._redis.hset('pod:status', get_readable_jobid(pod), 'lost')
+                    self._redis.hset('pod:status', get_readable_jobid(pod), 'cleared')
 
             init_container_statuses += [
                 interlink.ContainerStatus(
