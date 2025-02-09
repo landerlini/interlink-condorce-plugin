@@ -73,7 +73,7 @@ class NatsGateway:
         nc = await nats.connect(servers=self._nats_server)
         try:
             start = time.monotonic_ns()
-            metrics.counters['awaiting_nats'].inc()
+            metrics.counters['opened_nats'].inc()
             yield nc
             stop = time.monotonic_ns()
             metrics.summaries['nats_response_time'].observe(stop - start)
@@ -87,7 +87,7 @@ class NatsGateway:
             raise HTTPException(504, "Compute backend timeout")
         finally:
             await nc.drain()
-            metrics.counters['awaiting_nats'].inc(-1)
+            metrics.counters['closed_nats'].inc()
 
     def retrieve_pool_from_tolerations(self, tolerations: List[kubernetes.client.V1Toleration]):
         pools = [t.value for t in tolerations if t.key == 'pool.vk.io']

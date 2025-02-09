@@ -43,8 +43,13 @@ counters = MetricStore(
             labels=['pool'],
         ),
         MetricSpec(
-            name="awaiting_nats",
-            description="Number of NATS responses being awaited",
+            name="opened_nats",
+            description="Incremented when a new nats connection is open",
+            labels=[],
+        ),
+        MetricSpec(
+            name="closed_nats",
+            description="Incremented when a nats connection is closed",
             labels=[],
         ),
         MetricSpec(
