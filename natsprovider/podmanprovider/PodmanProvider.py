@@ -73,6 +73,8 @@ class PodmanProvider(BaseNatsProvider):
             try:
                 pilot = client.containers.get(job_name)
             except podman.errors.exceptions.NotFound:
+                pass
+            else:
                 self.logger.error(f"Pod {job_name} has been submitted already. Ignored.")
                 return job_name
 
