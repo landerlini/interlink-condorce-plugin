@@ -169,7 +169,7 @@ class NatsGateway:
                     timeout=self._nats_timeout_seconds,
                 )
             )
-            pool = (self._redis.hget('pod:pool', get_readable_jobid(pod)).encode('ascii') or 'unknown') if self._redis else 'unknown'
+            pool = str(self._redis.hget('pod:pool', get_readable_jobid(pod)) or 'unknown') if self._redis else 'unknown'
             metrics.summaries['nats_response_time_per_subject'].labels(delete_subject, pool) \
                 .observe(time.monotonic_ns() - start)
             delete_response.raise_for_status()
@@ -263,7 +263,7 @@ class NatsGateway:
 
         elif job_status.phase == "running":
             if self._redis:
-                current_status = self._redis.hget('pod:status', get_readable_jobid(pod)).encode('ascii') or 'creating'
+                current_status = str(self._redis.hget('pod:status', get_readable_jobid(pod))) or 'creating'
                 self.logger.info(f"Registering transition to running state to redis from: {current_status}")
                 if current_status in ['pending', 'creating', 'created']:
                     metrics.counters['pod_transitions'].labels('start', pool).inc()
@@ -321,7 +321,7 @@ class NatsGateway:
                 f"Requested status for job: {job_name}. Seems complete but no output is provided. Error 502."
             )
             if self._redis:
-                current_status = self._redis.hget('pod:status', get_readable_jobid(pod)).encode('ascii') or 'creating'
+                current_status = str(self._redis.hget('pod:status', get_readable_jobid(pod))) or 'creating'
                 if current_status in ['pending', 'creating', 'created', 'running']:
                     metrics.counters['pod_transitions'].labels('lost', pool).inc()
                 if current_status in ['succeeded', 'failed']:
@@ -359,7 +359,7 @@ class NatsGateway:
             phase = 'succeeded' if all([c.return_code == 0 for c in all_containers]) else 'failed'
 
             if self._redis:
-                current_status = self._redis.hget('pod:status', get_readable_jobid(pod)).encode('ascii') or 'creating'
+                current_status = str(self._redis.hget('pod:status', get_readable_jobid(pod))) or 'creating'
                 if current_status in ['pending', 'creating', 'created', 'running']:
                     metrics.counters['pod_transitions'].labels('lost', pool).inc()
                 self._redis.hset('pod:status', get_readable_jobid(pod), phase)
@@ -417,7 +417,7 @@ class NatsGateway:
                     timeout=self._nats_timeout_seconds,
                 )
             )
-            pool = (self._redis.hget('pod:pool', job_name).encode('ascii') or 'unknown') if self._redis else 'unknown'
+            pool = (str(self._redis.hget('pod:pool', job_name)) or 'unknown') if self._redis else 'unknown'
 
             metrics.summaries['nats_response_time_per_subject'].labels(status_subject, pool) \
                 .observe(time.monotonic_ns() - start)
