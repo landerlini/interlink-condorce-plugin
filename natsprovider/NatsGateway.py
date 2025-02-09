@@ -263,8 +263,8 @@ class NatsGateway:
 
         elif job_status.phase == "running":
             if self._redis:
-                self.logger.info(f"Registering transition to running state to redis")
                 current_status = self._redis.hget('pod:status', get_readable_jobid(pod)) or 'creating'
+                self.logger.info(f"Registering transition to running state to redis from: {current_status}")
                 if current_status in ['pending', 'creating', 'created']:
                     metrics.counters['pod_transitions'].labels('start', pool).inc()
                 self._redis.hset('pod:status', get_readable_jobid(pod), 'running')
