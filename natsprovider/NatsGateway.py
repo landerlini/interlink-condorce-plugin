@@ -87,7 +87,7 @@ class NatsGateway:
             raise HTTPException(504, "Compute backend timeout")
         finally:
             await nc.drain()
-            metrics.counters['awaiting_nats'].dec()
+            metrics.counters['awaiting_nats'].inc(-1)
 
     def retrieve_pool_from_tolerations(self, tolerations: List[kubernetes.client.V1Toleration]):
         pools = [t.value for t in tolerations if t.key == 'pool.vk.io']
