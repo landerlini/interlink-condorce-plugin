@@ -56,7 +56,7 @@ kubeletPort: 10250
 
 # virtualKubeletCpuLimit, virtualKubeletMemoryLimit set limits to the *container* managing the virtual kubelet (unrelated to allocatable resources)
 virtualKubeletCpuLimit: "1"
-virtualKubeletMemoryLimit: "500Mi"
+virtualKubeletMemoryLimit: "1500Mi"
 
 # virtualKubeletCpuRequest, virtualKubeletMemoryRequest defines requests to the *container* managing the virtual kubelet (unrelated to allocatable resources)
 virtualKubeletCpuRequest: "150m"
