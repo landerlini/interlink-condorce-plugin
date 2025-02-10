@@ -11,7 +11,7 @@ from natsprovider.utils import generate_uid, to_snakecase
 
 build_config_for_tests = BuildConfig(
     apptainer=BuildConfig.ApptainerOptions(
-        fuse_enabled_on_host=False,
+        fuse_mode="host",
     )
 )
 

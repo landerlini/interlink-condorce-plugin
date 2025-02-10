@@ -205,8 +205,7 @@ class BuildConfig(BaseModel):
         cache_validity_seconds: int = Field(
             default = 600,
             description="""Automatically cached images are invalidated after this time (expressed in seconds). 
-            Note that image hash is not checked, and cache is based on tag only. 
-            Expiration is the only cache invalidation mechanism.
+            DEPRECATED and IGNORED: replaced with a check on the image hash.
             """,
         )
 
@@ -226,6 +225,12 @@ class BuildConfig(BaseModel):
     slurm: SlurmOptions = Field(
         default=SlurmOptions(),
         description=SlurmOptions.__doc__
+    )
+
+    input_toml_filename: Optional[str] = Field(
+        default=None,
+        exclude=True,
+        description="Internal. Stores the filename from which the config was taken to enable reloading."
     )
 
     input_toml_filename: Optional[str] = Field(

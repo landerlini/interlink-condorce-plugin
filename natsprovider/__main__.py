@@ -27,14 +27,9 @@ class AllProviders:
         return PodmanProvider(**kwargs)
 
     @staticmethod
-    def interlink(**kwargs):
+    def kubernetes(**kwargs):
         from .kubernetesprovider.KubernetesProvider import KubernetesProvider
         return KubernetesProvider(**kwargs)
-
-    @staticmethod
-    def slurm(**kwargs):
-        from .slurmprovider.SlurmProvider import SlurmProvider
-        return SlurmProvider(**kwargs)
 
 def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildConfig, leader: bool = False):
     """
@@ -44,6 +39,7 @@ def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildCo
         nats_server=args.server,
         nats_pool=args.pool,
         build_config=build_config,
+        provider_config_key=args.provider,
         interactive_mode=not args.non_interactive,
         shutdown_subject=args.shutdown_subject,
         # The provider leader(s) is in charge of updating the interlink provider on pool build-config and resources
