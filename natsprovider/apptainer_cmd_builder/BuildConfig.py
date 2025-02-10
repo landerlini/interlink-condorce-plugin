@@ -53,6 +53,10 @@ class BuildConfig(BaseModel):
             default=None,
             description="Relative or absolute path to sbatch",
         )
+        squeue_executable: str = Field(
+            default=None,
+            description="Relative or absolute path to squeue",
+        )
         singularity_executable: str = Field(
             default=None,
             description="Relative or absolute path to singularity",

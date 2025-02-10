@@ -147,10 +147,16 @@ class SlurmProvider(BaseNatsProvider):
         """
         self.logger.info(f"Checking status for job {job_name}")
         
+        squeue_executable = "/usr/bin/squeue"
+        slurm_config = self._build_config.slurm
+
+        if slurm_config:
+            squeue_executable = slurm_config.squeue_executable or squeue_executable
+
         try:
             # Get job status from Slurm
             result = subprocess.run(
-                ["squeue", "--name", job_name, "--noheader", "-o", "%T"],
+                [squeue_executable, "--name", job_name, "--noheader", "-o", "%T"],
                 capture_output=True, text=True, check=True
             )
             self.logger.debug(f"Slurm query result: {result.stdout}")
