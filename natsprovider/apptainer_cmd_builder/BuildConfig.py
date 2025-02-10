@@ -1,8 +1,14 @@
 import os
+import logging
+import traceback
 from io import StringIO
 import json
-from typing import List, Literal
+from typing import List, Literal, Union, Optional
 from pydantic import BaseModel, Field
+
+from tomli import load as toml_load, TOMLDecodeError
+
+MISSING_BUILD_CONFIG_ERROR_CODE = 127
 
 
 class BuildConfig(BaseModel):
@@ -113,8 +119,7 @@ class BuildConfig(BaseModel):
         cache_validity_seconds: int = Field(
             default = 600,
             description="""Automatically cached images are invalidated after this time (expressed in seconds). 
-            Note that image hash is not checked, and cache is based on tag only. 
-            Expiration is the only cache invalidation mechanism.
+            DEPRECATED and IGNORED: replaced with a check on the image hash.
             """,
         )
 
@@ -130,6 +135,12 @@ class BuildConfig(BaseModel):
     shub_proxy: SingularityHubProxy = Field(
         default=SingularityHubProxy(),
         description=SingularityHubProxy.__doc__
+    )
+
+    input_toml_filename: Optional[str] = Field(
+        default=None,
+        exclude=True,
+        description="Internal. Stores the filename from which the config was taken to enable reloading."
     )
 
     def __str__(self):
@@ -195,3 +206,48 @@ class BuildConfig(BaseModel):
             cleanenv=self.apptainer.cleanenv,
             unsquash=self.apptainer.unsquash,
         )
+
+    @property
+    def logger(self):
+        return logging.getLogger(self.__class__.__name__)
+
+
+    @classmethod
+    def from_file(cls, filename: Union[str, None]):
+        """
+        Loads the build config from a TOML file.
+        """
+        logger = logging.getLogger(cls.__name__)
+        tolerate_missing_file = (filename is None)
+        build_config_file = filename if filename is not None else '/etc/interlink/build.conf'
+
+        if not os.path.exists(build_config_file):
+            if tolerate_missing_file:
+                logger.warning(
+                    f"Build configuration file {build_config_file} does not exist. Using default configuration."
+                    )
+                return cls()
+            else:
+                logger.critical(f"Build configuration file {build_config_file} does not exist.")
+                exit(MISSING_BUILD_CONFIG_ERROR_CODE)
+        else:
+            with open(build_config_file, 'rb') as input_file:
+                return cls(**toml_load(input_file), input_toml_filename=build_config_file)
+
+    def reload(self):
+        """
+        Reload a BuildConfig from file.
+
+        Usage:
+            build_config = build_config.reload()
+        """
+        if self.input_toml_filename is None:
+            self.logger.warning(f"Cannot reload BuildConfig for unknown input file.")
+            return self
+
+        try:
+            return BuildConfig.from_file(self.input_toml_filename)
+        except (IOError, FileNotFoundError, TOMLDecodeError) as e:
+            logging.error(f"Update of BuildConfig failed.\n" + traceback.format_exc())
+            return self
+

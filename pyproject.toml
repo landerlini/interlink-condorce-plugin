@@ -29,7 +29,9 @@ dependencies = [
     "orjson",
     "kubernetes",
     "tomli",
-    "aiohttp"
+    "aiohttp",
+    "redis",
+    "prometheus_client",
 ]
 
 [project.optional-dependencies]
