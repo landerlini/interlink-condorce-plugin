@@ -49,6 +49,10 @@ class BuildConfig(BaseModel):
         """
         Options configuring the behavior of SLURM runtime.
         """
+        bash_executable: str = Field(
+            default=None,
+            description="Relative or absolute path to bash",
+        )
         sbatch_executable: str = Field(
             default=None,
             description="Relative or absolute path to sbatch",
@@ -249,26 +253,23 @@ class BuildConfig(BaseModel):
         defs = schema.get("$defs", {})
         properties = schema.get("properties", {})
         for section_name, section in properties.items():
-            if section_name.startswith("$"):
+            if section_name.startswith("$") or '$ref' not in section:
                 continue
-            try:
-                ref = section['$ref'].split("/")[-1]
-                section_description = defs.get(ref, {}).get("description")
-                if section_description is not None:
-                    section_description = "\n".join([f"# {line}" for line in section_description.split("\n") if len(line)])
-                    print(section_description, file=ret)
+            ref = section['$ref'].split("/")[-1]
+            section_description = defs.get(ref, {}).get("description")
+            if section_description is not None:
+                section_description = "\n".join([f"# {line}" for line in section_description.split("\n") if line])
+                print(section_description, file=ret)
 
-                print(f"[{section_name}]", file=ret)
+            print(f"[{section_name}]", file=ret)
 
-                for entry, data in defs.get(ref, {}).get("properties", {}).items():
-                    for line in data.get("description", "").split('\n'):
-                        print("\n### ", line, file=ret)
-                    value = self.model_dump().get(section_name, {}).get(entry)
-                    print(f"{entry} = {json.dumps(value)}", file=ret)
-                data = defs.get(ref, {}).get("properties", {})
-                print("\n" * 2, file=ret)
-            except KeyError:
-                pass
+            for entry, data in defs.get(ref, {}).get("properties", {}).items():
+                for line in data.get("description", "").split('\n'):
+                    print("\n### ", line, file=ret)
+                value = self.model_dump().get(section_name, {}).get(entry)
+                print(f"{entry} = {json.dumps(value)}", file=ret)
+            
+            print("\n" * 2, file=ret)
 
         ret.seek(0)
         return ret.read()

@@ -59,6 +59,7 @@ class SlurmProvider(BaseNatsProvider):
         # Default executable paths
         singularity_executable = "/usr/bin/singularity"
         sbatch_executable = "/usr/local/bin/sbatch"
+        bash_executable = "/usr/bin/bash"
 
         # Default Slurm output and error log paths
         sbatch_output_flag = f"#SBATCH --output={sandbox}/stdout.log"
@@ -88,6 +89,7 @@ class SlurmProvider(BaseNatsProvider):
             sbatch_error_flag = f"#SBATCH --error={slurm_config.error}" if slurm_config.error else sbatch_error_flag
             singularity_executable = slurm_config.singularity_executable or singularity_executable
             sbatch_executable = slurm_config.sbatch_executable or sbatch_executable
+            bash_executable = slurm_config.bash_executable or bash_executable
 
         # Create the Slurm script
         slurm_script = f"""#!/bin/bash
@@ -96,16 +98,10 @@ class SlurmProvider(BaseNatsProvider):
 {sbatch_error_flag}
 {sbatch_flags}
 
-{singularity_executable} --quiet --silent exec \\
-    --pwd /sandbox \\
-    --bind {self._volumes.apptainer_cachedir}:{self._build_config.volumes.apptainer_cachedir} \\
-    --bind {scratch_area}:/scratch \\
-    --bind {sandbox}:/sandbox \\
-    --bind {job_script_path}:/sandbox/job_script.sh \\
-    {"--bind " + cfg.CVMFS_MOUNT_POINT + ":/cvmfs" if cfg.CVMFS_MOUNT_POINT else ""} \\
-    {"--bind " + self._volumes.image_dir + ":" + self._build_config.volumes.image_dir if os.path.exists(self._volumes.image_dir) else ""} \\
-    {cfg.CUSTOM_PILOT} /bin/bash /sandbox/job_script.sh
-        """
+export SANDBOX={sandbox}
+
+{bash_executable} {job_script_path}
+"""
 
         self.logger.info(f"Slurm script for job {job_name}:\n{slurm_script}")
 
