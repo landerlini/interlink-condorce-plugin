@@ -58,7 +58,11 @@ class SlurmProvider(BaseNatsProvider):
             if 'arg' in prop_schema.keys():
                 if prop_schema['type'] == 'boolean' and getattr(slurm_config, prop_name):
                     sbatch_flags.append("#SBATCH " + prop_schema['arg'])
-                elif prop_schema['type'] in ('integer', 'string') and getattr(slurm_config, prop_name) is not None:
+                elif prop_schema['type'] == 'integer' and getattr(slurm_config, prop_name) is not None:
+                    sbatch_flags.append(
+                        "#SBATCH " + prop_schema['arg'] % getattr(slurm_config, prop_name)
+                    )
+                elif prop_schema['type'] == 'string' and getattr(slurm_config, prop_name) is not None:
                     sbatch_flags.append(
                         "#SBATCH " + prop_schema['arg'] % (getattr(slurm_config, prop_name) % keywords)
                     )
