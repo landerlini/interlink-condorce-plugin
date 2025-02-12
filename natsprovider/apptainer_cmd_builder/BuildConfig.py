@@ -50,15 +50,15 @@ class BuildConfig(BaseModel):
         Options configuring the behavior of SLURM runtime.
         """
         bash_executable: str = Field(
-            default=None,
+            default="/usr/local/bin/sbatch",
             description="Relative or absolute path to bash",
         )
         sbatch_executable: str = Field(
-            default=None,
+            default="/usr/local/bin/sbatch",
             description="Relative or absolute path to sbatch",
         )
         squeue_executable: str = Field(
-            default=None,
+            default="/usr/local/bin/squeue",
             description="Relative or absolute path to squeue",
         )
         singularity_executable: str = Field(
@@ -68,72 +68,68 @@ class BuildConfig(BaseModel):
         ntasks: int = Field(
             default=None,
             description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
+            json_schema_extra=dict(arg='--ntask'),
         )
         cpus_per_task: int = Field(
             default=None,
             description="Number of CPUs per task (SLURM flag: --cpus-per-task)",
+            json_schema_extra=dict(arg='--cpu-per-task'),
         )
         mem_per_cpu: str = Field(
             default=None,
             description="Memory per CPU (SLURM flag: --mem-per-cpu)",
+            json_schema_extra=dict(arg='--mem-per-cpu'),
         )
         partition: str = Field(
             default=None,
             description="Partition to submit the job to (SLURM flag: --partition or -p)",
+            json_schema_extra=dict(arg='--partition'),
         )
         time: str = Field(
             default=None,
             description="Time limit for the job (SLURM flag: --time or -t)",
+            json_schema_extra=dict(arg='--time'),
         )
         qos: str = Field(
             default=None,
             description="Quality of service (SLURM flag: --qos)",
+            json_schema_extra=dict(arg='--qos'),
         )
         account: str = Field(
             default=None,
             description="Account to charge the job to (SLURM flag: --account or -A)",
+            json_schema_extra=dict(arg='--account'),
         )
         job_name: str = Field(
             default=None,
             description="Name of the job (SLURM flag: --job-name or -J)",
+            json_schema_extra=dict(arg='--job-name'),
         )
         mail_user: str = Field(
             default=None,
             description="Email address to send notifications to (SLURM flag: --mail-user)",
+            json_schema_extra=dict(arg='--mail-user'),
         )
         mail_type: str = Field(
             default=None,
             description="Type of notifications to send (SLURM flag: --mail-type)",
+            json_schema_extra=dict(arg='--mail-type'),
         )
         output: str = Field(
-            default=None,
+            default="%(sandbox)s/stdout.log",
             description="Output file (SLURM flag: --output or -o)",
+            json_schema_extra=dict(arg='--output'),
         )
         error: str = Field(
-            default=None,
+            default="%(sandbox)s/stderr.log",
             description="Error file (SLURM flag: --error or -e)",
+            json_schema_extra=dict(arg='--error'),
         )
         log_dir: str = Field(
             default=None,
             description="Directory where to store logs (No direct SLURM flag, but can be used in paths for output/error logs)",
         )
-        image: str = Field(
-            default=None,
-            description="Singularity image to use",
-        )
-        bind: List[str] = Field(
-            default_factory=lambda: os.environ.get("BIND", "").split(":"),
-            description="Colon-separated list of directories to bind mount",
-        )
-        env: List[str] = Field(
-            default_factory=lambda: os.environ.get("ENV", "").split(":"),
-            description="Colon-separated list of environment variables to set (The same of using --export or environment variables before sbatch)",
-        )
         flags: List[str] = Field(
-            default_factory=lambda: os.environ.get("FLAGS", "").split(":"),
-            description="Colon-separated list of additional flags (Custom, not a direct SLURM flag)",
-        )
-        slurm_flags: List[str] = Field(
             default_factory=lambda: os.environ.get("SLURM_FLAGS", "").split(":"),
             description="Colon-separated list of additional SLURM flags (Can include any SLURM command-line options)",
         )
@@ -281,30 +277,6 @@ class BuildConfig(BaseModel):
             cachedir=self.volumes.apptainer_cachedir,
             additional_directories_in_path=self.volumes.additional_directories_in_path,
             fuse_sleep_seconds=self.volumes.fuse_sleep_seconds,
-        )
-
-    def slurm_config(self):
-        return dict(
-            singularity_executable=self.slurm.singularity_executable,
-            sbatch_executable=self.slurm.sbatch_executable,
-            ntasks=self.slurm.ntasks,
-            cpus_per_task=self.slurm.cpus_per_task,
-            mem_per_cpu=self.slurm.mem_per_cpu,
-            partition=self.slurm.partition,
-            time=self.slurm.time,
-            qos=self.slurm.qos,
-            account=self.slurm.account,
-            job_name=self.slurm.job_name,
-            mail_user=self.slurm.mail_user,
-            mail_type=self.slurm.mail_type,
-            output=self.slurm.output,
-            error=self.slurm.error,
-            log_dir=self.slurm.log_dir,
-            image=self.slurm.image,
-            bind=self.slurm.bind,
-            env=self.slurm.env,
-            flags=self.slurm.flags,
-            slurm_flags=self.slurm.slurm_flags,
         )
 
     def base_volume_config(self):

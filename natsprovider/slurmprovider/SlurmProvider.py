@@ -1,9 +1,6 @@
-from contextlib import asynccontextmanager
-from traceback import format_exc
-import tarfile
+from textwrap import dedent
 from pathlib import Path
 import shutil
-import os.path
 import subprocess
 import re
 
@@ -14,7 +11,6 @@ from . import configuration as cfg
 from ..BaseNatsProvider import BaseNatsProvider
 from ..apptainer_cmd_builder import BuildConfig
 
-from .volumes import BindVolume, TmpFS
 
 class SlurmProvider(BaseNatsProvider):
     def __init__(
@@ -56,52 +52,34 @@ class SlurmProvider(BaseNatsProvider):
         if self._build_config.slurm is None:
             self.logger.info("No slurm configuration specified in the build config. Using default values.")
 
-        # Default executable paths
-        singularity_executable = "/usr/bin/singularity"
-        sbatch_executable = "/usr/local/bin/sbatch"
-        bash_executable = "/usr/bin/bash"
-
         # Default Slurm output and error log paths
         sbatch_output_flag = f"#SBATCH --output={sandbox}/stdout.log"
         sbatch_error_flag = f"#SBATCH --error={sandbox}/stderr.log"
 
         # Generate Slurm sbatch flags dynamically
         slurm_config = self._build_config.slurm
-        sbatch_flags = "\n".join(
-            f"#SBATCH --{flag}={value}"
-            for flag, value in {
-                "time": slurm_config.time,
-                "ntasks": slurm_config.ntasks,
-                "cpus-per-task": slurm_config.cpus_per_task,
-                "mem-per-cpu": slurm_config.mem_per_cpu,
-                "partition": slurm_config.partition,
-                "qos": slurm_config.qos,
-                "account": slurm_config.account,
-                "mail-user": slurm_config.mail_user,
-                "mail-type": slurm_config.mail_type,
-            }.items()
-            if value is not None
-        )
 
-        # Override defaults if specified in the Slurm config
-        if slurm_config:
-            sbatch_output_flag = f"#SBATCH --output={slurm_config.output}" if slurm_config.output else sbatch_output_flag
-            sbatch_error_flag = f"#SBATCH --error={slurm_config.error}" if slurm_config.error else sbatch_error_flag
-            singularity_executable = slurm_config.singularity_executable or singularity_executable
-            sbatch_executable = slurm_config.sbatch_executable or sbatch_executable
-            bash_executable = slurm_config.bash_executable or bash_executable
+        # sbatch flags
+        sbatch_flags = []
+        for prop_name, prop_schema in slurm_config.model_json_schema()['properties'].items():
+            if 'arg' in prop_schema.keys():
+                if prop_schema['type'] == 'boolean' and getattr(self, prop_name):
+                    sbatch_flags.append(f"#SBATCH {prop_schema['arg']}")
+                elif prop_schema['type'] in ('integer', 'string') and getattr(self, prop_name) is not None:
+                    sbatch_flags.append(prop_schema['arg'] % getattr(self, prop_name))
 
         # Create the Slurm script
-        slurm_script = f"""#!/bin/bash
-#SBATCH --job-name={job_name}
-{sbatch_output_flag}
-{sbatch_error_flag}
-{sbatch_flags}
+        slurm_script = dedent(f"""#!/bin/bash
+            #SBATCH --job-name={job_name}
+            {sbatch_output_flag}
+            {sbatch_error_flag}
+            {sbatch_flags}
 
-export SANDBOX={sandbox}
+            export SANDBOX={sandbox}
 
-{bash_executable} {job_script_path}
-"""
+            {slurm_config.bash_executable} {job_script_path}
+            """
+        )
 
         self.logger.info(f"Slurm script for job {job_name}:\n{slurm_script}")
 
@@ -116,7 +94,7 @@ export SANDBOX={sandbox}
         # Submit the job using sbatch
         try:
             result = subprocess.run(
-                [f"{sbatch_executable}", str(slurm_script_path)], # WIP: here the absolute path to sbatch should be taken from the build config
+                [f"{slurm_config.sbatch_executable}", str(slurm_script_path)],
                 capture_output=True,
                 text=True,
                 check=True
@@ -191,7 +169,8 @@ export SANDBOX={sandbox}
         try:
             # Get the job ID using squeue
             result = subprocess.run(
-                ["squeue", "--name", job_name, "--noheader", "-o", "%A"], # WIP: here the absolute path to squeue should be taken from the build config
+                # WIP: here the absolute path to squeue should be taken from the build config
+                ["squeue", "--name", job_name, "--noheader", "-o", "%A"],
                 capture_output=True, text=True, check=True
             )
             
