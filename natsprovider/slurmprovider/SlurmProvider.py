@@ -72,7 +72,7 @@ class SlurmProvider(BaseNatsProvider):
                         sbatch_flags.append("#SBATCH " + prop_schema['arg'] % value)
 
         # Create the Slurm script
-        slurm_script = dedent(f"""#!%(bash_executable)s
+        slurm_script = "#!/bin/bash\n" + dedent("""
             #SBATCH --job-name=%(job_name)s
             %(flags)s
 
