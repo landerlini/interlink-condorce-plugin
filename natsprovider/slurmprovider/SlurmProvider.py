@@ -50,6 +50,8 @@ class SlurmProvider(BaseNatsProvider):
         # Generate Slurm sbatch flags dynamically
         slurm_config = self._build_config.slurm
 
+        keywords = dict(sandbox=sandbox, job_name=job_name)
+
         # sbatch flags
         sbatch_flags = []
         for prop_name, prop_schema in slurm_config.model_json_schema()['properties'].items():
@@ -57,10 +59,12 @@ class SlurmProvider(BaseNatsProvider):
                 if prop_schema['type'] == 'boolean' and getattr(slurm_config, prop_name):
                     sbatch_flags.append("#SBATCH " + prop_schema['arg'])
                 elif prop_schema['type'] in ('integer', 'string') and getattr(slurm_config, prop_name) is not None:
-                    sbatch_flags.append("#SBATCH " + prop_schema['arg'] % getattr(slurm_config, prop_name))
+                    sbatch_flags.append(
+                        "#SBATCH " + prop_schema['arg'] % (getattr(slurm_config, prop_name) % keywords)
+                    )
                 elif prop_schema['type'] == 'array' and getattr(slurm_config, prop_name) is not None:
                     for value in getattr(slurm_config, prop_name):
-                        sbatch_flags.append("#SBATCH " + prop_schema['arg'] % value)
+                        sbatch_flags.append("#SBATCH " + prop_schema['arg'] % (value % keywords) )
 
         # Create the Slurm script
         slurm_script = "#!/bin/bash\n" + dedent("""
