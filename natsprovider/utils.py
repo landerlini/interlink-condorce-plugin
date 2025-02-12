@@ -145,7 +145,7 @@ def embed_binary_file(path: str, file_content: bytes, executable: bool = False, 
     encoded_data = "\n".join([encoded_data[i: i+chunk_len] for i in range(0, len(encoded_data), chunk_len)])
 
     ret = [
-        f"mkdir -p {os.path.dirname(path)}",
+        f"mkdir -p {'/'.join(path.split('/')[:-1])}",
         f"cat <<{token} | base64 --decode > {path}",
         textwrap.dedent(encoded_data),
         token+"\n",
