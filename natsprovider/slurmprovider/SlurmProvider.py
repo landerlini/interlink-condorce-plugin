@@ -27,11 +27,6 @@ class SlurmProvider(BaseNatsProvider):
         scratch_area = Path(self.build_config.volumes.scratch_area) / job_name
         job_script_path = sandbox / "job_script.sh"  # Define the job script path
 
-        # Ensure directories exist
-        for dirname in (self.build_config.volumes.apptainer_cachedir, scratch_area, sandbox):
-            self.logger.info(f"Creating directory {dirname}")
-            Path(dirname).mkdir(parents=True, exist_ok=True)
-
         # Write job_sh to a script file
         with open(job_script_path, "w") as f:
             f.write(job_sh)
@@ -67,7 +62,7 @@ class SlurmProvider(BaseNatsProvider):
         slurm_script = "#!/bin/bash\n" + dedent("""
             #SBATCH --job-name=%(job_name)s
             %(flags)s
-
+            
             export SANDBOX=%(sandbox)s
 
             %(bash_executable)s %(job_script_path)s 
