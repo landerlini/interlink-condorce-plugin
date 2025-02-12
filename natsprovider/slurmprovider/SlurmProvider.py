@@ -27,6 +27,10 @@ class SlurmProvider(BaseNatsProvider):
         scratch_area = Path(self.build_config.volumes.scratch_area) / job_name
         job_script_path = sandbox / "job_script.sh"  # Define the job script path
 
+        # Ensure directories exist
+        self.logger.info(f"Creating directory {sandbox}")
+        Path(sandbox).mkdir(parents=True, exist_ok=True)
+
         # Write job_sh to a script file
         with open(job_script_path, "w") as f:
             f.write(job_sh)
