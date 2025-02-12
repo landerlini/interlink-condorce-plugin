@@ -4,10 +4,8 @@ import shutil
 import subprocess
 import re
 
-from copy import copy
 from .. import interlink
 from ..utils import  compute_pod_resource, JobStatus, Resources
-from . import configuration as cfg
 from ..BaseNatsProvider import BaseNatsProvider
 from ..apptainer_cmd_builder import BuildConfig
 
@@ -18,12 +16,6 @@ class SlurmProvider(BaseNatsProvider):
             build_config: BuildConfig,
             **kwargs
     ):
-        self._volumes = copy(build_config.volumes)
-        build_config.volumes.scratch_area = "/scratch"
-        build_config.volumes.apptainer_cachedir = "/cache"
-        build_config.volumes.image_dir = "/images"
-        self._sandbox = cfg.LOCAL_SANDBOX
-
         BaseNatsProvider.__init__(self, build_config=build_config, **kwargs)
 
     async def create_pod(self, job_name: str, job_sh: str, pod: interlink.PodRequest) -> str:
@@ -31,12 +23,12 @@ class SlurmProvider(BaseNatsProvider):
         Submit the job to Slurm
         """        
     
-        sandbox = Path(self._sandbox) / job_name
-        scratch_area = Path(self._volumes.scratch_area) / job_name
+        sandbox = Path(self.build_config.slurm.sandbox) / job_name
+        scratch_area = Path(self.build_config.volumes.scratch_area) / job_name
         job_script_path = sandbox / "job_script.sh"  # Define the job script path
 
         # Ensure directories exist
-        for dirname in (self._volumes.apptainer_cachedir, scratch_area, sandbox):
+        for dirname in (self.build_config.volumes.apptainer_cachedir, scratch_area, sandbox):
             self.logger.info(f"Creating directory {dirname}")
             Path(dirname).mkdir(parents=True, exist_ok=True)
 
@@ -157,7 +149,7 @@ class SlurmProvider(BaseNatsProvider):
         # Retrieve logs if job has completed
         logs = b""
         try:
-            with open(Path(self._sandbox) / job_name / "logs", "rb") as logs_file:
+            with open(Path(self.build_config.slurm.sandbox) / job_name / "logs", "rb") as logs_file:
                 logs = logs_file.read()
         except FileNotFoundError:
             self.logger.error(f"Failed retrieving stdout log for job {job_name}")
@@ -169,7 +161,7 @@ class SlurmProvider(BaseNatsProvider):
         """
         Delete the Slurm job by its name and remove the associated sandbox directory.
         """
-        sandbox = Path(self._sandbox) / job_name
+        sandbox = Path(self.build_config.slurm.sandbox) / job_name
         
         self.logger.info(f"Attempting to delete Slurm job: {job_name}")
         
@@ -206,7 +198,7 @@ class SlurmProvider(BaseNatsProvider):
             self.logger.critical(e, exc_info=True)
 
         # Cleanup the scratch area in the host
-        scratch_area = Path(self._volumes.scratch_area) / job_name
+        scratch_area = Path(self.build_config.volumes.scratch_area) / job_name
         try:
             shutil.rmtree(scratch_area)
             self.logger.info(f"Successfully deleted scratch area for job {job_name}")

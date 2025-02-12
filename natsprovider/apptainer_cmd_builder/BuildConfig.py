@@ -120,6 +120,10 @@ class BuildConfig(BaseModel):
             description="Type of notifications to send (SLURM flag: --mail-type)",
             json_schema_extra=dict(arg='--mail-type %s'),
         )
+        sandbox: str = Field(
+            default=os.environ.get("LOCAL_SANDBOX", None),
+            description="Directory shared between the compute and login nodes used to transfer the logs",
+        )
         output: str = Field(
             default="%(sandbox)s/stdout.log",
             description="Output file (SLURM flag: --output or -o)",
