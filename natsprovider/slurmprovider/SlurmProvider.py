@@ -71,19 +71,22 @@ class SlurmProvider(BaseNatsProvider):
                     for value in getattr(slurm_config, prop_name):
                         sbatch_flags.append("#SBATCH " + prop_schema['arg'] % value)
 
-        sbatch_flags = '\n'.join(sbatch_flags)
-
         # Create the Slurm script
-        slurm_script = dedent(f"""#!{slurm_config.bash_executable}
-            #SBATCH --job-name={job_name}
-            {sbatch_output_flag}
-            {sbatch_error_flag}
-            {sbatch_flags}
+        slurm_script = dedent(f"""
+            #!%(bash_executable)s
+            #SBATCH --job-name=%(job_name)s
+            %(flags)s
 
-            export SANDBOX={sandbox}
+            export SANDBOX=%(sandbox)s
 
-            {slurm_config.bash_executable} {job_script_path}
+            %(bash_executable) %(job_script_path)s 
             """
+        )%dict(
+            bash_executable=slurm_config.bash_executable,
+            job_name=job_name,
+            flags='\n'.join([sbatch_output_flag, sbatch_error_flag] + sbatch_flags),
+            sandbox=sandbox,
+            job_script_path=job_script_path
         )
 
         self.logger.info(f"Slurm script for job {job_name}:\n{slurm_script}")

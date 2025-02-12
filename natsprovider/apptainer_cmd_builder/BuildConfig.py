@@ -73,7 +73,7 @@ class BuildConfig(BaseModel):
         ntasks: int = Field(
             default=1,
             description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
-            json_schema_extra=dict(arg='--ntask %d'),
+            json_schema_extra=dict(arg='--ntasks %d'),
         )
         cpus_per_task: int = Field(
             default=None,
