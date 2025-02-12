@@ -64,12 +64,15 @@ class SlurmProvider(BaseNatsProvider):
         for prop_name, prop_schema in slurm_config.model_json_schema()['properties'].items():
             if 'arg' in prop_schema.keys():
                 if prop_schema['type'] == 'boolean' and getattr(self, prop_name):
-                    sbatch_flags.append(f"#SBATCH {prop_schema['arg']}")
+                    sbatch_flags.append("#SBATCH " + prop_schema['arg'])
                 elif prop_schema['type'] in ('integer', 'string') and getattr(self, prop_name) is not None:
-                    sbatch_flags.append(prop_schema['arg'] % getattr(self, prop_name))
+                    sbatch_flags.append("#SBATCH " + prop_schema['arg'] % getattr(self, prop_name))
+                elif prop_schema['type'] == 'array' and getattr(self, prop_name) is not None:
+                    for value in getattr(self, prop_name):
+                        sbatch_flags.append("#SBATCH " + prop_schema['arg'] % value)
 
         # Create the Slurm script
-        slurm_script = dedent(f"""#!/bin/bash
+        slurm_script = dedent(f"""#!{slurm_config.bash_executable}
             #SBATCH --job-name={job_name}
             {sbatch_output_flag}
             {sbatch_error_flag}

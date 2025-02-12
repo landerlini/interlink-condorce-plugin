@@ -65,65 +65,75 @@ class BuildConfig(BaseModel):
             default=None,
             description="Relative or absolute path to singularity",
         )
-        ntasks: int = Field(
-            default=None,
+        nodes: int = Field(
+            default=1,
             description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
-            json_schema_extra=dict(arg='--ntask'),
+            json_schema_extra=dict(arg='--nodes %d'),
+        )
+        ntasks: int = Field(
+            default=1,
+            description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
+            json_schema_extra=dict(arg='--ntask %d'),
         )
         cpus_per_task: int = Field(
             default=None,
             description="Number of CPUs per task (SLURM flag: --cpus-per-task)",
-            json_schema_extra=dict(arg='--cpu-per-task'),
+            json_schema_extra=dict(arg='--cpu-per-task %s'),
         )
         mem_per_cpu: str = Field(
             default=None,
             description="Memory per CPU (SLURM flag: --mem-per-cpu)",
-            json_schema_extra=dict(arg='--mem-per-cpu'),
+            json_schema_extra=dict(arg='--mem-per-cpu %s'),
         )
         partition: str = Field(
             default=None,
             description="Partition to submit the job to (SLURM flag: --partition or -p)",
-            json_schema_extra=dict(arg='--partition'),
+            json_schema_extra=dict(arg='--partition %s'),
         )
-        time: str = Field(
+        time: int = Field(
             default=None,
-            description="Time limit for the job (SLURM flag: --time or -t)",
-            json_schema_extra=dict(arg='--time'),
+            description="Time limit for the job in hours (SLURM flag: --time or -t)",
+            json_schema_extra=dict(arg='--time %d:00:00'),
         )
         qos: str = Field(
             default=None,
             description="Quality of service (SLURM flag: --qos)",
-            json_schema_extra=dict(arg='--qos'),
+            json_schema_extra=dict(arg='--qos %s'),
         )
         account: str = Field(
             default=None,
             description="Account to charge the job to (SLURM flag: --account or -A)",
-            json_schema_extra=dict(arg='--account'),
+            json_schema_extra=dict(arg='--account %s'),
         )
         job_name: str = Field(
             default=None,
             description="Name of the job (SLURM flag: --job-name or -J)",
-            json_schema_extra=dict(arg='--job-name'),
+            json_schema_extra=dict(arg='--job-name %s'),
         )
         mail_user: str = Field(
             default=None,
             description="Email address to send notifications to (SLURM flag: --mail-user)",
-            json_schema_extra=dict(arg='--mail-user'),
+            json_schema_extra=dict(arg='--mail-user %s'),
         )
         mail_type: str = Field(
             default=None,
             description="Type of notifications to send (SLURM flag: --mail-type)",
-            json_schema_extra=dict(arg='--mail-type'),
+            json_schema_extra=dict(arg='--mail-type %s'),
         )
         output: str = Field(
             default="%(sandbox)s/stdout.log",
             description="Output file (SLURM flag: --output or -o)",
-            json_schema_extra=dict(arg='--output'),
+            json_schema_extra=dict(arg='--output %s'),
         )
         error: str = Field(
             default="%(sandbox)s/stderr.log",
             description="Error file (SLURM flag: --error or -e)",
-            json_schema_extra=dict(arg='--error'),
+            json_schema_extra=dict(arg='--error %s'),
+        )
+        generic_resources: List[str] = Field(
+            default=[],
+            description="List of generic resources (SLURM flag: --gres)",
+            json_schema_extra=dict(arg='--gres %s'),
         )
         log_dir: str = Field(
             default=None,
