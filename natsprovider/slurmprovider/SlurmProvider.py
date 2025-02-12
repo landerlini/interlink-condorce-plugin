@@ -79,7 +79,7 @@ class SlurmProvider(BaseNatsProvider):
 
             export SANDBOX=%(sandbox)s
 
-            %(bash_executable) %(job_script_path)s 
+            %(bash_executable)s %(job_script_path)s 
             """
         )%dict(
             bash_executable=slurm_config.bash_executable,
