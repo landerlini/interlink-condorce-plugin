@@ -62,7 +62,7 @@ class BuildConfig(BaseModel):
                 description="Slurm partition (as for --partition flag)",
                 json_schema_extra=dict(arg='--partition %s'),
             )
-            qos: str = Field(
+            qos: Optional[str] = Field(
                 description="Slurm quality of service (as for --qos flag)",
                 json_schema_extra=dict(arg='--qos %s'),
             )
