@@ -75,7 +75,7 @@ class BuildConfig(BaseModel):
                 default=3600,
                 description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned."
             )
-            max_resources: Dict[Literal['cpu', 'memory', 'nvidia.com/gpu']] = Field(
+            max_resources: Dict[Literal['cpu', 'memory', 'nvidia.com/gpu'], Union[str, int]] = Field(
                 default={},
                 description="Maximum (extended) resources of the pod for being assigned to this flavor."
             )
