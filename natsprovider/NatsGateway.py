@@ -159,7 +159,7 @@ class NatsGateway:
         self.logger.info(f"Delete pod {pod} [{get_readable_jobid(pod)}]")
         if self._redis:
             self._redis.hset('pod:status', get_readable_jobid(pod), 'deleting')
-        async with (self.nats_connection() as nc):
+        async with self.nats_connection() as nc:
             start = time.monotonic_ns()
             delete_subject = ".".join((self._nats_subject, "delete", get_readable_jobid(pod)))
             delete_response = NatsResponse.from_nats(
