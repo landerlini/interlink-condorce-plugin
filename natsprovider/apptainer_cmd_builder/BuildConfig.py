@@ -147,6 +147,14 @@ class BuildConfig(BaseModel):
             default_factory=lambda: os.environ.get("SLURM_FLAGS", "").split(":"),
             description="Colon-separated list of additional SLURM flags (Can include any SLURM command-line options)",
         )
+        header: str = Field(
+            default="",
+            description="Bash lines to be prepended to the job script, usually setting the environment."
+        )
+        footer: str = Field(
+            default="",
+            description="Bash lines to be appended to the job script, usually setting the environment."
+        )
 
 
     class ApptainerOptions(BaseModel, extra='forbid'):

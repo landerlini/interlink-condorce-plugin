@@ -76,15 +76,21 @@ class SlurmProvider(BaseNatsProvider):
             %(flags)s
             
             export SANDBOX=%(sandbox)s
+            
+            %(header)s
 
             %(bash_executable)s %(job_script_path)s 
+            
+            %(footer)s
             """
         )%dict(
             bash_executable=slurm_config.bash_executable,
             job_name=job_name,
             flags='\n'.join([sbatch_output_flag, sbatch_error_flag] + sbatch_flags),
             sandbox=sandbox,
-            job_script_path=job_script_path
+            job_script_path=job_script_path,
+            header=slurm_config.header,
+            footer=slurm_config.footer,
         )
 
         self.logger.info(f"Slurm script for job {job_name}:\n{slurm_script}")
