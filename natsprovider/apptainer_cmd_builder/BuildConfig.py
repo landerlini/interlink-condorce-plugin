@@ -56,9 +56,16 @@ class BuildConfig(BaseModel):
             """
             partition: str = Field(
                 description="Slurm partition (as for --partition flag)",
+                json_schema_extra=dict(arg='--partition %s'),
             )
             qos: str = Field(
                 description="Slurm quality of service (as for --qos flag)",
+                json_schema_extra=dict(arg='--qos %s'),
+            )
+            generic_resources: List[str] = Field(
+                default=[],
+                description="List of generic resources (SLURM flag: --gres)",
+                json_schema_extra=dict(arg='--gres %s'),
             )
             max_time_seconds: int = Field(
                 default=3600,
