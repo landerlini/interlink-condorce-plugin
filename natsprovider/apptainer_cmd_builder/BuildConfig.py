@@ -155,7 +155,7 @@ class BuildConfig(BaseModel):
             json_schema_extra=dict(arg='--mail-type %s'),
         )
         sandbox: str = Field(
-            default=os.environ.get("LOCAL_SANDBOX", None),
+            default=os.environ.get("LOCAL_SANDBOX", "/tmp"),
             description="Directory shared between the compute and login nodes used to transfer the logs",
         )
         output: str = Field(
