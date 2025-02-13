@@ -3,7 +3,7 @@ import logging
 import traceback
 from io import StringIO
 import json
-from typing import List, Literal, Union, Optional
+from typing import Dict, List, Literal, Union, Optional
 from pydantic import BaseModel, Field
 
 from tomli import load as toml_load, TOMLDecodeError
@@ -49,6 +49,31 @@ class BuildConfig(BaseModel):
         """
         Options configuring the behavior of SLURM runtime.
         """
+        class SlurmFlavor(BaseModel, extra='forbid'):
+            """
+            Define a flavor (partition and qos) for a slurm job, and criteria on the Kubernetes-defined
+            resources to be matched.
+            """
+            partition: str = Field(
+                description="Slurm partition (as for --partition flag)",
+            )
+            qos: str = Field(
+                description="Slurm quality of service (as for --qos flag)",
+            )
+            max_time_seconds: int = Field(
+                default=3600,
+                description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned."
+            )
+            max_resources: Dict[Literal['cpu', 'memory', 'nvidia.com/gpu']] = Field(
+                default={},
+                description="Maximum (extended) resources of the pod for being assigned to this flavor."
+            )
+
+        flavors: Optional[List[SlurmFlavor]] = Field(
+            default=None,
+            description="""List of flavors that can be matched by incoming pods based on the Kubernetes-defined 
+                resources. Flavors are tested for compatibility in order, the first eligible is assigned."""
+        )
         bash_executable: str = Field(
             default="/usr/local/bin/sbatch",
             description="Relative or absolute path to bash",
