@@ -55,7 +55,7 @@ class SlurmProvider(BaseNatsProvider):
         # sbatch flags
         sbatch_flags = []
         for prop_name, prop_schema in slurm_config.model_json_schema()['properties'].items():
-            if 'arg' in prop_schema.keys():
+            if 'arg' in prop_schema.keys() and 'type' in prop_schema.keys():
                 if prop_schema['type'] == 'boolean' and getattr(slurm_config, prop_name):
                     sbatch_flags.append("#SBATCH " + prop_schema['arg'])
                 elif prop_schema['type'] == 'integer' and getattr(slurm_config, prop_name) is not None:
