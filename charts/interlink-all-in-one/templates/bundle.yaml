@@ -374,7 +374,7 @@ metadata:
     cert-manager.io/cluster-issuer: {{ .Values.natsClusterIssuerName | default "lets-issuer" }}
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
 
-  name: interlink-nats
+  name: interlink-build
   namespace: {{ .Release.Namespace }}
 spec:
   ingressClassName: nginx
