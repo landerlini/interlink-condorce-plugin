@@ -118,8 +118,6 @@ class SlurmProvider(BaseNatsProvider):
         """
         Get the Slurm job status and retrieve logs.
         """
-        self.logger.info(f"Checking status for job {job_name}")
-        
         squeue_executable = "/usr/bin/squeue"
         slurm_config = self._build_config.slurm
 
@@ -138,8 +136,6 @@ class SlurmProvider(BaseNatsProvider):
         except subprocess.CalledProcessError as e:
             self.logger.critical(f"Failed to query Slurm for job {job_name}: {e.stderr}")
             return JobStatus(phase="unknown")
-        
-        self.logger.info(f"Retrieved job {job_name} with status {job_status}")
         
         if job_status in ["PENDING"]:
             return JobStatus(phase="pending")
