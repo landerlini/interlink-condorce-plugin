@@ -70,7 +70,7 @@ class SlurmProvider(BaseNatsProvider):
                     for value in getattr(scfg, prop_name):
                         sbatch_flags.append("#SBATCH " + prop_schema['arg'] % (value % keywords) )
                 else:
-                    self.logger.warning(f"Ignored {prop_name} with type {prop_schema['type']}")
+                    self.logger.warning(f"Ignored {prop_name} with schema {prop_schema} ")
             elif 'arg' in prop_schema.keys() and 'type' not in prop_schema.keys():
                 self.logger.warning(f"Property {prop_name} has no schema type {prop_schema}")
 
