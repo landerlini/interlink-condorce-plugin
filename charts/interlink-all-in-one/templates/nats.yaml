@@ -176,8 +176,8 @@ spec:
               name: nats
               port:
                 name: websocket
-          path: /{{ .Values.natsWebSocketPrefix | default .Release.Name }}
-          pathType: Prefix
+        path: /{{ .Values.natsWebSocketPrefix | default .Release.Name }}
+        pathType: Prefix
 
   {{ if .Values.certManagerEnabled }}
   tls:
