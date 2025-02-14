@@ -30,6 +30,11 @@ class AllProviders:
     def kubernetes(**kwargs):
         from .kubernetesprovider.KubernetesProvider import KubernetesProvider
         return KubernetesProvider(**kwargs)
+    
+    @staticmethod
+    def slurm(**kwargs):
+        from .slurmprovider.SlurmProvider import SlurmProvider
+        return SlurmProvider(**kwargs)
 
 def _create_and_operate_provider(args: argparse.Namespace, build_config: BuildConfig, leader: bool = False):
     """
