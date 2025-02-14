@@ -88,13 +88,13 @@ class SlurmProvider(BaseNatsProvider):
             %(footer)s
             """
         )%dict(
-            bash_executable=slurm_config.bash_executable,
+            bash_executable=scfg.bash_executable,
             job_name=job_name,
             flags='\n'.join([sbatch_output_flag, sbatch_error_flag] + sbatch_flags),
             sandbox=sandbox,
             job_script_path=job_script_path,
-            header=slurm_config.header,
-            footer=slurm_config.footer,
+            header=scfg.header,
+            footer=scfg.footer,
         )
 
         self.logger.info(f"Slurm script for job {job_name}:\n{slurm_script}")
@@ -110,7 +110,7 @@ class SlurmProvider(BaseNatsProvider):
         # Submit the job using sbatch
         try:
             result = subprocess.run(
-                [f"{slurm_config.sbatch_executable}", str(slurm_script_path)],
+                [f"{scfg.sbatch_executable}", str(slurm_script_path)],
                 capture_output=True,
                 text=True,
                 check=True
