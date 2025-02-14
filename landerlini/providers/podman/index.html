@@ -153,13 +153,13 @@ done;
 [volumes]
 
 ### Area in the executor filesystem to be used for temporary files
-scratch_area = &quot;/tmp/interlink/scratch&quot;
+scratch_area = &quot;/data/interlink/scratch&quot;
 
 ### Location to cache singularity images in the executor filesystem
-apptainer_cachedir = &quot;/tmp/interlink/cache&quot;
+apptainer_cachedir = &quot;/data/interlink/cache&quot;
 
 ### Location where to look for pre-built images
-image_dir = &quot;/tmp/interlink/images&quot;
+image_dir = &quot;/data/interlink/images&quot;
 
 ### Colon-separated list of directories to include in $PATH to look for executables
 additional_directories_in_path = []
@@ -202,16 +202,6 @@ cleanenv = true
 ### Unsquash
 unsquash = false
 
-# Options configuring the behavior of apptainer runtime
-[slurm]
-
-sbatch_executable = &quot;/usr/local/bin/sbatch&quot;
-
-singularity_executable = &quot;/usr/bin/singularity&quot;
-
-squeue_executable = &quot;/usr/local/bin/squeue&quot;
-
-bash_executable = &quot;/usr/bin/bash&quot;
 
 # Proxy to download pre-build Docker Images instead of rebuilding at each execution
 [shub_proxy]
