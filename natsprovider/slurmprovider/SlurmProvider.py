@@ -48,29 +48,29 @@ class SlurmProvider(BaseNatsProvider):
         sbatch_error_flag = f"#SBATCH --error={sandbox}/stderr.log"
 
         # Generate Slurm sbatch flags dynamically
-        slurm_config = self._build_config.slurm
+        scfg = self._build_config.slurm
 
         keywords = dict(sandbox=sandbox, job_name=job_name)
 
         # sbatch flags
         sbatch_flags = []
-        for prop_name, prop_schema in slurm_config.model_json_schema()['properties'].items():
-            if 'arg' in prop_schema.keys() and 'type' in prop_schema.keys():
-                if prop_schema['type'] == 'boolean' and getattr(slurm_config, prop_name):
+        for prop_name, prop_schema in scfg.model_json_schema()['properties'].items():
+            if 'arg' in prop_schema.keys():
+                if BuildConfig.check_type(scfg, prop_name, ['boolean']) and getattr(scfg, prop_name):
                     sbatch_flags.append("#SBATCH " + prop_schema['arg'])
-                elif prop_schema['type'] == 'integer' and getattr(slurm_config, prop_name) is not None:
+                elif BuildConfig.check_type(scfg, prop_name, ['integer']) and getattr(scfg, prop_name) is not None:
                     sbatch_flags.append(
-                        "#SBATCH " + prop_schema['arg'] % getattr(slurm_config, prop_name)
+                        "#SBATCH " + prop_schema['arg'] % getattr(scfg, prop_name)
                     )
-                elif prop_schema['type'] == 'string' and getattr(slurm_config, prop_name) is not None:
+                elif BuildConfig.check_type(scfg, prop_name, ['string']) and getattr(scfg, prop_name) is not None:
                     sbatch_flags.append(
-                        "#SBATCH " + prop_schema['arg'] % (getattr(slurm_config, prop_name) % keywords)
+                        "#SBATCH " + prop_schema['arg'] % (getattr(scfg, prop_name) % keywords)
                     )
-                elif prop_schema['type'] == 'array' and getattr(slurm_config, prop_name) is not None:
-                    for value in getattr(slurm_config, prop_name):
+                elif BuildConfig.check_type(scfg, prop_name, ['array']) and getattr(scfg, prop_name) is not None:
+                    for value in getattr(scfg, prop_name):
                         sbatch_flags.append("#SBATCH " + prop_schema['arg'] % (value % keywords) )
                 else:
-                    self.logger.warning(f"Ignored {prop_name} wirht type {prop_schema['type']}")
+                    self.logger.warning(f"Ignored {prop_name} with type {prop_schema['type']}")
             elif 'arg' in prop_schema.keys() and 'type' not in prop_schema.keys():
                 self.logger.warning(f"Property {prop_name} has no schema type {prop_schema}")
 

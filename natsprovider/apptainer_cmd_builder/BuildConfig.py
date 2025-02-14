@@ -3,7 +3,7 @@ import logging
 import traceback
 from io import StringIO
 import json
-from typing import Dict, List, Literal, Union, Optional
+from typing import Collection, Dict, List, Literal, Union, Optional
 from pydantic import BaseModel, Field
 
 from tomli import load as toml_load, TOMLDecodeError
@@ -403,3 +403,19 @@ class BuildConfig(BaseModel):
             logging.error(f"Update of BuildConfig failed.\n" + traceback.format_exc())
             return self
 
+
+    @staticmethod
+    def check_type(config: BaseModel, key: str, types: Collection[str]):
+        properties = config.model_json_schema()['properties']
+        if key not in properties.keys():
+            return False
+
+        if 'type' in properties[key].keys():
+            return properties[key]['type'] in types
+
+        if 'anyOf' in properties[key].keys():
+            for alt_dict in properties[key]['anyOf']:
+                if 'type' in alt_dict.keys() and alt_dict['type'] in types:
+                    return True
+
+        return False
