@@ -69,6 +69,10 @@ class SlurmProvider(BaseNatsProvider):
                 elif prop_schema['type'] == 'array' and getattr(slurm_config, prop_name) is not None:
                     for value in getattr(slurm_config, prop_name):
                         sbatch_flags.append("#SBATCH " + prop_schema['arg'] % (value % keywords) )
+                else:
+                    self.logger.warning(f"Ignored {prop_name} wirht type {prop_schema['type']}")
+            elif 'arg' in prop_schema.keys() and 'type' not in prop_schema.keys():
+                self.logger.warning(f"Property {prop_name} has no schema type {prop_schema}")
 
         # Create the Slurm script
         slurm_script = "#!/bin/bash\n" + dedent("""
