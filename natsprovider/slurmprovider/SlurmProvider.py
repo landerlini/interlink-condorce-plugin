@@ -25,18 +25,10 @@ class SlurmProvider(BaseNatsProvider):
     
         sandbox = Path(self.build_config.slurm.sandbox) / job_name
         scratch_area = Path(self.build_config.volumes.scratch_area) / job_name
-        job_script_path = sandbox / "job_script.sh"  # Define the job script path
 
         # Ensure directories exist
         self.logger.info(f"Creating directory {sandbox}")
         Path(sandbox).mkdir(parents=True, exist_ok=True)
-
-        # Write job_sh to a script file
-        with open(job_script_path, "w") as f:
-            f.write(job_sh)
-
-        # Make sure the script is executable
-        job_script_path.chmod(0o755)
 
         self.logger.info(f"Start creation of slurm script for job {job_name}")
 
@@ -74,30 +66,21 @@ class SlurmProvider(BaseNatsProvider):
             elif 'arg' in prop_schema.keys() and 'type' not in prop_schema.keys():
                 self.logger.warning(f"Property {prop_name} has no schema type {prop_schema}")
 
-        # Create the Slurm script
-        slurm_script = "#!/bin/bash\n" + dedent("""
-            #SBATCH --job-name=%(job_name)s
-            %(flags)s
-            
-            export SANDBOX=%(sandbox)s
-            
-            %(header)s
+        job_sh_lines = job_sh.split('\n')
+        slurm_script = '\n'.join([
+            job_sh_lines[0],
+            f'#SBATCH --job-name={job_name}',
+            sbatch_output_flag,
+            sbatch_error_flag,
+            sbatch_flags,
+            '',
+            f'export SANDBOX={sandbox}\n',
+            scfg.header,
+            *(job_sh_lines[1:]),
+            scfg.footer,
+        ])
 
-            %(bash_executable)s %(job_script_path)s 
-            
-            %(footer)s
-            """
-        )%dict(
-            bash_executable=scfg.bash_executable,
-            job_name=job_name,
-            flags='\n'.join([sbatch_output_flag, sbatch_error_flag] + sbatch_flags),
-            sandbox=sandbox,
-            job_script_path=job_script_path,
-            header=scfg.header,
-            footer=scfg.footer,
-        )
-
-        self.logger.info(f"Slurm script for job {job_name}:\n{slurm_script}")
+        self.logger.info(f"Slurm script for job {job_name}:\n{sbatch_flags}")
 
         # Write the Slurm script
         slurm_script_path = sandbox / "job.sh"
