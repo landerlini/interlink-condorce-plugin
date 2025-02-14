@@ -72,7 +72,7 @@ class SlurmProvider(BaseNatsProvider):
             f'#SBATCH --job-name={job_name}',
             sbatch_output_flag,
             sbatch_error_flag,
-            sbatch_flags,
+            *sbatch_flags,
             '',
             f'export SANDBOX={sandbox}\n',
             scfg.header,
