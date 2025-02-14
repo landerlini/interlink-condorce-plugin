@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from pprint import pformat
 from typing import Any, Dict, List, Literal
 import os
 import signal
@@ -9,10 +10,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
 
 from prometheus_client import make_asgi_app
+from starlette.responses import JSONResponse
+
 from natsprovider import metrics
 
 from natsprovider import NatsGateway, interlink
 from natsprovider import configuration as cfg
+from natsprovider.apptainer_cmd_builder import BuildRestModel, from_kubernetes
 # Please Take my provider and handle the interLink REST layer for me
 
 
@@ -106,3 +110,22 @@ async def shutdown(subject: str) -> str:
 async def healthz() -> bool:
     logging.debug("Health tested: ok.")
     return True
+
+@app.post("/interlink/apptainer-cmd-builder", response_class=JSONResponse)
+async def build(build_model: BuildRestModel):
+    """
+    Return a job-script for a remote interlink instance, given the PodSpec and the build config
+    """
+    logging.info(f"Processing apptainer-cmd-build build request for payload:\n{pformat(build_model.model_dump())}")
+    metrics.counters['api_call'].labels('/build').inc()
+
+    pod = interlink.PodRequest(**build_model.pod)
+    volumes = [interlink.Volume(**c) for c in build_model.container]
+    build_config = build_model.get_build_config()
+
+    builder = from_kubernetes(pod.model_dump(),
+        [volume.model_dump() for volume in volumes],
+        build_config=build_config,
+    )
+
+    return builder.dump()

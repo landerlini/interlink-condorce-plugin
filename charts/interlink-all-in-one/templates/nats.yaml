@@ -172,12 +172,12 @@ spec:
     http:
       paths:
       - backend:
-          service:
-            name: nats
-            port:
-              name: websocket
-        path: /{{ .Values.natsWebSocketPrefix | default .Release.Name }}
-        pathType: Prefix
+            service:
+              name: nats
+              port:
+                name: websocket
+          path: /{{ .Values.natsWebSocketPrefix | default .Release.Name }}
+          pathType: Prefix
 
   {{ if .Values.certManagerEnabled }}
   tls:
