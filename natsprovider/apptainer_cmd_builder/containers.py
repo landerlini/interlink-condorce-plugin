@@ -260,6 +260,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [f'--env-file {self.env_file_path}']
 
         # Volumes
+        ret += ['--scratch /tmp', '--scratch /var/tmp']
         ret += [str(vb) for vb in set(self.volume_binds)]
 
         # Executable
