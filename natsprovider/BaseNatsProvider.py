@@ -137,6 +137,7 @@ class BaseNatsProvider:
                 self.logger.error(
                     f"Failed to retrieve list of pods from remote. {max_attempts} attempt(s) remaining."
                 )
+                await asyncio.sleep(5)
             else:
                 break
 
