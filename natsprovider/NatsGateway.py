@@ -82,7 +82,7 @@ class NatsGateway:
 
         if self._redis is not None:
             pools = self._redis.hgetall("pod:pool")
-            ret = [job_name for job_name, pool in pools.items() if pool == pool]
+            ret = [job_name for job_name, cached_pool in pools.items() if cached_pool == pool]
             self.logger.info(f"Resync request from {pool}: returning {len(ret)} job names.")
             await msg.respond(
                 NatsResponse(status_code=200, data=ret).to_nats()
