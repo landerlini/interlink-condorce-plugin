@@ -61,6 +61,13 @@ class NatsGateway:
         )
         self.logger.info(f"Subscribed to config subject {resync_subject}")
 
+        resource_subject = ".".join((self._nats_subject, "resources", "*"))
+        self._nats_subs['resync'] = await listener_nc.subscribe(
+            subject=resource_subject,
+            cb=self.published_resources_callback,
+        )
+        self.logger.info(f"Subscribed to config subject {resource_subject}")
+
         return listener_nc
 
     async def config_callback(self, msg: nats.aio.msg.Msg):
