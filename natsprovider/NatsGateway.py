@@ -40,7 +40,7 @@ class NatsGateway:
         self._build_configs: Dict[str, BuildConfig] = dict()
         if self._redis:
             self._build_configs = {
-                str(q): BuildConfig(**(json.loads(bc))) for q, bc in self._redis.hgetall('build_configs').items()
+                str(q, 'utf-8'): BuildConfig(**(json.loads(bc))) for q, bc in self._redis.hgetall('build_configs').items()
             }
             self.logger.info(f"Recovered build_configs from DB for pools {', '.join(list(self._build_configs.keys()))}")
 
@@ -82,7 +82,7 @@ class NatsGateway:
         metrics.counters['resync_requests'].labels(pool).inc()
 
         if self._redis is not None:
-            pools = {str(k, 'utf-8'): str(v, 'utf-8') for k, v in self._redis.hgetall("pod:pool")}
+            pools = {str(k, 'utf-8'): str(v, 'utf-8') for k, v in self._redis.hgetall("pod:pool").items()}
             self.logger.info(pformat(pools))
             ret = [job_name for job_name, cached_pool in pools.items() if cached_pool == pool]
             self.logger.info(f"Resync request from {pool}: returning {len(ret)} job names.")
