@@ -120,7 +120,7 @@ class BaseNatsProvider:
         """
         Request the list of pods assigned to the pool. Warning: may lead to errors if multi-responder setup.
         """
-        max_attempts = 3
+        max_attempts = 5
         while max_attempts:
             try:
 
@@ -137,7 +137,7 @@ class BaseNatsProvider:
                 self.logger.error(
                     f"Failed to retrieve list of pods from remote. {max_attempts} attempt(s) remaining."
                 )
-                await asyncio.sleep(5)
+                await asyncio.sleep(3)
             else:
                 break
 
