@@ -455,7 +455,7 @@ class NatsGateway:
         # If the pod terminated, cache the result in redis to reduce NATS traffic.
         if self._redis and job_status.phase in ["succeeded", "failed"]:
             cache = dict(containers=container_statuses, initContainers=init_container_statuses)
-            self._redis.hset("pod:container_statuses", pickle.dumps(cache))
+            self._redis.hset("pod:container_statuses", job_name, pickle.dumps(cache))
 
         return interlink.PodStatus(
             name=pod_metadata.name,
