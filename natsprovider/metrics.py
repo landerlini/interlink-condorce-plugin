@@ -43,6 +43,11 @@ counters = MetricStore(
             labels=['pool'],
         ),
         MetricSpec(
+            name="resync_requests",
+            description="Number of resync requests sent by submitters (usually after a restart)",
+            labels=['pool'],
+        ),
+        MetricSpec(
             name="opened_nats",
             description="Incremented when a new nats connection is open",
             labels=[],
@@ -77,6 +82,11 @@ gauges = MetricStore(
             name="status_retrival_attempts",
             description="Number of attempts to retrieve status",
             labels=[],
+        ),
+        MetricSpec(
+            name="pool_resources",
+            description="Computing resources made available by each pool",
+            labels=["pool", "resource"],
         ),
     ]
 )

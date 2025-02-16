@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 
 from tomli import load as toml_load, TOMLDecodeError
 
+from ..utils import Resources
+
 MISSING_BUILD_CONFIG_ERROR_CODE = 127
 
 
@@ -281,6 +283,10 @@ class BuildConfig(BaseModel):
     slurm: SlurmOptions = Field(
         default=SlurmOptions(),
         description=SlurmOptions.__doc__
+    )
+    resources: Resources = Field(
+        default=Resources(),
+        description="Computing resources made available by the pool (not by the single submitter!)"
     )
 
     input_toml_filename: Optional[str] = Field(
