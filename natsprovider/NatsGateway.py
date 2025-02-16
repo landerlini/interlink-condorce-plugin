@@ -233,7 +233,7 @@ class NatsGateway:
         # Note that otherwise the whole log would be transferred at each status request if the job is terminated.
         if self._redis:
             cached_status = self._redis.hget('pod:container_statuses', job_name)
-            if job_name is not None:
+            if cached_status is not None:
                 cached_statuses = pickle.loads(cached_status)
                 return interlink.PodStatus(
                     name=pod_metadata.name,
