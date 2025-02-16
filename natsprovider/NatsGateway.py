@@ -87,9 +87,9 @@ class NatsGateway:
             await msg.respond(
                 NatsResponse(status_code=200, data=ret).to_nats()
             )
-
-        self.logger.warning(f"Cannot handle resync request from {pool} as redis connector was not configured.")
-        return await msg.respond(NatsResponse(status_code=200, data=[]).to_nats())
+        else:
+            self.logger.warning(f"Cannot handle resync request from {pool} as redis connector was not configured.")
+            await msg.respond(NatsResponse(status_code=200, data=[]).to_nats())
 
     async def published_resources_callback(self, msg: nats.aio.msg.Msg):
         pool = msg.subject.split(".")[-1]
