@@ -1,4 +1,5 @@
 import asyncio
+from pprint import pformat
 import json
 import io
 import pickle
@@ -82,6 +83,7 @@ class NatsGateway:
 
         if self._redis is not None:
             pools = self._redis.hgetall("pod:pool")
+            self.logger.info(pformat(pools))
             ret = [job_name for job_name, cached_pool in pools.items() if cached_pool == pool]
             self.logger.info(f"Resync request from {pool}: returning {len(ret)} job names.")
             await msg.respond(
