@@ -242,7 +242,7 @@ class NatsGateway:
                     UID=pod_metadata.uid,
                     namespace=pod_metadata.namespace,
                     containers=cached_statuses['containers'],
-                    initContainers=cached_status['initContainers']
+                    initContainers=cached_statuses['initContainers']
                 )
 
         # Cache miss or cache not configured... retrieve from backend
