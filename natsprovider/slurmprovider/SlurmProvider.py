@@ -57,7 +57,7 @@ class SlurmProvider(BaseNatsProvider):
 
     async def _retrieve_job_status(self, job_name: str) -> Union[str, None]:
         if (
-            self._cached_squeue_time is not "processing" and (
+            self._cached_squeue_time != "processing" and (
                 self._cached_squeue_time is None or
                 (datetime.now() - self._cached_squeue_time).total_seconds() > 10 or
                 job_name not in self._cached_squeue.keys()
