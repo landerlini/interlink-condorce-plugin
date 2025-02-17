@@ -327,7 +327,7 @@ class BaseNatsProvider:
 
     async def maybe_publish_resources(self):
         for _ in self.required_updates('resources', 30):
-            rsrc = Resources()
+            rsrc = self._build_config.resources or Resources()
 
             rsrc.cpu = rsrc.cpu or self._declared_resources.cpu or await self.get_allocatable_cpu()
             if rsrc.cpu is None:
