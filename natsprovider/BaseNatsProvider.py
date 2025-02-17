@@ -264,10 +264,14 @@ class BaseNatsProvider:
                 NatsResponse(status_code=e.status_code, data=e.detail.encode('utf-8')).to_nats()
             )
         else:
-            self.logger.info(f"Retrieved status of {job_name}: {job_status.phase}")
-            await msg.respond(
-                NatsResponse(status_code=200, data=job_status.model_dump()).to_nats()
-            )
+            if job_status is not None:
+                self.logger.info(f"Retrieved status of {job_name}: {job_status.phase}")
+                await msg.respond(
+                    NatsResponse(status_code=200, data=job_status.model_dump()).to_nats()
+                )
+            else:
+                self.logger.error(f"Failed to retrieve status of {job_name}: job status not found.")
+                NatsResponse(status_code=500, data=b"Job not found").to_nats()
 
     async def get_pod_status_and_logs(self, job_name: str) -> JobStatus:
         """Override me!"""
