@@ -87,6 +87,9 @@ class SlurmProvider(BaseNatsProvider):
 
                 statuses = {}
                 for line in lines:
+                    if ':' not in line:
+                        continue
+
                     job_name, slurm_status = line.split(':')
                     self._cached_squeue[job_name] = slurm_status
                     statuses[slurm_status] = statuses.get(slurm_status, 0) + 1
