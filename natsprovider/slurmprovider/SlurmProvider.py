@@ -102,7 +102,7 @@ class SlurmProvider(BaseNatsProvider):
             finally:
                 self._cached_squeue_time = datetime.now()
 
-        return self._cached_squeue_time.get(job_name)
+        return self._cached_squeue.get(job_name)
 
     async def create_pod(self, job_name: str, job_sh: str, pod: interlink.PodRequest) -> str:
         """
