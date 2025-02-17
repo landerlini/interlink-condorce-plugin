@@ -101,6 +101,10 @@ class BuildConfig(BaseModel):
             default="/usr/local/bin/squeue",
             description="Relative or absolute path to squeue",
         )
+        sacct_executable: str = Field(
+            default="/usr/local/bin/sacct",
+            description="Relative or absolute path to sacct",
+        )
         nodes: int = Field(
             default=1,
             description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",

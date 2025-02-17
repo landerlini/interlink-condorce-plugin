@@ -1,6 +1,7 @@
 import asyncio
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from copy import copy
 from textwrap import dedent
 from pathlib import Path
 import shutil
@@ -28,6 +29,7 @@ SLURM_RUNNING_STATUSES = (
     'COMPLETING',
     'RUNNING',
     'SIGNALING',
+    'MIGRATING',
     'SUSPENDED',
     'STOPPED',
     'REVOKED',
@@ -42,7 +44,12 @@ SLURM_FAILED_STATUSES = (
     'OUT_OF_MEMORY',
     'SPECIAL_EXIT',
     'STAGE_OUT',
+    'CANCELLED',
     'TIMEOUT',
+)
+
+SLURM_COMPLETED_STATUSES = (
+    'COMPLETED',
 )
 
 class SlurmProvider(BaseNatsProvider):
@@ -52,10 +59,17 @@ class SlurmProvider(BaseNatsProvider):
             **kwargs
     ):
         self._cached_squeue = dict()
-        self._cached_squeue_time = None
+        self._cached_squeue_time: Union[datetime, str, None] = None
         BaseNatsProvider.__init__(self, build_config=build_config, **kwargs)
 
     async def _retrieve_job_status(self, job_name: str) -> Union[str, None]:
+        # Try to wait for previous sacct request to reply for up to 5 seconds
+        for _ in range(50):
+            if self._cached_squeue_time == "processing":
+                await asyncio.sleep(0.1)
+            else:
+                break
+
         if (
             self._cached_squeue_time != "processing" and (
                 self._cached_squeue_time is None or
@@ -64,35 +78,47 @@ class SlurmProvider(BaseNatsProvider):
             )
         ):
             # Cache miss
+            last_check_timestamp = copy(self._cached_squeue_time)
             self._cached_squeue_time = "processing"
-            squeue_executable = "/usr/bin/squeue"
+            sacct_executable = "/usr/bin/sacct"
             slurm_config = self._build_config.slurm
 
             if slurm_config:
-                squeue_executable = slurm_config.squeue_executable or squeue_executable
+                sacct_executable = slurm_config.sacct_executable or sacct_executable
 
             try:
                 username = os.environ.get("USER", os.environ.get("LOGNAME"))
+                # Get job status from Slurm for completed jobs
                 selectors = ['--user', username] if username is not None else []
+                if last_check_timestamp is not None:
+                    endtime_threshold = last_check_timestamp - timedelta(minutes=10)
+                    selectors += ['--starttime', endtime_threshold.strftime('%Y-%m-%dT%H:%M:%S')]
+                else:
+                    selectors += ['--starttime', "now-1day"]
 
-                # Get job status from Slurm
+                # sacct --starttime now-3hour --user $USER --noheader --format=JobName,State --parsable2
                 proc = await asyncio.create_subprocess_exec(
-                    squeue_executable, *selectors, "--noheader", "-o", "%j:%T",
+                    sacct_executable, *selectors, "--noheader", '--format=JobName,State', '--parsable2',
+                    '--state='+','.join(
+                        SLURM_FAILED_STATUSES +
+                        SLURM_RUNNING_STATUSES +
+                        SLURM_PENDING_STATUSES +
+                        SLURM_COMPLETED_STATUSES
+                    ),
                     stdout = asyncio.subprocess.PIPE,
                     stderr = asyncio.subprocess.PIPE,
                 )
-                stdout, stderr = await proc.communicate()
-                stdout, stderr = str(stdout, 'utf-8'), str(stderr, 'utf-8')
-                lines = stdout.split('\n')
+
+                sacct_stdout, sacct_stderr = await proc.communicate()
+                sacct_stdout, sacct_stderr = str(sacct_stdout, 'utf-8'), str(sacct_stderr, 'utf-8')
+                lines = sacct_stdout.split('\n')
 
                 statuses = {}
                 for line in lines:
-                    if ':' not in line:
-                        continue
-
-                    job_name, slurm_status = line.split(':')
-                    self._cached_squeue[job_name] = slurm_status
-                    statuses[slurm_status] = statuses.get(slurm_status, 0) + 1
+                    if '|' in line:
+                        job_name, slurm_status = line.split(':')
+                        self._cached_squeue[job_name] = slurm_status
+                        statuses[slurm_status] = statuses.get(slurm_status, 0) + 1
 
                 self.logger.info(
                     f"Retrieved {len(lines)} jobs: {', '.join([f'{n} {k}' for k, n in statuses.items()])}"
