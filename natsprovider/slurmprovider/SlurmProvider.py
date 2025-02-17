@@ -73,7 +73,7 @@ class SlurmProvider(BaseNatsProvider):
 
             try:
                 username = os.environ.get("USER", os.environ.get("LOGNAME"))
-                selectors = ['--user', username] if username is None else []
+                selectors = ['--user', username] if username is not None else []
 
                 # Get job status from Slurm
                 proc = await asyncio.create_subprocess_exec(
