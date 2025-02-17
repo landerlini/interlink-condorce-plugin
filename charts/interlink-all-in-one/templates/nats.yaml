@@ -172,10 +172,10 @@ spec:
     http:
       paths:
       - backend:
-          service:
-            name: nats
-            port:
-              name: websocket
+            service:
+              name: nats
+              port:
+                name: websocket
         path: /{{ .Values.natsWebSocketPrefix | default .Release.Name }}
         pathType: Prefix
 

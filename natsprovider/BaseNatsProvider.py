@@ -14,6 +14,7 @@ import nats.aio.msg
 from . import interlink
 import orjson
 import nats
+import nats.errors
 
 from .utils import NatsResponse, JobStatus, Resources
 from . import configuration as cfg
@@ -96,6 +97,55 @@ class BaseNatsProvider:
                 )
                 self.logger.info(f"Published build options on subject {config_subject}")
 
+    async def _register_status_and_delete_callbacks(self, job_name: str):
+        """
+        Helper function to subscribe to create and get-status NATS subjects.
+        """
+        async with self.nats_connection() as nc:
+                    # Register status and logs callback
+                    status_subject = '.'.join((self._nats_subject, 'status', job_name))
+                    self._subscriptions[status_subject] = await nc.subscribe(
+                        subject=status_subject,
+                        cb=self.get_pod_status_and_logs_callback
+                    )
+                    # Register delete pod callback
+                    delete_subject = '.'.join((self._nats_subject, 'delete', job_name))
+                    self._subscriptions[delete_subject] = await nc.subscribe(
+                        subject=delete_subject,
+                        cb=self.delete_pod_callback
+                    )
+
+
+    async def resync(self):
+        """
+        Request the list of pods assigned to the pool. Warning: may lead to errors if multi-responder setup.
+        """
+        max_attempts = 5
+        while max_attempts:
+            try:
+
+                resync_subject = '.'.join((self._nats_subject, 'resync', self._nats_pool))
+                async with self.nats_connection() as nc:
+                    response = NatsResponse.from_nats(
+                        await nc.request(
+                            resync_subject,
+                            timeout=120,
+                        )
+                    )
+            except nats.errors.TimeoutError:
+                max_attempts -= 1
+                self.logger.error(
+                    f"Failed to retrieve list of pods from remote. {max_attempts} attempt(s) remaining."
+                )
+                await asyncio.sleep(3)
+            else:
+                break
+
+        response.raise_for_status()
+
+        self.logger.info(f"Retrieved {len(response.data)} pods assigned to pool {self._nats_pool}.")
+        for cr in [self._register_status_and_delete_callbacks(job_name) for job_name in response.data]:
+            await cr
 
 
     async def main_loop(self, time_interval: float = 0.2):
@@ -106,6 +156,7 @@ class BaseNatsProvider:
             if self.leader:
                 await self.maybe_refresh_build_config()
                 await self.maybe_publish_resources()
+                await self.resync()
             self._subscriptions[create_subject] = await nc.subscribe(
                 subject=create_subject,
                 queue=self._nats_pool,
@@ -182,19 +233,7 @@ class BaseNatsProvider:
         job_sh = body['job_sh']
         pod = interlink.PodRequest(**body.get('pod', dict()))
 
-        async with self.nats_connection() as nc:
-            # Register status and logs callback
-            status_subject = '.'.join((self._nats_subject, 'status', job_name))
-            self._subscriptions[status_subject] = await nc.subscribe(
-                subject=status_subject,
-                cb=self.get_pod_status_and_logs_callback
-            )
-            # Register delete pod callback
-            delete_subject = '.'.join((self._nats_subject, 'delete', job_name))
-            self._subscriptions[delete_subject] = await nc.subscribe(
-                subject=delete_subject,
-                cb=self.delete_pod_callback
-            )
+        await self._register_status_and_delete_callbacks(job_name)
 
         if cfg.DEBUG:
             with open(f"/tmp/{job_name}", "w") as f:
@@ -288,55 +327,55 @@ class BaseNatsProvider:
 
     async def maybe_publish_resources(self):
         for _ in self.required_updates('resources', 30):
-            resources = Resources()
+            rsrc = Resources()
 
-            resources.cpu = self._declared_resources.cpu or await self.get_allocatable_cpu()
-            if resources.cpu is None:
-                resources.cpu = cfg.DEFAULT_ALLOCATABLE_CPU
+            rsrc.cpu = rsrc.cpu or self._declared_resources.cpu or await self.get_allocatable_cpu()
+            if rsrc.cpu is None:
+                rsrc.cpu = cfg.DEFAULT_ALLOCATABLE_CPU
                 if 'cpu' not in self._warned_on_unset_resources:
                     self._warned_on_unset_resources.append('cpu')
                     self.logger.warning(
                             f"{self.__class__.__name__} does not implement `get_allocatable_cpu`. " +
-                            f"Specify allocatable cpu with --cpu argument. Using default: {resources.cpu}.",
+                            f"Specify allocatable cpu with --cpu argument. Using default: {rsrc.cpu}.",
                         )
             else:
-                resources.cpu = str(resources.cpu)
+                rsrc.cpu = str(rsrc.cpu)
 
-            resources.memory = self._declared_resources.memory or await self.get_allocatable_memory()
-            if resources.memory is None:
-                resources.memory = cfg.DEFAULT_ALLOCATABLE_MEMORY
+            rsrc.memory = rsrc.memory or self._declared_resources.memory or await self.get_allocatable_memory()
+            if rsrc.memory is None:
+                rsrc.memory = cfg.DEFAULT_ALLOCATABLE_MEMORY
                 if 'memory' not in self._warned_on_unset_resources:
                     self._warned_on_unset_resources.append('memory')
                     self.logger.warning(
                         f"{self.__class__.__name__} does not implement `get_allocatable_memory`. "
-                        f"Specify allocatable memory with --memory argument. Using default: {resources.memory}."
+                        f"Specify allocatable memory with --memory argument. Using default: {rsrc.memory}."
                     )
             else:
-                resources.memory = str(resources.memory)
+                rsrc.memory = str(rsrc.memory)
 
-            resources.pods = self._declared_resources.pods or await self.get_allocatable_pods()
-            if resources.pods is None:
-                resources.pods = cfg.DEFAULT_ALLOCATABLE_PODS
+            rsrc.pods = rsrc.pods or self._declared_resources.pods or await self.get_allocatable_pods()
+            if rsrc.pods is None:
+                rsrc.pods = cfg.DEFAULT_ALLOCATABLE_PODS
                 if 'pods' not in self._warned_on_unset_resources:
                     self._warned_on_unset_resources.append('pods')
                     self.logger.warning(
                         f"{self.__class__.__name__} does not implement `get_allocatable_pods`. "
-                        f"Specify allocatable number of pods with --pods argument. Using default: {resources.pods}."
+                        f"Specify allocatable number of pods with --pods argument. Using default: {rsrc.pods}."
                     )
             else:
-                resources.pods = int(resources.pods)
+                rsrc.pods = int(rsrc.pods)
 
-            resources.gpus = self._declared_resources.gpus or await self.get_allocatable_gpus()
-            if resources.gpus is None:
-                resources.gpus = cfg.DEFAULT_ALLOCATABLE_GPUS
+            rsrc.gpus = rsrc.gpus or self._declared_resources.gpus or await self.get_allocatable_gpus()
+            if rsrc.gpus is None:
+                rsrc.gpus = cfg.DEFAULT_ALLOCATABLE_GPUS
             else:
-                resources.gpus = int(resources.gpus)
+                rsrc.gpus = int(rsrc.gpus)
 
             resources_subject = '.'.join((self._nats_subject, 'resources', self._nats_pool))
             async with self.nats_connection() as nc:
                 await nc.publish(
                     subject=resources_subject,
-                    payload=orjson.dumps(resources.to_kubernetes())
+                    payload=orjson.dumps(rsrc.to_kubernetes())
                 )
                 self.logger.info(f"Published allocatable resources on subject {resources_subject}")
 

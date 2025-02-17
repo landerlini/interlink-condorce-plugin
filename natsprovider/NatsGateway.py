@@ -1,6 +1,8 @@
 import asyncio
+from pprint import pformat
 import json
 import io
+import pickle
 import tarfile
 import logging
 import time
@@ -9,6 +11,7 @@ from typing import Collection, Dict, List, Union
 from contextlib import asynccontextmanager
 
 import kubernetes.client
+from kubernetes.utils.quantity import parse_quantity
 import zlib
 
 import orjson
@@ -37,7 +40,7 @@ class NatsGateway:
         self._build_configs: Dict[str, BuildConfig] = dict()
         if self._redis:
             self._build_configs = {
-                str(q): BuildConfig(**(json.loads(bc))) for q, bc in self._redis.hgetall('build_configs').items()
+                str(q, 'utf-8'): BuildConfig(**(json.loads(bc))) for q, bc in self._redis.hgetall('build_configs').items()
             }
             self.logger.info(f"Recovered build_configs from DB for pools {', '.join(list(self._build_configs.keys()))}")
 
@@ -50,6 +53,21 @@ class NatsGateway:
             cb=self.config_callback,
         )
         self.logger.info(f"Subscribed to config subject {config_subject}")
+
+        resync_subject = ".".join((self._nats_subject, "resync", "*"))
+        self._nats_subs['resync'] = await listener_nc.subscribe(
+            subject=resync_subject,
+            cb=self.resync_callback,
+        )
+        self.logger.info(f"Subscribed to config subject {resync_subject}")
+
+        resource_subject = ".".join((self._nats_subject, "resources", "*"))
+        self._nats_subs['resync'] = await listener_nc.subscribe(
+            subject=resource_subject,
+            cb=self.published_resources_callback,
+        )
+        self.logger.info(f"Subscribed to config subject {resource_subject}")
+
         return listener_nc
 
     async def config_callback(self, msg: nats.aio.msg.Msg):
@@ -64,6 +82,29 @@ class NatsGateway:
             self._redis.hset('build_configs', pool, self._build_configs[pool].model_dump_json())
 
         self.logger.info(f"Received updated configuration for pool {pool}")
+
+    async def resync_callback(self, msg: nats.aio.msg.Msg):
+        pool = msg.subject.split(".")[-1]
+
+        metrics.counters['resync_requests'].labels(pool).inc()
+
+        if self._redis is not None:
+            pools = {str(k, 'utf-8'): str(v, 'utf-8') for k, v in self._redis.hgetall("pod:pool").items()}
+            ret = [job_name for job_name, cached_pool in pools.items() if cached_pool == pool]
+            self.logger.info(f"Resync request from {pool}: returning {len(ret)} job names.")
+            await msg.respond(
+                NatsResponse(status_code=200, data=ret).to_nats()
+            )
+        else:
+            self.logger.warning(f"Cannot handle resync request from {pool} as redis connector was not configured.")
+            await msg.respond(NatsResponse(status_code=200, data=[]).to_nats())
+
+    async def published_resources_callback(self, msg: nats.aio.msg.Msg):
+        pool = msg.subject.split(".")[-1]
+        for resource, limit in orjson.loads(msg.data).items():
+            metrics.gauges['pool_resources'].labels(pool, resource).set(parse_quantity(limit))
+
+
 
     @asynccontextmanager
     async def nats_connection(self):
@@ -156,12 +197,14 @@ class NatsGateway:
         """
         Publish the request to delete jobs from the remote backend. No confirmation is expected by interlink protocol.
         """
-        self.logger.info(f"Delete pod {pod} [{get_readable_jobid(pod)}]")
+        job_name = get_readable_jobid(pod)
+
+        self.logger.info(f"Delete pod {pod} [{job_name}]")
         if self._redis:
-            self._redis.hset('pod:status', get_readable_jobid(pod), 'deleting')
+            self._redis.hset('pod:status', job_name, 'deleting')
         async with self.nats_connection() as nc:
             start = time.monotonic_ns()
-            delete_subject = ".".join((self._nats_subject, "delete", get_readable_jobid(pod)))
+            delete_subject = ".".join((self._nats_subject, "delete", job_name))
             delete_response = NatsResponse.from_nats(
                 await nc.request(
                     delete_subject,
@@ -170,7 +213,7 @@ class NatsGateway:
                 )
             )
             pool = (
-                (str(self._redis.hget('pod:pool', get_readable_jobid(pod)), 'utf-8') or 'unknown')
+                (str(self._redis.hget('pod:pool', job_name), 'utf-8') or 'unknown')
                 if self._redis else 'unknown'
             )
 
@@ -180,6 +223,8 @@ class NatsGateway:
 
         if self._redis:
             self._redis.hset('pod:status', get_readable_jobid(pod), 'deleted')
+            self._redis.hdel('pod:pool', get_readable_jobid(pod))
+            self._redis.hdel('pod:container_statuses', get_readable_jobid(pod))
 
 
     async def get_pod_status(self, pod: interlink.PodRequest) -> Union[interlink.PodStatus, None]:
@@ -191,6 +236,22 @@ class NatsGateway:
         v1pod = pod.deserialize()
         pool = self.retrieve_pool_from_tolerations(v1pod.spec.tolerations)
         pod_metadata = v1pod.metadata
+
+        # Check redis for cached status. Only terminal statuses (succeeded and failed) are stored in redis.
+        # Note that otherwise the whole log would be transferred at each status request if the job is terminated.
+        if self._redis:
+            cached_status = self._redis.hget('pod:container_statuses', job_name)
+            if cached_status is not None:
+                cached_statuses = pickle.loads(cached_status)
+                return interlink.PodStatus(
+                    name=pod_metadata.name,
+                    UID=pod_metadata.uid,
+                    namespace=pod_metadata.namespace,
+                    containers=cached_statuses['containers'],
+                    initContainers=cached_statuses['initContainers']
+                )
+
+        # Cache miss or cache not configured... retrieve from backend
         for i_attempt in range(cfg.NUMBER_OF_GETTING_STATUS_ATTEMPTS):
             if i_attempt > 0:
                 await asyncio.sleep(cfg.MILLISECONDS_BETWEEN_GETTING_STATUS_ATTEMPTS * 1e-3)
@@ -396,6 +457,11 @@ class NatsGateway:
             self.logger.critical("Could not retrieve the status of any container!")
             metrics.counters['status_retrival_errors'].labels('no_container').inc()
             return None
+
+        # If the pod terminated, cache the result in redis to reduce NATS traffic.
+        if self._redis and job_status.phase in ["succeeded", "failed"]:
+            cache = dict(containers=container_statuses, initContainers=init_container_statuses)
+            self._redis.hset("pod:container_statuses", job_name, pickle.dumps(cache))
 
         return interlink.PodStatus(
             name=pod_metadata.name,

@@ -4,3 +4,4 @@ from .BuildConfig import BuildConfig
 from .containers import ContainerSpec
 from .ApptainerCmdBuilder import ApptainerCmdBuilder
 from .from_kubernetes import from_kubernetes
+from .build_rest_model import BuildRestModel

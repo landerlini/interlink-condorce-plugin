@@ -337,7 +337,7 @@ spec:
     app: interlink
     component: server
   ports:
-    - name: metrics
+    - name: http
       protocol: TCP
       port: 80
       targetPort: 8000
@@ -353,7 +353,7 @@ spec:
   endpoints:
     - interval: 10s
       path: /metrics
-      port: metrics
+      port: http
       scheme: http
   jobLabel: interlink-nats
   namespaceSelector:
@@ -364,3 +364,28 @@ spec:
       - key: app
         operator: In
         values: [interlink]
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.natsClusterIssuerName | default "lets-issuer" }}
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+
+  name: interlink-build
+  namespace: {{ .Release.Namespace }}
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ .Values.hostname }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: plugin-{{ .Release.Name }}
+                port:
+                  name: http
+            path: /interlink/apptainer-cmd-builder
+            pathType: Prefix
