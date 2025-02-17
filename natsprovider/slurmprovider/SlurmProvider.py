@@ -1,9 +1,13 @@
+import asyncio
+import os
+from datetime import datetime
 from textwrap import dedent
 from pathlib import Path
 import shutil
 import subprocess
 import re
 from enum import IntEnum
+from typing import Union
 
 from .. import interlink
 from ..utils import  compute_pod_resource, JobStatus, Resources
@@ -47,7 +51,58 @@ class SlurmProvider(BaseNatsProvider):
             build_config: BuildConfig,
             **kwargs
     ):
+        self._cached_squeue = dict()
+        self._cached_squeue_time = None
         BaseNatsProvider.__init__(self, build_config=build_config, **kwargs)
+
+    async def _retrieve_job_status(self, job_name: str) -> Union[str, None]:
+        if (
+            self._cached_squeue_time is not "processing" and (
+                self._cached_squeue_time is None or
+                (datetime.now() - self._cached_squeue_time).total_seconds() > 10 or
+                job_name not in self._cached_squeue.keys()
+            )
+        ):
+            # Cache miss
+            self._cached_squeue_time = "processing"
+            squeue_executable = "/usr/bin/squeue"
+            slurm_config = self._build_config.slurm
+
+            if slurm_config:
+                squeue_executable = slurm_config.squeue_executable or squeue_executable
+
+            try:
+                username = os.environ.get("USER", os.environ.get("LOGNAME"))
+                selectors = ['--user', username] if username is None else []
+
+                # Get job status from Slurm
+                proc = await asyncio.create_subprocess_exec(
+                    squeue_executable, *selectors, "--noheader", "-o", "%j:%T",
+                    stdout = asyncio.subprocess.PIPE,
+                    stderr = asyncio.subprocess.PIPE,
+                )
+                stdout, stderr = await proc.communicate()
+                stdout, stderr = str(stdout, 'utf-8'), str(stderr, 'utf-8')
+                lines = stdout.split('\n')
+
+                statuses = {}
+                for line in lines:
+                    job_name, slurm_status = line.split(':')
+                    self._cached_squeue[job_name] = slurm_status
+                    statuses[slurm_status] = statuses.get(slurm_status, 0) + 1
+
+                self.logger.info(
+                    f"Retrieved {len(lines)} jobs: {', '.join([f'{n} {k}' for k, n in statuses.items()])}"
+                )
+
+            except subprocess.CalledProcessError as e:
+                self.logger.critical(f"Failed to query Slurm for job {job_name}: {e.stderr}")
+                return None
+
+            finally:
+                self._cached_squeue_time = datetime.now()
+
+        return self._cached_squeue_time.get(job_name)
 
     async def create_pod(self, job_name: str, job_sh: str, pod: interlink.PodRequest) -> str:
         """
@@ -123,20 +178,22 @@ class SlurmProvider(BaseNatsProvider):
 
         # Submit the job using sbatch
         try:
-            result = subprocess.run(
-                [f"{scfg.sbatch_executable}", str(slurm_script_path)],
-                capture_output=True,
-                text=True,
-                check=True
+            proc = await asyncio.create_subprocess_exec(
+                scfg.sbatch_executable, str(slurm_script_path),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
 
+            stdout, stderr = await proc.communicate()
+            stdout, stderr = str(stdout, 'utf-8'), str(stderr, 'utf-8')
+
             # Parse job ID from sbatch output
-            match = re.search(r"Submitted batch job (\d+)", result.stdout)
+            match = re.search(r"Submitted batch job (\d+)", stdout)
             if match:
                 job_id = match.group(1)
                 self.logger.info(f"Job {job_name} submitted with Job ID: {job_id}")
             else:
-                self.logger.error(f"Failed to extract job ID from sbatch output: {result.stdout}")
+                self.logger.error(f"Failed to extract job ID from sbatch output:\n{stdout}\n{stderr}")
                 job_id = None
 
         except subprocess.CalledProcessError as e:
@@ -149,26 +206,12 @@ class SlurmProvider(BaseNatsProvider):
         """
         Get the Slurm job status and retrieve logs.
         """
-        squeue_executable = "/usr/bin/squeue"
-        slurm_config = self._build_config.slurm
 
-        if slurm_config:
-            squeue_executable = slurm_config.squeue_executable or squeue_executable
+        job_status = await self._retrieve_job_status(job_name)
 
-        try:
-            # Get job status from Slurm
-            result = subprocess.run(
-                [squeue_executable, "--name", job_name, "--noheader", "-o", "%T"],
-                capture_output=True, text=True, check=True
-            )
-            self.logger.debug(f"Slurm query result: {result.stdout}")
-            job_status = result.stdout.strip()
-            
-        except subprocess.CalledProcessError as e:
-            self.logger.critical(f"Failed to query Slurm for job {job_name}: {e.stderr}")
+        if job_status is None:
             return JobStatus(phase="unknown")
-
-        if job_status in SLURM_PENDING_STATUSES:
+        elif job_status in SLURM_PENDING_STATUSES:
             return JobStatus(phase="pending")
         elif job_status in SLURM_RUNNING_STATUSES:
             return JobStatus(phase="running")
