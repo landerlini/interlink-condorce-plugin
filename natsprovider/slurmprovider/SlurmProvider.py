@@ -3,12 +3,43 @@ from pathlib import Path
 import shutil
 import subprocess
 import re
+from enum import IntEnum
 
 from .. import interlink
 from ..utils import  compute_pod_resource, JobStatus, Resources
 from ..BaseNatsProvider import BaseNatsProvider
 from ..apptainer_cmd_builder import BuildConfig
 
+SLURM_PENDING_STATUSES = (
+    'CONFIGURING',
+    'PENDING',
+    'RESV_DEL_HOLD',
+    'REQUEUE_FED',
+    'REQUEUE_HOLD',
+    'RESIZING',
+    'STAGE_OUT',
+)
+
+SLURM_RUNNING_STATUSES = (
+    'COMPLETING',
+    'RUNNING',
+    'SIGNALING',
+    'SUSPENDED',
+    'STOPPED',
+    'REVOKED',
+)
+
+SLURM_FAILED_STATUSES = (
+    'BOOT_FAILED',
+    'CANCELLED',
+    'DEADLINE',
+    'COMPLETING',
+    'DEADLINE',
+    'OUT_OF_MEMORY',
+    'SPECIAL_EXIT',
+    'STAGE_OUT',
+    'TIMEOUT',
+)
 
 class SlurmProvider(BaseNatsProvider):
     def __init__(
@@ -136,12 +167,14 @@ class SlurmProvider(BaseNatsProvider):
         except subprocess.CalledProcessError as e:
             self.logger.critical(f"Failed to query Slurm for job {job_name}: {e.stderr}")
             return JobStatus(phase="unknown")
-        
-        if job_status in ["PENDING"]:
+
+        if job_status in SLURM_PENDING_STATUSES:
             return JobStatus(phase="pending")
-        elif job_status in ["RUNNING"]:
+        elif job_status in SLURM_RUNNING_STATUSES:
             return JobStatus(phase="running")
-        
+        elif job_status in SLURM_FAILED_STATUSES:
+            return JobStatus(phase="failed", reason=job_status)
+
         # Retrieve logs if job has completed
         logs = b""
         try:
