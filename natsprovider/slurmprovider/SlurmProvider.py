@@ -177,10 +177,6 @@ class SlurmProvider(BaseNatsProvider):
                 elif BuildConfig.check_type(scfg, prop_name, ['array']) and getattr(scfg, prop_name) is not None:
                     for value in getattr(scfg, prop_name):
                         sbatch_flags.append("#SBATCH " + prop_schema['arg'] % (value % keywords) )
-                else:
-                    self.logger.warning(f"Ignored {prop_name} with schema {prop_schema} ")
-            elif 'arg' in prop_schema.keys() and 'type' not in prop_schema.keys():
-                self.logger.warning(f"Property {prop_name} has no schema type {prop_schema}")
 
         job_sh_lines = job_sh.split('\n')
         slurm_script = '\n'.join([
