@@ -241,12 +241,12 @@ class SlurmProvider(BaseNatsProvider):
 
         if job_status is None:
             return JobStatus(phase="unknown")
-        elif job_status in SLURM_PENDING_STATUSES:
-            return JobStatus(phase="pending")
-        elif job_status in SLURM_RUNNING_STATUSES:
-            return JobStatus(phase="running")
-        elif job_status in SLURM_FAILED_STATUSES:
+        elif any([s in job_status for s in SLURM_FAILED_STATUSES]):
             return JobStatus(phase="failed", reason=job_status)
+        elif any([s in job_status for s in SLURM_PENDING_STATUSES]):
+            return JobStatus(phase="pending")
+        elif any([s in job_status for s in SLURM_RUNNING_STATUSES]):
+            return JobStatus(phase="running")
 
         # Retrieve logs if job has completed
         logs = b""
