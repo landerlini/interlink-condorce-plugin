@@ -99,12 +99,6 @@ class SlurmProvider(BaseNatsProvider):
                 # sacct --starttime now-3hour --user $USER --noheader --format=JobName,State --parsable2
                 sacct_command = [
                     sacct_executable, *selectors, "--noheader", '--format=JobName,State', '--parsable2',
-                    '--state=' + ','.join(
-                        SLURM_FAILED_STATUSES +
-                        SLURM_RUNNING_STATUSES +
-                        SLURM_PENDING_STATUSES +
-                        SLURM_COMPLETED_STATUSES
-                    ),
                 ]
 
                 proc = await asyncio.create_subprocess_exec(
