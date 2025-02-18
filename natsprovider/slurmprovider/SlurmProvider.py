@@ -109,8 +109,8 @@ class SlurmProvider(BaseNatsProvider):
 
                 sacct_stdout, sacct_stderr = await proc.communicate()
                 sacct_stdout, sacct_stderr = str(sacct_stdout, 'utf-8'), str(sacct_stderr, 'utf-8')
-                if len(sacct_stdout.replace(" ", "").replace("\n", "")):
-                    self.logger.error(sacct_stdout)
+                if len(sacct_stderr.replace(" ", "").replace("\n", "")):
+                    self.logger.error(sacct_stderr)
 
                 lines = sacct_stdout.split('\n')
 
