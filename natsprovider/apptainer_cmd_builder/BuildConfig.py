@@ -347,6 +347,7 @@ class BuildConfig(BaseModel):
             fuse_mode=self.apptainer.fuse_mode,
             fuse_enabled_on_host=self.apptainer.fuse_enabled_on_host,
             scratch_area=self.volumes.scratch_area,
+            additional_directories_in_path=self.volumes.additional_directories_in_path,
         )
 
     def container_spec_config(self):

@@ -1,7 +1,7 @@
 import os.path
 
 from pydantic import BaseModel, Field
-from typing import Dict, Optional, Literal
+from typing import Dict, Optional, Literal, List
 import textwrap
 
 from ..utils import embed_ascii_file, embed_binary_file, make_uid_numeric, sanitize_uid
@@ -55,6 +55,11 @@ class BaseVolume (BaseModel, extra="forbid"):
     host_path_override: Optional[str] = Field(
         default=None,
         description="If set, overrides generation of a temporary volume for hosting volume data"
+    )
+
+    additional_directories_in_path: List[str] = Field(
+        default=[],
+        description="Used to configure site-specific software. Used by fuse in host mode, only.",
     )
 
 
@@ -233,11 +238,21 @@ class FuseVolume(BaseVolume, extra="forbid"):
 
     def initialize(self):
         mount_script = textwrap.dedent(self.fuse_mount_script)
+        base_path = self.host_path
+        host_path = os.path.join(self.host_path, "mnt")
+        cache_path = os.path.join(base_path, 'cache')
 
         envvars = [
             "export SUB_PATH=$1",
             "export MOUNT_POINT=$2",
         ]
+
+        # executed by apptainer, but on the host filesystem: requires re-setting PATH
+        if self.fuse_mode in ('host',):
+            envvars += [
+                f"export PATH={':'.join(self.additional_directories_in_path)}:$PATH",
+                f"export CACHEDIR={cache_path}",
+                ]
 
         mount_script = "\n".join([line for line in mount_script.split('\n') if len(line)])
         if not mount_script.split('\n')[0].startswith("#!/"):
@@ -245,9 +260,6 @@ class FuseVolume(BaseVolume, extra="forbid"):
         else:
             mount_script = '\n'.join([mount_script.split('\n')[0], *envvars, mount_script])
 
-        base_path = self.host_path
-        host_path = os.path.join(self.host_path, "mnt")
-        cache_path = os.path.join(base_path, 'cache')
         ret = [
             f"rm -rf {base_path}",
             f"mkdir -p {host_path}",
