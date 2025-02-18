@@ -97,23 +97,26 @@ class SlurmProvider(BaseNatsProvider):
                     selectors += ['--starttime', "now-1day"]
 
                 # sacct --starttime now-3hour --user $USER --noheader --format=JobName,State --parsable2
-                proc = await asyncio.create_subprocess_exec(
+                sacct_command = [
                     sacct_executable, *selectors, "--noheader", '--format=JobName,State', '--parsable2',
-                    '--state='+','.join(
+                    '--state=' + ','.join(
                         SLURM_FAILED_STATUSES +
                         SLURM_RUNNING_STATUSES +
                         SLURM_PENDING_STATUSES +
                         SLURM_COMPLETED_STATUSES
                     ),
+                ]
+
+                proc = await asyncio.create_subprocess_exec(
+                    *sacct_command,
                     stdout = asyncio.subprocess.PIPE,
                     stderr = asyncio.subprocess.PIPE,
                 )
 
                 sacct_stdout, sacct_stderr = await proc.communicate()
                 sacct_stdout, sacct_stderr = str(sacct_stdout, 'utf-8'), str(sacct_stderr, 'utf-8')
-                self.logger.debug(
-                    f"sacct output: \n{sacct_stdout}"
-                )
+                self.logger.debug(f"sacct cmd:   \n{sacct_command}")
+                self.logger.debug(f"sacct output: \n{sacct_stdout}")
                 lines = sacct_stdout.split('\n')
 
                 statuses = {}
