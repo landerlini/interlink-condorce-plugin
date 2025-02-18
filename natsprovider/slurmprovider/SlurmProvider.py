@@ -111,6 +111,9 @@ class SlurmProvider(BaseNatsProvider):
 
                 sacct_stdout, sacct_stderr = await proc.communicate()
                 sacct_stdout, sacct_stderr = str(sacct_stdout, 'utf-8'), str(sacct_stderr, 'utf-8')
+                self.logger.debug(
+                    f"sacct output: \n{sacct_stdout}"
+                )
                 lines = sacct_stdout.split('\n')
 
                 statuses = {}
