@@ -243,17 +243,20 @@ class SlurmProvider(BaseNatsProvider):
             return JobStatus(phase="pending")
         elif any([s in job_status for s in SLURM_RUNNING_STATUSES]):
             return JobStatus(phase="running")
+        elif any([s in job_status for s in SLURM_COMPLETED_STATUSES]):
+            # Retrieve logs if job has completed
+            logs = b""
+            try:
+                with open(Path(self.build_config.slurm.sandbox) / job_name / "logs", "rb") as logs_file:
+                    logs = logs_file.read()
+            except FileNotFoundError:
+                self.logger.error(f"Failed retrieving stdout log for job {job_name}")
+                return JobStatus(phase="failed")
 
-        # Retrieve logs if job has completed
-        logs = b""
-        try:
-            with open(Path(self.build_config.slurm.sandbox) / job_name / "logs", "rb") as logs_file:
-                logs = logs_file.read()
-        except FileNotFoundError:
-            self.logger.error(f"Failed retrieving stdout log for job {job_name}")
-            return JobStatus(phase="failed")
-        
-        return JobStatus(phase="succeeded", logs_tarball=logs)
+            return JobStatus(phase="succeeded", logs_tarball=logs)
+
+        self.logger.critical(f"Unhandled slurm status {job_status}")
+        return JobStatus(phase="unknown", reason=job_status)
 
     async def delete_pod(self, job_name: str) -> None:
         """
