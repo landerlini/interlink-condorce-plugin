@@ -62,6 +62,11 @@ class BaseVolume (BaseModel, extra="forbid"):
         description="Used to configure site-specific software. Used by fuse in host mode, only.",
     )
 
+    cachedir: str = Field(
+        default="/tmp/cache/apptainer",
+        description="Directory where to cache remote data. Used by fuse volumes, only.",
+    )
+
 
     @property
     def host_path(self):
@@ -240,7 +245,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
         mount_script = textwrap.dedent(self.fuse_mount_script)
         base_path = self.host_path
         host_path = os.path.join(self.host_path, "mnt")
-        cache_path = os.path.join(base_path, 'cache')
+        cache_path = self.cachedir
 
         envvars = [
             "export SUB_PATH=$1",
