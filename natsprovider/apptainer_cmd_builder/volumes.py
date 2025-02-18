@@ -132,7 +132,7 @@ class StaticVolume(BaseVolume, extra="forbid"):
     )
 
     def initialize(self):
-        base_path = os.path.abspath(self.host_path)
+        base_path = self.host_path
         ret = [
             f"rm -rf {base_path}",
             f"mkdir -p {base_path}",
@@ -151,7 +151,7 @@ class StaticVolume(BaseVolume, extra="forbid"):
 
 
     def finalize(self):
-        base_path = os.path.abspath(self.host_path)
+        base_path = self.host_path
         ret = [
             f"rm -rf {base_path}",
             self.parsed_cleanup_script or '',
@@ -224,7 +224,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
 
     @property
     def fuse_mount_script_host_path(self):
-        base_path = os.path.abspath(self.host_path)
+        base_path = self.host_path
         return os.path.join(base_path, f"mount")
 
     @property
@@ -245,7 +245,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
         else:
             mount_script = '\n'.join([mount_script.split('\n')[0], *envvars, mount_script])
 
-        base_path = os.path.abspath(self.host_path)
+        base_path = self.host_path
         host_path = os.path.join(self.host_path, "mnt")
         cache_path = os.path.join(base_path, 'cache')
         ret = [
@@ -266,7 +266,6 @@ class FuseVolume(BaseVolume, extra="forbid"):
         return '\n' + '\n'.join(ret)
 
     def finalize(self):
-        base_path = os.path.abspath(self.host_path)
         host_path = os.path.join(self.host_path, "mnt")
 
         ret = []
