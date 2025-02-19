@@ -128,4 +128,4 @@ async def build(build_model: BuildRestModel):
         build_config=build_config,
     )
 
-    return builder.dump()
+    return builder.dump() + "\n\ntar xf logs"

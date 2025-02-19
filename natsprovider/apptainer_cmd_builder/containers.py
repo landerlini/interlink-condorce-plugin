@@ -200,11 +200,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
     @property
     def log_path(self):
-        return os.path.join(self.workdir, f'{self.uid}.log')
+        return os.path.join(self.workdir, f'{self.uid}.out')
 
     @property
     def return_code_path(self):
-        return os.path.join(self.workdir, f'{self.uid}.ret')
+        return os.path.join(self.workdir, f'{self.uid}.status')
 
     @property
     def env_file_path(self):
