@@ -128,4 +128,8 @@ async def build(build_model: BuildRestModel):
         build_config=build_config,
     )
 
-    return builder.dump() + "\n\ntar xf logs"
+    return builder.dump() + "\n" + "\n".join([
+        "cd $workingPath",
+        "cp $SANDBOX/logs logs",
+        "tar xf logs",
+        ])
