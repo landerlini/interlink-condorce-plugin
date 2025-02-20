@@ -111,7 +111,7 @@ async def healthz() -> bool:
     logging.debug("Health tested: ok.")
     return True
 
-@app.post("/interlink/apptainer-cmd-builder", response_class=JSONResponse)
+@app.post("/interlink/apptainer-cmd-builder", response_class=PlainTextResponse)
 async def build(build_model: BuildRestModel):
     """
     Return a job-script for a remote interlink instance, given the PodSpec and the build config
