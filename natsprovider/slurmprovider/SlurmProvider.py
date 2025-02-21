@@ -246,14 +246,19 @@ class SlurmProvider(BaseNatsProvider):
         elif any([s in job_status for s in SLURM_COMPLETED_STATUSES]):
             # Retrieve logs if job has completed
             logs = b""
-            try:
-                with open(Path(self.build_config.slurm.sandbox) / job_name / "logs", "rb") as logs_file:
-                    logs = logs_file.read()
-            except FileNotFoundError:
-                self.logger.error(f"Failed retrieving stdout log for job {job_name}")
-                return JobStatus(phase="failed")
+            remaining_attempts = 5
+            while True:
+                try:
+                    with open(Path(self.build_config.slurm.sandbox) / job_name / "logs", "rb") as logs_file:
+                        return JobStatus(phase="succeeded", logs_tarball=logs_file.read())
+                except (FileNotFoundError, IOError) as e:
+                    if remaining_attempts > 0:
+                        remaining_attempts -= 1
+                        await asyncio.sleep(1)
+                    else:
+                        self.logger.error(f"Failed retrieving stdout log for job {job_name}")
+                        return JobStatus(phase="failed", reason=str(e))
 
-            return JobStatus(phase="succeeded", logs_tarball=logs)
 
         self.logger.critical(f"Unhandled slurm status {job_status}")
         return JobStatus(phase="unknown", reason=job_status)
