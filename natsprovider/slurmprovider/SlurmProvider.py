@@ -251,7 +251,7 @@ class SlurmProvider(BaseNatsProvider):
                 try:
                     with open(Path(self.build_config.slurm.sandbox) / job_name / "logs", "rb") as logs_file:
                         log_data = logs_file.read()
-                        if len(log_data) > 0
+                        if len(log_data) > 0:
                             return JobStatus(phase="succeeded", logs_tarball=log_data)
                 except (FileNotFoundError, IOError) as e:
                     if remaining_attempts > 0:
