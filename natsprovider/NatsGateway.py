@@ -82,11 +82,12 @@ class NatsGateway:
 
         if self._redis is not None:
             pools = self._redis.hgetall("pod:pool")
-            ret = [job_name for job_name, pool in pools.items() if pool == pool]
+            ret = [job_name for job_name, pool_value in pools.items() if pool_value == pool]
             self.logger.info(f"Resync request from {pool}: returning {len(ret)} job names.")
             await msg.respond(
                 NatsResponse(status_code=200, data=ret).to_nats()
             )
+            return
 
         self.logger.warning(f"Cannot handle resync request from {pool} as redis connector was not configured.")
         return await msg.respond(NatsResponse(status_code=200, data=[]).to_nats())
