@@ -29,7 +29,12 @@ class SlurmProvider(BaseNatsProvider):
 
         # Ensure directories exist
         self.logger.info(f"Creating directory {sandbox}")
-        Path(sandbox).mkdir(parents=True, exist_ok=True)
+
+        # before create the sandbox directory, check if it already exists
+        if sandbox.exists():
+            self.logger.warning(f"Sandbox directory {sandbox} already exists. Cleaning it up.")
+            shutil.rmtree(sandbox)
+            Path(sandbox).mkdir(parents=True, exist_ok=True)
 
         # Write job_sh to a script file
         with open(job_script_path, "w") as f:
@@ -49,6 +54,28 @@ class SlurmProvider(BaseNatsProvider):
 
         # Generate Slurm sbatch flags dynamically
         slurm_config = self._build_config.slurm
+
+        selected_flavor = None
+        # Check if flavors are specified and non-empty
+        if hasattr(slurm_config, 'flavors') and slurm_config.flavors:
+            required_gpu = self.compute_pod_resource(pod)
+            for flavor in slurm_config.flavors:
+                # Get the GPU limit for the flavor; default to 0 if not set
+                flavor_gpu_limit = flavor.max_resources.get('nvidia.com/gpu', 0)
+                if flavor_gpu_limit >= required_gpu:
+                    selected_flavor = flavor
+                    self.logger.info(f"Selected flavor: partition={flavor.partition}, account={flavor.account}")
+                    break
+
+        if selected_flavor:
+            self.logger.info(f"Selected flavor: {selected_flavor}")
+            # Override the default slurm configuration values with those from the selected flavor.
+            slurm_config.account = selected_flavor.account
+            slurm_config.partition = selected_flavor.partition
+            slurm_config.qos = selected_flavor.qos
+            slurm_config.generic_resources = selected_flavor.generic_resources
+        else:
+            self.logger.info("No suitable flavor found. Using default slurm configuration.")
 
         keywords = dict(sandbox=sandbox, job_name=job_name)
 
