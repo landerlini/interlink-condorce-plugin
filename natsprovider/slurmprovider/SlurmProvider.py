@@ -142,6 +142,7 @@ class SlurmProvider(BaseNatsProvider):
         sandbox = Path(self.build_config.slurm.sandbox) / job_name
         apptainer_cachedir = Path(self.build_config.volumes.apptainer_cachedir)
         scratch_area = Path(self.build_config.volumes.scratch_area) / job_name
+        job_script_path = sandbox / "job_script.sh"  # Define the job script path
 
         # Ensure directories exist
         for dirname in (apptainer_cachedir, scratch_area, sandbox):
@@ -165,13 +166,13 @@ class SlurmProvider(BaseNatsProvider):
         sbatch_output_flag = f"#SBATCH --output={sandbox}/stdout.log"
         sbatch_error_flag = f"#SBATCH --error={sandbox}/stderr.log"
 
-        slurm_config = self._build_config.slurm
+        scfg = self._build_config.slurm
 
         selected_flavor = None
-        if hasattr(slurm_config, 'flavors') and slurm_config.flavors:
+        if hasattr(scfg, 'flavors') and scfg.flavors:
             required_gpu = compute_pod_resource(pod, 'nvidia.com/gpu')
             self.logger.info(f"Required GPU: {required_gpu}")
-            for flavor in slurm_config.flavors:
+            for flavor in scfg.flavors:
                 flavor_gpu_limit = flavor.max_resources.get('nvidia.com/gpu', 0)
                 if flavor_gpu_limit >= required_gpu:
                     selected_flavor = flavor
@@ -179,9 +180,9 @@ class SlurmProvider(BaseNatsProvider):
                     break
 
         if selected_flavor:
-            slurm_config.account = selected_flavor.account
-            slurm_config.partition = selected_flavor.partition
-            slurm_config.qos = selected_flavor.qos
+            scfg.account = selected_flavor.account
+            scfg.partition = selected_flavor.partition
+            scfg.qos = selected_flavor.qos
         else:
             self.logger.info("No suitable flavor found. Using default slurm configuration.")
 
@@ -207,7 +208,7 @@ class SlurmProvider(BaseNatsProvider):
 
         if selected_flavor:
             for prop_name, prop_schema in selected_flavor.model_json_schema()['properties'].items():
-                if not hasattr(slurm_config, prop_name):
+                if not hasattr(scfg, prop_name):
                     self.logger.warning(f"Flavor property {prop_name} not found in slurm configuration. Skipping.")
                     continue
                 if 'arg' in prop_schema and 'type' in prop_schema:
@@ -245,16 +246,17 @@ class SlurmProvider(BaseNatsProvider):
             %(footer)s
             """
         )%dict(
-            bash_executable=slurm_config.bash_executable,
+            bash_executable=scfg.bash_executable,
             job_name=job_name,
             flags='\n'.join(sbatch_flags),
             sandbox=sandbox,
             job_script_path=job_script_path,
-            header=slurm_config.header,
-            footer=slurm_config.footer,
+            header=scfg.header,
+            footer=scfg.footer,
         )
 
-        self.logger.info(f"Slurm script for job {job_name}:\n{sbatch_flags}")
+        # log the slurm script
+        self.logger.info(f"Slurm script for job {job_name}:\n{slurm_script}")
 
         # Write the Slurm script
         slurm_script_path = sandbox / "job.sh"

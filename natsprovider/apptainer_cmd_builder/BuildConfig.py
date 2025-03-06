@@ -74,7 +74,7 @@ class BuildConfig(BaseModel):
                 description="List of generic resources (SLURM flag: --gres)",
                 json_schema_extra=dict(arg='--gres %s'),
             )
-            max_time_seconds: int = Field(
+            max_time_seconds: Optional[int] = Field(
                 default=3600,
                 description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned.",
                 json_schema_extra=dict(arg='--time %d'),
