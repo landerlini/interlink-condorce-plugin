@@ -24,17 +24,15 @@ class SlurmProvider(BaseNatsProvider):
         """        
     
         sandbox = Path(self.build_config.slurm.sandbox) / job_name
+        apptainer_cachedir = Path(self.build_config.volumes.apptainer_cachedir)
         scratch_area = Path(self.build_config.volumes.scratch_area) / job_name
         job_script_path = sandbox / "job_script.sh"  # Define the job script path
 
         # Ensure directories exist
-        self.logger.info(f"Creating directory {sandbox}")
-
-        # before create the sandbox directory, check if it already exists
-        if sandbox.exists():
-            self.logger.warning(f"Sandbox directory {sandbox} already exists. Cleaning it up.")
-            shutil.rmtree(sandbox)
-            Path(sandbox).mkdir(parents=True, exist_ok=True)
+        for dirname in (apptainer_cachedir, scratch_area, sandbox):
+            self.logger.info(f"Creating directory {dirname}")
+            Path(dirname).mkdir(parents=True, exist_ok=True)
+            
 
         # Write job_sh to a script file
         with open(job_script_path, "w") as f:
@@ -52,15 +50,13 @@ class SlurmProvider(BaseNatsProvider):
         sbatch_output_flag = f"#SBATCH --output={sandbox}/stdout.log"
         sbatch_error_flag = f"#SBATCH --error={sandbox}/stderr.log"
 
-        # Generate Slurm sbatch flags dynamically
         slurm_config = self._build_config.slurm
 
         selected_flavor = None
-        # Check if flavors are specified and non-empty
         if hasattr(slurm_config, 'flavors') and slurm_config.flavors:
-            required_gpu = self.compute_pod_resource(pod)
+            required_gpu = compute_pod_resource(pod, 'nvidia.com/gpu')
+            self.logger.info(f"Required GPU: {required_gpu}")
             for flavor in slurm_config.flavors:
-                # Get the GPU limit for the flavor; default to 0 if not set
                 flavor_gpu_limit = flavor.max_resources.get('nvidia.com/gpu', 0)
                 if flavor_gpu_limit >= required_gpu:
                     selected_flavor = flavor
@@ -68,12 +64,9 @@ class SlurmProvider(BaseNatsProvider):
                     break
 
         if selected_flavor:
-            self.logger.info(f"Selected flavor: {selected_flavor}")
-            # Override the default slurm configuration values with those from the selected flavor.
             slurm_config.account = selected_flavor.account
             slurm_config.partition = selected_flavor.partition
             slurm_config.qos = selected_flavor.qos
-            slurm_config.generic_resources = selected_flavor.generic_resources
         else:
             self.logger.info("No suitable flavor found. Using default slurm configuration.")
 
@@ -97,6 +90,32 @@ class SlurmProvider(BaseNatsProvider):
                     for value in getattr(slurm_config, prop_name):
                         sbatch_flags.append("#SBATCH " + prop_schema['arg'] % (value % keywords) )
 
+        if selected_flavor:
+            for prop_name, prop_schema in selected_flavor.model_json_schema()['properties'].items():
+                if not hasattr(slurm_config, prop_name):
+                    self.logger.warning(f"Flavor property {prop_name} not found in slurm configuration. Skipping.")
+                    continue
+                if 'arg' in prop_schema and 'type' in prop_schema:
+                    value = getattr(selected_flavor, prop_name)
+                    if value is not None:
+                        if prop_schema['type'] == 'boolean' and value:
+                            flag = "#SBATCH " + prop_schema['arg']
+                        elif prop_schema['type'] == 'integer':
+                            flag = "#SBATCH " + prop_schema['arg'] % value
+                        elif prop_schema['type'] == 'string':
+                            formatted_value = value % keywords if '%' in value else value
+                            flag = "#SBATCH " + prop_schema['arg'] % formatted_value
+                        elif prop_schema['type'] == 'array':
+                            for v in value:
+                                formatted_value = v % keywords if '%' in v else v
+                                flag = "#SBATCH " + prop_schema['arg'] % formatted_value
+                                if flag not in sbatch_flags:
+                                    sbatch_flags.append(flag)
+                            continue  # Skip the rest of the loop for arrays.
+                        if flag not in sbatch_flags:
+                            sbatch_flags.append(flag)
+
+
         # Create the Slurm script
         slurm_script = "#!/bin/bash\n" + dedent("""
             #SBATCH --job-name=%(job_name)s
@@ -113,7 +132,7 @@ class SlurmProvider(BaseNatsProvider):
         )%dict(
             bash_executable=slurm_config.bash_executable,
             job_name=job_name,
-            flags='\n'.join([sbatch_output_flag, sbatch_error_flag] + sbatch_flags),
+            flags='\n'.join(sbatch_flags),
             sandbox=sandbox,
             job_script_path=job_script_path,
             header=slurm_config.header,

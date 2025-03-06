@@ -76,7 +76,8 @@ class BuildConfig(BaseModel):
             )
             max_time_seconds: int = Field(
                 default=3600,
-                description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned."
+                description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned.",
+                json_schema_extra=dict(arg='--time %d'),
             )
             max_resources: Dict[Literal['cpu', 'memory', 'nvidia.com/gpu'], Union[str, int]] = Field(
                 default={},
@@ -136,6 +137,11 @@ class BuildConfig(BaseModel):
             description="Quality of service (SLURM flag: --qos)",
             json_schema_extra=dict(arg='--qos %s'),
         )
+        max_time_seconds: Optional[int] = Field(
+            default=None,
+            description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned.",
+            json_schema_extra=dict(arg='--time %d'),
+        )
         account: Optional[str] = Field(
             default=None,
             description="Account to charge the job to (SLURM flag: --account or -A)",
@@ -173,7 +179,7 @@ class BuildConfig(BaseModel):
         generic_resources: List[str] = Field(
             default=[],
             description="List of generic resources (SLURM flag: --gres)",
-            json_schema_extra=dict(arg='--gres %s'),
+            json_schema_extra=dict(arg='--gres=%s'),
         )
         flags: List[str] = Field(
             default_factory=lambda: os.environ.get("SLURM_FLAGS", "").split(":"),

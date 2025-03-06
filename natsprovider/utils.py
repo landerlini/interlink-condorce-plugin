@@ -209,6 +209,13 @@ def compute_pod_resource(pod: interlink.PodRequest, resource: str):
     """
     _resource = 'cpu' if resource == 'millicpu' else resource
 
+    # check if the pod has requested an nvidia.com/gpu resource
+    if resource == 'nvidia.com/gpu':
+        return sum([
+            int(parse_quantity(((c.get('resources') or {}).get('requests') or {}).get('nvidia.com/gpu') or "0"))
+            for c in pod.spec['containers']
+        ])
+
     return int(
         math.ceil(
             (1000 if resource == 'millicpu' else 1) * sum([
