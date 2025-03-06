@@ -1,4 +1,5 @@
 import asyncio
+from pprint import pformat
 import json
 import io
 import pickle
@@ -39,7 +40,7 @@ class NatsGateway:
         self._build_configs: Dict[str, BuildConfig] = dict()
         if self._redis:
             self._build_configs = {
-                str(q): BuildConfig(**(json.loads(bc))) for q, bc in self._redis.hgetall('build_configs').items()
+                str(q, 'utf-8'): BuildConfig(**(json.loads(bc))) for q, bc in self._redis.hgetall('build_configs').items()
             }
             self.logger.info(f"Recovered build_configs from DB for pools {', '.join(list(self._build_configs.keys()))}")
 
@@ -59,6 +60,13 @@ class NatsGateway:
             cb=self.resync_callback,
         )
         self.logger.info(f"Subscribed to config subject {resync_subject}")
+
+        resource_subject = ".".join((self._nats_subject, "resources", "*"))
+        self._nats_subs['resync'] = await listener_nc.subscribe(
+            subject=resource_subject,
+            cb=self.published_resources_callback,
+        )
+        self.logger.info(f"Subscribed to config subject {resource_subject}")
 
         return listener_nc
 
@@ -81,20 +89,20 @@ class NatsGateway:
         metrics.counters['resync_requests'].labels(pool).inc()
 
         if self._redis is not None:
-            pools = self._redis.hgetall("pod:pool")
-            ret = [job_name for job_name, pool in pools.items() if pool == pool]
+            pools = {str(k, 'utf-8'): str(v, 'utf-8') for k, v in self._redis.hgetall("pod:pool").items()}
+            ret = [job_name for job_name, cached_pool in pools.items() if cached_pool == pool]
             self.logger.info(f"Resync request from {pool}: returning {len(ret)} job names.")
             await msg.respond(
                 NatsResponse(status_code=200, data=ret).to_nats()
             )
-
-        self.logger.warning(f"Cannot handle resync request from {pool} as redis connector was not configured.")
-        return await msg.respond(NatsResponse(status_code=200, data=[]).to_nats())
+        else:
+            self.logger.warning(f"Cannot handle resync request from {pool} as redis connector was not configured.")
+            await msg.respond(NatsResponse(status_code=200, data=[]).to_nats())
 
     async def published_resources_callback(self, msg: nats.aio.msg.Msg):
         pool = msg.subject.split(".")[-1]
         for resource, limit in orjson.loads(msg.data).items():
-            metrics.gauges('pool_resources').label(pool, resource).set(parse_quantity(limit))
+            metrics.gauges['pool_resources'].labels(pool, resource).set(parse_quantity(limit))
 
 
 
@@ -205,7 +213,7 @@ class NatsGateway:
                 )
             )
             pool = (
-                (str(self._redis.hget('pod:pool', job_name), 'utf-8') or 'unknown')
+                (str(self._redis.hget('pod:pool', job_name) or b'unknown', 'utf-8'))
                 if self._redis else 'unknown'
             )
 
@@ -233,14 +241,14 @@ class NatsGateway:
         # Note that otherwise the whole log would be transferred at each status request if the job is terminated.
         if self._redis:
             cached_status = self._redis.hget('pod:container_statuses', job_name)
-            if job_name is not None:
+            if cached_status is not None:
                 cached_statuses = pickle.loads(cached_status)
                 return interlink.PodStatus(
                     name=pod_metadata.name,
                     UID=pod_metadata.uid,
                     namespace=pod_metadata.namespace,
                     containers=cached_statuses['containers'],
-                    initContainers=cached_status['initContainers']
+                    initContainers=cached_statuses['initContainers']
                 )
 
         # Cache miss or cache not configured... retrieve from backend
@@ -320,7 +328,7 @@ class NatsGateway:
 
         elif job_status.phase == "running":
             if self._redis:
-                current_status = str(self._redis.hget('pod:status', get_readable_jobid(pod)), 'utf-8') or 'creating'
+                current_status = str(self._redis.hget('pod:status', get_readable_jobid(pod)) or b'creating', 'utf-8')
                 if current_status in ['pending', 'creating', 'created']:
                     self.logger.info(f"Registering transition to running state to redis from: {current_status}")
                     metrics.counters['pod_transitions'].labels('start', pool).inc()
@@ -378,7 +386,7 @@ class NatsGateway:
                 f"Requested status for job: {job_name}. Seems complete but no output is provided. Error 502."
             )
             if self._redis:
-                current_status = str(self._redis.hget('pod:status', get_readable_jobid(pod)), 'utf-8') or 'creating'
+                current_status = str(self._redis.hget('pod:status', get_readable_jobid(pod)) or b'creating', 'utf-8')
                 if current_status in ['pending', 'creating', 'created', 'running']:
                     metrics.counters['pod_transitions'].labels('lost', pool).inc()
                     self._redis.hset('pod:status', get_readable_jobid(pod), 'lost')
@@ -417,7 +425,7 @@ class NatsGateway:
             phase = 'succeeded' if all([c.return_code == 0 for c in all_containers]) else 'failed'
 
             if self._redis:
-                current_status = str(self._redis.hget('pod:status', get_readable_jobid(pod)), 'utf-8') or 'creating'
+                current_status = str(self._redis.hget('pod:status', get_readable_jobid(pod)) or b'creating', 'utf-8')
                 if current_status in ['pending', 'creating', 'created', 'running']:
                     metrics.counters['pod_transitions'].labels(phase, pool).inc()
                 self._redis.hset('pod:status', get_readable_jobid(pod), phase)
@@ -453,7 +461,7 @@ class NatsGateway:
         # If the pod terminated, cache the result in redis to reduce NATS traffic.
         if self._redis and job_status.phase in ["succeeded", "failed"]:
             cache = dict(containers=container_statuses, initContainers=init_container_statuses)
-            self._redis.hset("pod:container_statuses", pickle.dumps(cache))
+            self._redis.hset("pod:container_statuses", job_name, pickle.dumps(cache))
 
         return interlink.PodStatus(
             name=pod_metadata.name,
@@ -480,7 +488,7 @@ class NatsGateway:
                     timeout=self._nats_timeout_seconds,
                 )
             )
-            pool = (str(self._redis.hget('pod:pool', job_name), 'utf-8') or 'unknown') if self._redis else 'unknown'
+            pool = (str(self._redis.hget('pod:pool', job_name) or b'unknown', 'utf-8')) if self._redis else 'unknown'
 
             metrics.summaries['nats_response_time_per_subject'].labels('logs', pool) \
                 .observe(time.monotonic_ns() - start)

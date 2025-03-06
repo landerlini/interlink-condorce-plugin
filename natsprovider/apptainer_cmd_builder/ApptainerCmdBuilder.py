@@ -122,7 +122,10 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         return ret
 
     def cleanup_volume_files(self):
-        return '\n'.join([volume.finalize() for volume in self.volumes])
+        ret = []
+        if any([v.fuse_enabled_on_host and isinstance(v, FuseVolume) for v in self.volumes]):
+            ret += ["sleep %d;\n" % self.fuse_sleep_seconds]
+        return '\n'.join(ret + [volume.finalize() for volume in self.volumes])
 
     def dump(self):
         script = textwrap.dedent("""
