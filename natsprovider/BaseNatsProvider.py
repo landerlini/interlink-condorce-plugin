@@ -120,7 +120,7 @@ class BaseNatsProvider:
         """
         Request the list of pods assigned to the pool. Warning: may lead to errors if multi-responder setup.
         """
-        max_attempts = 3
+        max_attempts = 5
         while max_attempts:
             try:
 
@@ -137,6 +137,7 @@ class BaseNatsProvider:
                 self.logger.error(
                     f"Failed to retrieve list of pods from remote. {max_attempts} attempt(s) remaining."
                 )
+                await asyncio.sleep(3)
             else:
                 break
 
@@ -302,10 +303,14 @@ class BaseNatsProvider:
                 NatsResponse(status_code=e.status_code, data=e.detail.encode('utf-8')).to_nats()
             )
         else:
-            self.logger.info(f"Retrieved status of {job_name}: {job_status.phase}")
-            await msg.respond(
-                NatsResponse(status_code=200, data=job_status.model_dump()).to_nats()
-            )
+            if job_status is not None:
+                self.logger.info(f"Retrieved status of {job_name}: {job_status.phase}")
+                await msg.respond(
+                    NatsResponse(status_code=200, data=job_status.model_dump()).to_nats()
+                )
+            else:
+                self.logger.error(f"Failed to retrieve status of {job_name}: job status not found.")
+                NatsResponse(status_code=500, data=b"Job not found").to_nats()
 
     async def get_pod_status_and_logs(self, job_name: str) -> JobStatus:
         """Override me!"""
@@ -322,7 +327,7 @@ class BaseNatsProvider:
 
     async def maybe_publish_resources(self):
         for _ in self.required_updates('resources', 30):
-            rsrc = Resources()
+            rsrc = self._build_config.resources or Resources()
 
             rsrc.cpu = rsrc.cpu or self._declared_resources.cpu or await self.get_allocatable_cpu()
             if rsrc.cpu is None:

@@ -3,7 +3,7 @@ import logging
 import traceback
 from io import StringIO
 import json
-from typing import Dict, List, Literal, Union, Optional
+from typing import Collection, Dict, List, Literal, Union, Optional
 from pydantic import BaseModel, Field
 
 from tomli import load as toml_load, TOMLDecodeError
@@ -74,9 +74,10 @@ class BuildConfig(BaseModel):
                 description="List of generic resources (SLURM flag: --gres)",
                 json_schema_extra=dict(arg='--gres %s'),
             )
-            max_time_seconds: int = Field(
+            max_time_seconds: Optional[int] = Field(
                 default=3600,
-                description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned."
+                description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned.",
+                json_schema_extra=dict(arg='--time %d'),
             )
             max_resources: Dict[Literal['cpu', 'memory', 'nvidia.com/gpu'], Union[str, int]] = Field(
                 default={},
@@ -100,6 +101,10 @@ class BuildConfig(BaseModel):
         squeue_executable: str = Field(
             default="/usr/local/bin/squeue",
             description="Relative or absolute path to squeue",
+        )
+        sacct_executable: str = Field(
+            default="/usr/local/bin/sacct",
+            description="Relative or absolute path to sacct",
         )
         nodes: int = Field(
             default=1,
@@ -135,6 +140,11 @@ class BuildConfig(BaseModel):
             default=None,
             description="Quality of service (SLURM flag: --qos)",
             json_schema_extra=dict(arg='--qos %s'),
+        )
+        max_time_seconds: Optional[int] = Field(
+            default=None,
+            description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned.",
+            json_schema_extra=dict(arg='--time %d'),
         )
         account: Optional[str] = Field(
             default=None,
@@ -173,7 +183,7 @@ class BuildConfig(BaseModel):
         generic_resources: List[str] = Field(
             default=[],
             description="List of generic resources (SLURM flag: --gres)",
-            json_schema_extra=dict(arg='--gres %s'),
+            json_schema_extra=dict(arg='--gres=%s'),
         )
         flags: List[str] = Field(
             default_factory=lambda: os.environ.get("SLURM_FLAGS", "").split(":"),
@@ -343,6 +353,8 @@ class BuildConfig(BaseModel):
             fuse_mode=self.apptainer.fuse_mode,
             fuse_enabled_on_host=self.apptainer.fuse_enabled_on_host,
             scratch_area=self.volumes.scratch_area,
+            additional_directories_in_path=self.volumes.additional_directories_in_path,
+            cachedir=self.volumes.apptainer_cachedir,
         )
 
     def container_spec_config(self):
@@ -409,3 +421,19 @@ class BuildConfig(BaseModel):
             logging.error(f"Update of BuildConfig failed.\n" + traceback.format_exc())
             return self
 
+
+    @staticmethod
+    def check_type(config: BaseModel, key: str, types: Collection[str]):
+        properties = config.model_json_schema()['properties']
+        if key not in properties.keys():
+            return False
+
+        if 'type' in properties[key].keys():
+            return properties[key]['type'] in types
+
+        if 'anyOf' in properties[key].keys():
+            for alt_dict in properties[key]['anyOf']:
+                if 'type' in alt_dict.keys() and alt_dict['type'] in types:
+                    return True
+
+        return False
