@@ -57,10 +57,12 @@ class BuildConfig(BaseModel):
             resources to be matched.
             """
             account: Optional[str] = Field(
+                default=None,
                 description="Slurm account (as for --account flag)",
                 json_schema_extra=dict(arg='--account %s'),
             )
             partition: Optional[str] = Field(
+                default=None,
                 description="Slurm partition (as for --partition flag)",
                 json_schema_extra=dict(arg='--partition %s'),
             )
