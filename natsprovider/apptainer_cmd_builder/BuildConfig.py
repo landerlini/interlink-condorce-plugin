@@ -56,11 +56,11 @@ class BuildConfig(BaseModel):
             Define a flavor (partition and qos) for a slurm job, and criteria on the Kubernetes-defined
             resources to be matched.
             """
-            account: str = Field(
+            account: Optional[str] = Field(
                 description="Slurm account (as for --account flag)",
                 json_schema_extra=dict(arg='--account %s'),
             )
-            partition: str = Field(
+            partition: Optional[str] = Field(
                 description="Slurm partition (as for --partition flag)",
                 json_schema_extra=dict(arg='--partition %s'),
             )
