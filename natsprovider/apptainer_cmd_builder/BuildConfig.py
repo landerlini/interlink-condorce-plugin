@@ -3,10 +3,12 @@ import logging
 import traceback
 from io import StringIO
 import json
-from typing import List, Literal, Union, Optional
+from typing import Collection, Dict, List, Literal, Union, Optional
 from pydantic import BaseModel, Field
 
 from tomli import load as toml_load, TOMLDecodeError
+
+from ..utils import Resources
 
 MISSING_BUILD_CONFIG_ERROR_CODE = 127
 
@@ -49,89 +51,151 @@ class BuildConfig(BaseModel):
         """
         Options configuring the behavior of SLURM runtime.
         """
-        sbatch_executable: str = Field(
+        class SlurmFlavor(BaseModel, extra='forbid'):
+            """
+            Define a flavor (partition and qos) for a slurm job, and criteria on the Kubernetes-defined
+            resources to be matched.
+            """
+            account: str = Field(
+                description="Slurm account (as for --account flag)",
+                json_schema_extra=dict(arg='--account %s'),
+            )
+            partition: str = Field(
+                description="Slurm partition (as for --partition flag)",
+                json_schema_extra=dict(arg='--partition %s'),
+            )
+            qos: Optional[str] = Field(
+                default=None,
+                description="Slurm quality of service (as for --qos flag)",
+                json_schema_extra=dict(arg='--qos %s'),
+            )
+            generic_resources: List[str] = Field(
+                default=[],
+                description="List of generic resources (SLURM flag: --gres)",
+                json_schema_extra=dict(arg='--gres %s'),
+            )
+            max_time_seconds: Optional[int] = Field(
+                default=3600,
+                description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned.",
+                json_schema_extra=dict(arg='--time %d'),
+            )
+            max_resources: Dict[Literal['cpu', 'memory', 'nvidia.com/gpu'], Union[str, int]] = Field(
+                default={},
+                description="Maximum (extended) resources of the pod for being assigned to this flavor."
+            )
+
+
+        flavors: Optional[List[SlurmFlavor]] = Field(
             default=None,
+            description="""List of flavors that can be matched by incoming pods based on the Kubernetes-defined 
+                resources. Flavors are tested for compatibility in order, the first eligible is assigned."""
+        )
+        bash_executable: str = Field(
+            default="/usr/local/bin/sbatch",
+            description="Relative or absolute path to bash",
+        )
+        sbatch_executable: str = Field(
+            default="/usr/local/bin/sbatch",
             description="Relative or absolute path to sbatch",
         )
         squeue_executable: str = Field(
-            default=None,
+            default="/usr/local/bin/squeue",
             description="Relative or absolute path to squeue",
         )
-        singularity_executable: str = Field(
-            default=None,
-            description="Relative or absolute path to singularity",
+        sacct_executable: str = Field(
+            default="/usr/local/bin/sacct",
+            description="Relative or absolute path to sacct",
         )
-        ntasks: int = Field(
-            default=None,
+        nodes: int = Field(
+            default=1,
             description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
+            json_schema_extra=dict(arg='--nodes %d'),
         )
-        cpus_per_task: int = Field(
+        ntasks: Optional[int] = Field(
+            default=1,
+            description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
+            json_schema_extra=dict(arg='--ntasks %d'),
+        )
+        cpus_per_task: Optional[int] = Field(
             default=None,
             description="Number of CPUs per task (SLURM flag: --cpus-per-task)",
+            json_schema_extra=dict(arg='--cpu-per-task %s'),
         )
-        mem_per_cpu: str = Field(
+        mem_per_cpu: Optional[str] = Field(
             default=None,
             description="Memory per CPU (SLURM flag: --mem-per-cpu)",
+            json_schema_extra=dict(arg='--mem-per-cpu %s'),
         )
-        partition: str = Field(
+        partition: Optional[str] = Field(
             default=None,
             description="Partition to submit the job to (SLURM flag: --partition or -p)",
+            json_schema_extra=dict(arg='--partition %s'),
         )
-        time: str = Field(
+        time: Optional[int] = Field(
             default=None,
-            description="Time limit for the job (SLURM flag: --time or -t)",
+            description="Time limit for the job in hours (SLURM flag: --time or -t)",
+            json_schema_extra=dict(arg='--time %d:00:00'),
         )
-        qos: str = Field(
+        qos: Optional[str] = Field(
             default=None,
             description="Quality of service (SLURM flag: --qos)",
+            json_schema_extra=dict(arg='--qos %s'),
         )
-        account: str = Field(
+        max_time_seconds: Optional[int] = Field(
+            default=None,
+            description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned.",
+            json_schema_extra=dict(arg='--time %d'),
+        )
+        account: Optional[str] = Field(
             default=None,
             description="Account to charge the job to (SLURM flag: --account or -A)",
+            json_schema_extra=dict(arg='--account %s'),
         )
-        job_name: str = Field(
+        job_name: Optional[str] = Field(
             default=None,
             description="Name of the job (SLURM flag: --job-name or -J)",
+            json_schema_extra=dict(arg='--job-name %s'),
         )
-        mail_user: str = Field(
+        mail_user: Optional[str] = Field(
             default=None,
             description="Email address to send notifications to (SLURM flag: --mail-user)",
+            json_schema_extra=dict(arg='--mail-user %s'),
         )
-        mail_type: str = Field(
+        mail_type: Optional[str] = Field(
             default=None,
             description="Type of notifications to send (SLURM flag: --mail-type)",
+            json_schema_extra=dict(arg='--mail-type %s'),
+        )
+        sandbox: str = Field(
+            default=os.environ.get("LOCAL_SANDBOX", "/tmp"),
+            description="Directory shared between the compute and login nodes used to transfer the logs",
         )
         output: str = Field(
-            default=None,
+            default="%(sandbox)s/stdout.log",
             description="Output file (SLURM flag: --output or -o)",
+            json_schema_extra=dict(arg='--output %s'),
         )
         error: str = Field(
-            default=None,
+            default="%(sandbox)s/stderr.log",
             description="Error file (SLURM flag: --error or -e)",
+            json_schema_extra=dict(arg='--error %s'),
         )
-        log_dir: str = Field(
-            default=None,
-            description="Directory where to store logs (No direct SLURM flag, but can be used in paths for output/error logs)",
-        )
-        image: str = Field(
-            default=None,
-            description="Singularity image to use",
-        )
-        bind: List[str] = Field(
-            default_factory=lambda: os.environ.get("BIND", "").split(":"),
-            description="Colon-separated list of directories to bind mount",
-        )
-        env: List[str] = Field(
-            default_factory=lambda: os.environ.get("ENV", "").split(":"),
-            description="Colon-separated list of environment variables to set (The same of using --export or environment variables before sbatch)",
+        generic_resources: List[str] = Field(
+            default=[],
+            description="List of generic resources (SLURM flag: --gres)",
+            json_schema_extra=dict(arg='--gres=%s'),
         )
         flags: List[str] = Field(
-            default_factory=lambda: os.environ.get("FLAGS", "").split(":"),
-            description="Colon-separated list of additional flags (Custom, not a direct SLURM flag)",
-        )
-        slurm_flags: List[str] = Field(
             default_factory=lambda: os.environ.get("SLURM_FLAGS", "").split(":"),
             description="Colon-separated list of additional SLURM flags (Can include any SLURM command-line options)",
+        )
+        header: str = Field(
+            default="",
+            description="Bash lines to be prepended to the job script, usually setting the environment."
+        )
+        footer: str = Field(
+            default="",
+            description="Bash lines to be appended to the job script, usually setting the environment."
         )
 
 
@@ -230,6 +294,10 @@ class BuildConfig(BaseModel):
         default=SlurmOptions(),
         description=SlurmOptions.__doc__
     )
+    resources: Resources = Field(
+        default=Resources(),
+        description="Computing resources made available by the pool (not by the single submitter!)"
+    )
 
     input_toml_filename: Optional[str] = Field(
         default=None,
@@ -249,26 +317,23 @@ class BuildConfig(BaseModel):
         defs = schema.get("$defs", {})
         properties = schema.get("properties", {})
         for section_name, section in properties.items():
-            if section_name.startswith("$"):
+            if section_name.startswith("$") or '$ref' not in section:
                 continue
-            try:
-                ref = section['$ref'].split("/")[-1]
-                section_description = defs.get(ref, {}).get("description")
-                if section_description is not None:
-                    section_description = "\n".join([f"# {line}" for line in section_description.split("\n") if len(line)])
-                    print(section_description, file=ret)
+            ref = section['$ref'].split("/")[-1]
+            section_description = defs.get(ref, {}).get("description")
+            if section_description is not None:
+                section_description = "\n".join([f"# {line}" for line in section_description.split("\n") if line])
+                print(section_description, file=ret)
 
-                print(f"[{section_name}]", file=ret)
+            print(f"[{section_name}]", file=ret)
 
-                for entry, data in defs.get(ref, {}).get("properties", {}).items():
-                    for line in data.get("description", "").split('\n'):
-                        print("\n### ", line, file=ret)
-                    value = self.model_dump().get(section_name, {}).get(entry)
-                    print(f"{entry} = {json.dumps(value)}", file=ret)
-                data = defs.get(ref, {}).get("properties", {})
-                print("\n" * 2, file=ret)
-            except KeyError:
-                pass
+            for entry, data in defs.get(ref, {}).get("properties", {}).items():
+                for line in data.get("description", "").split('\n'):
+                    print("\n### ", line, file=ret)
+                value = self.model_dump().get(section_name, {}).get(entry)
+                print(f"{entry} = {json.dumps(value)}", file=ret)
+            
+            print("\n" * 2, file=ret)
 
         ret.seek(0)
         return ret.read()
@@ -282,36 +347,14 @@ class BuildConfig(BaseModel):
             fuse_sleep_seconds=self.volumes.fuse_sleep_seconds,
         )
 
-    def slurm_config(self):
-        return dict(
-            singularity_executable=self.slurm.singularity_executable,
-            sbatch_executable=self.slurm.sbatch_executable,
-            ntasks=self.slurm.ntasks,
-            cpus_per_task=self.slurm.cpus_per_task,
-            mem_per_cpu=self.slurm.mem_per_cpu,
-            partition=self.slurm.partition,
-            time=self.slurm.time,
-            qos=self.slurm.qos,
-            account=self.slurm.account,
-            job_name=self.slurm.job_name,
-            mail_user=self.slurm.mail_user,
-            mail_type=self.slurm.mail_type,
-            output=self.slurm.output,
-            error=self.slurm.error,
-            log_dir=self.slurm.log_dir,
-            image=self.slurm.image,
-            bind=self.slurm.bind,
-            env=self.slurm.env,
-            flags=self.slurm.flags,
-            slurm_flags=self.slurm.slurm_flags,
-        )
-
     def base_volume_config(self):
         """Provide kwargs to configure BaseVolume according to the options defined in BaseVolume"""
         return dict(
             fuse_mode=self.apptainer.fuse_mode,
             fuse_enabled_on_host=self.apptainer.fuse_enabled_on_host,
             scratch_area=self.volumes.scratch_area,
+            additional_directories_in_path=self.volumes.additional_directories_in_path,
+            cachedir=self.volumes.apptainer_cachedir,
         )
 
     def container_spec_config(self):
@@ -378,3 +421,19 @@ class BuildConfig(BaseModel):
             logging.error(f"Update of BuildConfig failed.\n" + traceback.format_exc())
             return self
 
+
+    @staticmethod
+    def check_type(config: BaseModel, key: str, types: Collection[str]):
+        properties = config.model_json_schema()['properties']
+        if key not in properties.keys():
+            return False
+
+        if 'type' in properties[key].keys():
+            return properties[key]['type'] in types
+
+        if 'anyOf' in properties[key].keys():
+            for alt_dict in properties[key]['anyOf']:
+                if 'type' in alt_dict.keys() and alt_dict['type'] in types:
+                    return True
+
+        return False

@@ -195,16 +195,24 @@ class ContainerSpec(BaseModel, extra="forbid"):
     )
 
     @property
+    def tmp_dir(self):
+        return os.path.join(self.scratch_area, "tmp", self.uid)
+
+    @property
+    def var_tmp_dir(self):
+        return os.path.join(self.scratch_area, "var-tmp", self.uid)
+
+    @property
     def workdir(self):
         return os.path.join(self.scratch_area, f".acb.cnt.{self.uid}")
 
     @property
     def log_path(self):
-        return os.path.join(self.workdir, f'{self.uid}.log')
+        return os.path.join(self.workdir, f'{self.uid}.out')
 
     @property
     def return_code_path(self):
-        return os.path.join(self.workdir, f'{self.uid}.ret')
+        return os.path.join(self.workdir, f'{self.uid}.status')
 
     @property
     def env_file_path(self):
@@ -260,6 +268,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [f'--env-file {self.env_file_path}']
 
         # Volumes
+        ret += [f'--bind {self.tmp_dir}:/tmp', f'--bind {self.var_tmp_dir}:/var/tmp']
         ret += [str(vb) for vb in set(self.volume_binds)]
 
         # Executable
@@ -306,6 +315,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 file_content='\n'.join([f'{k}="{v}"' for k, v in env_dict.items()]),
                 executable=False,
             ),
+        ]
+
+        ret += [
+            f"mkdir -p {self.tmp_dir}",
+            f"mkdir -p {self.var_tmp_dir}",
         ]
 
         if self.entrypoint:
