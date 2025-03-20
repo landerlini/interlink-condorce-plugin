@@ -62,6 +62,42 @@ class SlurmProvider(BaseNatsProvider):
         self._cached_squeue_time: Union[datetime, str, None] = None
         BaseNatsProvider.__init__(self, build_config=build_config, **kwargs)
 
+
+    def _resolve_slurm_flavor(
+            self,
+            pod: interlink.PodRequest,
+            options: BuildConfig.SlurmOptions
+    ) -> BuildConfig.SlurmOptions:
+        """
+        Based on PodSpec matches the first compliant SlurmFlavor and use it to override and return SlurmOptions
+        """
+        v1pod = pod.deserialize()
+        ret = options.model_copy(deep=True)
+
+        for i_flavor, flavor in enumerate(options.flavors, 1):
+            conditions = [
+                    v1pod.spec.active_deadline_seconds <= flavor.max_time_seconds,  # run time
+                    compute_pod_resource(pod, "cpu") <= flavor.max_resources.get('cpu', 0xFFFFFF),
+                    compute_pod_resource(pod, "memory") <= flavor.max_resources.get('memory', 1e42),
+            ]
+            for key in [k for k in flavor.max_resources.keys() if k not in ('cpu', 'memory')]:
+                conditions.append(
+                    compute_pod_resource(pod, key, default_per_container="0") <= flavor.max_resources.get(key, 0)
+                )
+
+            if all(conditions):
+                self.logger.info(f"Matched slurm flavor #{i_flavor}.")
+                for prop_name in options.model_json_schema()['properties'].keys():
+                    if hasattr(flavor, prop_name) and getattr(flavor, prop_name) is not None:
+                        setattr(ret, prop_name, getattr(flavor, prop_name))
+
+                return ret
+
+            if len(options.flavors):
+                self.logger.info(f"No SlurmFlavor was matched. Falling back on default configuration.")
+
+            return ret
+
     async def _retrieve_job_status(self, job_name: str) -> Union[str, None]:
         # Try to wait for previous sacct request to reply for up to 5 seconds
         for _ in range(50):
@@ -166,25 +202,8 @@ class SlurmProvider(BaseNatsProvider):
         sbatch_output_flag = f"#SBATCH --output={sandbox}/stdout.log"
         sbatch_error_flag = f"#SBATCH --error={sandbox}/stderr.log"
 
-        scfg = self._build_config.slurm
-
-        selected_flavor = None
-        if hasattr(scfg, 'flavors') and scfg.flavors:
-            required_gpu = compute_pod_resource(pod, 'nvidia.com/gpu')
-            self.logger.info(f"Required GPU: {required_gpu}")
-            for flavor in scfg.flavors:
-                flavor_gpu_limit = flavor.max_resources.get('nvidia.com/gpu', 0)
-                if flavor_gpu_limit >= required_gpu:
-                    selected_flavor = flavor
-                    self.logger.info(f"Selected flavor: partition={flavor.partition}, account={flavor.account}")
-                    break
-
-        if selected_flavor:
-            scfg.account = selected_flavor.account
-            scfg.partition = selected_flavor.partition
-            scfg.qos = selected_flavor.qos
-        else:
-            self.logger.info("No suitable flavor found. Using default slurm configuration.")
+        # Overwrites the SLURM config
+        scfg = self._resolve_slurm_flavor(pod, self.build_config.slurm)
 
         keywords = dict(sandbox=sandbox, job_name=job_name)
 
@@ -206,30 +225,6 @@ class SlurmProvider(BaseNatsProvider):
                     for value in getattr(scfg, prop_name):
                         sbatch_flags.append("#SBATCH " + prop_schema['arg'] % (value % keywords) )
 
-        if selected_flavor:
-            for prop_name, prop_schema in selected_flavor.model_json_schema()['properties'].items():
-                if not hasattr(scfg, prop_name):
-                    self.logger.warning(f"Flavor property {prop_name} not found in slurm configuration. Skipping.")
-                    continue
-                if 'arg' in prop_schema and 'type' in prop_schema:
-                    value = getattr(selected_flavor, prop_name)
-                    if value is not None:
-                        if prop_schema['type'] == 'boolean' and value:
-                            flag = "#SBATCH " + prop_schema['arg']
-                        elif prop_schema['type'] == 'integer':
-                            flag = "#SBATCH " + prop_schema['arg'] % value
-                        elif prop_schema['type'] == 'string':
-                            formatted_value = value % keywords if '%' in value else value
-                            flag = "#SBATCH " + prop_schema['arg'] % formatted_value
-                        elif prop_schema['type'] == 'array':
-                            for v in value:
-                                formatted_value = v % keywords if '%' in v else v
-                                flag = "#SBATCH " + prop_schema['arg'] % formatted_value
-                                if flag not in sbatch_flags:
-                                    sbatch_flags.append(flag)
-                            continue  # Skip the rest of the loop for arrays.
-                        if flag not in sbatch_flags:
-                            sbatch_flags.append(flag)
 
 
         # Create the Slurm script
