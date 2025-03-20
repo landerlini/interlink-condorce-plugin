@@ -10,6 +10,9 @@ import re
 from enum import IntEnum
 from typing import Union
 
+from kubernetes.utils import parse_quantity
+from math import ceil
+
 from .. import interlink
 from ..utils import  compute_pod_resource, JobStatus, Resources
 from ..BaseNatsProvider import BaseNatsProvider
@@ -97,6 +100,38 @@ class SlurmProvider(BaseNatsProvider):
                 self.logger.info(f"No SlurmFlavor was matched. Falling back on default configuration.")
 
             return ret
+
+    def _update_with_resource_requests(
+            self,
+            pod: interlink.PodRequest,
+            options: BuildConfig.SlurmOptions,
+    ) -> BuildConfig.SlurmOptions:
+        v1pod = pod.deserialize()
+        options = options.model_copy()
+
+        # Prepare the defaults for CPU and memory
+        if options.cpu is None:
+            options.cpu = int(ceil(parse_quantity(options.max_resources.get('cpu', 1))))
+
+        if options.memory is None:
+            options.memory = options.max_resources.get('memory', '4G')
+
+        requested_cpu = compute_pod_resource(pod, "cpu")
+        if requested_cpu is not None:
+            options.cpu = requested_cpu
+
+        requested_memory = compute_pod_resource(pod, "memory")
+        if requested_memory is not None:
+            options.memory = requested_memory
+
+        self.logger.info(f"""{v1pod.metadata.name}.{v1pod.metadata.namespace} requested:
+            CPU:        {requested_cpu   }. Assigned: {options.cpu}.
+            Memory:     {requested_memory}. Assigned: {options.memory}.
+            Resources:  {", ".join(options.generic_resources)}. 
+            """
+        )
+
+        return options
 
     async def _retrieve_job_status(self, job_name: str) -> Union[str, None]:
         # Try to wait for previous sacct request to reply for up to 5 seconds
@@ -198,13 +233,13 @@ class SlurmProvider(BaseNatsProvider):
         if self._build_config.slurm is None:
             self.logger.info("No slurm configuration specified in the build config. Using default values.")
 
-        # Default Slurm output and error log paths
-        sbatch_output_flag = f"#SBATCH --output={sandbox}/stdout.log"
-        sbatch_error_flag = f"#SBATCH --error={sandbox}/stderr.log"
-
-        # Overwrites the SLURM config
+        # Overwrites the SLURM config based on the resolved SLURM flavor
         scfg = self._resolve_slurm_flavor(pod, self.build_config.slurm)
 
+        # Updates the slurm config based on the resource limits defined in the pod
+        scfg = self._update_with_resource_requests(pod, scfg)
+
+        # Keywords are replaced in the json schema as defined in BuildConfig
         keywords = dict(sandbox=sandbox, job_name=job_name)
 
         # sbatch flags

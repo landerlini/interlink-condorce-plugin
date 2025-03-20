@@ -86,6 +86,22 @@ class BuildConfig(BaseModel):
                 description="Maximum (extended) resources of the pod for being assigned to this flavor."
             )
 
+            memory: Optional[str] = Field(
+                default=None,
+                description="Default value of the RAM memory to assign to the job.",
+                json_schema_extra=dict(arg='--mem %s'),
+            )
+            cpu: Optional[int] = Field(
+                default=None,
+                description="Number of CPUs per task",
+                json_schema_extra=dict(arg='--cpu-per-task %d'),
+            )
+            ntasks: Optional[int] = Field(
+                default=None,
+                description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
+                json_schema_extra=dict(arg='--ntasks %d'),
+            )
+
 
         flavors: Optional[List[SlurmFlavor]] = Field(
             default=None,
@@ -112,11 +128,6 @@ class BuildConfig(BaseModel):
             default=1,
             description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
             json_schema_extra=dict(arg='--nodes %d'),
-        )
-        ntasks: Optional[int] = Field(
-            default=1,
-            description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
-            json_schema_extra=dict(arg='--ntasks %d'),
         )
         cpus_per_task: Optional[int] = Field(
             default=None,
@@ -181,6 +192,21 @@ class BuildConfig(BaseModel):
             default="%(sandbox)s/stderr.log",
             description="Error file (SLURM flag: --error or -e)",
             json_schema_extra=dict(arg='--error %s'),
+        )
+        memory: Optional[str] = Field(
+            default="4G",
+            description="Default value of the RAM memory to assign to the job.",
+            json_schema_extra=dict(arg='--mem %s'),
+        )
+        cpu: Optional[int] = Field(
+            default=1,
+            description="Number of CPUs per task",
+            json_schema_extra=dict(arg='--cpu-per-task %d'),
+        )
+        ntasks: Optional[int] = Field(
+            default=1,
+            description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
+            json_schema_extra=dict(arg='--ntasks %d'),
         )
         generic_resources: List[str] = Field(
             default=[],
