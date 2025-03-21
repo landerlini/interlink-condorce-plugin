@@ -339,7 +339,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         rndid = generate_uid()
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
             ret += [dedent(f"""
-                REMOTE_IMAGE_MD5=$(curl -vs {self.shub_proxy_server}/get-docker-md5/{self.image} -H \"X-Token: {self.shub_token}\" )
+                REMOTE_IMAGE_MD5=$(curl -Lvs {self.shub_proxy_server}/get-docker-md5/{self.image} -H \"X-Token: {self.shub_token}\" )
                 if [ -f {local_image} ]; then
                     echo "Using local static image from {local_image}"
                     IMAGE_{uid}={local_image}
