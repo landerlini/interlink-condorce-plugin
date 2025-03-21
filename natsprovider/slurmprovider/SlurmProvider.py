@@ -10,7 +10,7 @@ import re
 from enum import IntEnum
 from typing import Union
 
-from kubernetes.utils.quantity import parse_quantity, format_quantity
+from kubernetes.utils import parse_quantity
 from math import ceil
 
 from .. import interlink
@@ -121,8 +121,7 @@ class SlurmProvider(BaseNatsProvider):
 
         if options.memory is None:
             options.memory = options.max_resources.get('memory', '4G')
-            if isinstance(options.memory, int):
-                options.memory = format_quantity(options.memory)
+            options.memory = str( int(parse_quantity(options.memory)) << 20 ) + "M"
 
         requested_cpu = compute_pod_resource(pod, "cpu")
         if requested_cpu is not None:
@@ -130,7 +129,7 @@ class SlurmProvider(BaseNatsProvider):
 
         requested_memory = compute_pod_resource(pod, "memory")
         if requested_memory is not None:
-            options.memory = format_quantity(requested_memory)
+            options.memory = str( requested_memory << 20 ) + "M"
 
         self.logger.info(f"""{v1pod.metadata.name}.{v1pod.metadata.namespace} requested:
             CPU:        {requested_cpu   }. Assigned: {options.cpu}.
