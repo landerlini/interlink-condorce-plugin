@@ -201,7 +201,7 @@ class BuildConfig(BaseModel):
         cpu: Optional[int] = Field(
             default=1,
             description="Number of CPUs per task",
-            json_schema_extra=dict(arg='--cpu-per-task %d'),
+            json_schema_extra=dict(arg='--cpus-per-task %d'),
         )
         ntasks: Optional[int] = Field(
             default=1,
