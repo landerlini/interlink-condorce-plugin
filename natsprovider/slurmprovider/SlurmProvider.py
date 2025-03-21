@@ -115,6 +115,8 @@ class SlurmProvider(BaseNatsProvider):
         v1pod = pod.deserialize()
         options = options.model_copy()
 
+        self.logger.info(f"Pre-Configured options.memory {options.memory}")
+
         # Prepare the defaults for CPU and memory
         if options.cpu is None:
             options.cpu = int(ceil(parse_quantity(options.max_resources.get('cpu', 1))))
