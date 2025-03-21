@@ -79,7 +79,7 @@ class SlurmProvider(BaseNatsProvider):
 
         for i_flavor, flavor in enumerate(options.flavors, 1):
             conditions = [
-                    v1pod.spec.active_deadline_seconds <= flavor.max_time_seconds,  # run time
+                    flavor.max_time_seconds is None or v1pod.spec.active_deadline_seconds <= flavor.max_time_seconds,
                     compute_pod_resource(pod, "cpu") <= flavor.max_resources.get('cpu', 0xFFFFFF),
                     compute_pod_resource(pod, "memory") <= flavor.max_resources.get('memory', 1e42),
             ]
