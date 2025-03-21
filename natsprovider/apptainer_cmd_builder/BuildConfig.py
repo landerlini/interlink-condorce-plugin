@@ -77,7 +77,7 @@ class BuildConfig(BaseModel):
                 json_schema_extra=dict(arg='--gres %s'),
             )
             max_time_seconds: Optional[int] = Field(
-                default=3600,
+                default=None,
                 description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned.",
                 json_schema_extra=dict(arg='--time %d'),
             )
