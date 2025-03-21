@@ -218,8 +218,10 @@ class SlurmProvider(BaseNatsProvider):
         # Ensure directories exist
         for dirname in (apptainer_cachedir, scratch_area, sandbox):
             self.logger.info(f"Creating directory {dirname}")
-            Path(dirname).mkdir(parents=True, exist_ok=True)
-            
+            try:
+                Path(dirname).mkdir(parents=True, exist_ok=True)
+            except PermissionError:
+                self.logger.error(f"Cannot create {dirname}. Permission denied. Might retry from compute node.")
 
         # Write job_sh to a script file
         with open(job_script_path, "w") as f:
