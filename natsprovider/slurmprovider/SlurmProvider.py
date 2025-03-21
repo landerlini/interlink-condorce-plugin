@@ -10,7 +10,7 @@ import re
 from enum import IntEnum
 from typing import Union
 
-from kubernetes.utils import parse_quantity
+from kubernetes.utils import parse_quantity, format_quantity
 from math import ceil
 
 from .. import interlink
@@ -77,15 +77,21 @@ class SlurmProvider(BaseNatsProvider):
         v1pod = pod.deserialize()
         ret = options.model_copy(deep=True)
 
+        def _get_max_resource(f, name: str, default: Union[str, int]):
+            return parse_quantity(str(f.max_resources.get(name, '1Ei')))
+
         for i_flavor, flavor in enumerate(options.flavors, 1):
+            # If time, memory or CPU are not specified, they are considered as unlimited for the flavor.
             conditions = [
                     flavor.max_time_seconds is None or v1pod.spec.active_deadline_seconds <= flavor.max_time_seconds,
-                    compute_pod_resource(pod, "cpu") <= flavor.max_resources.get('cpu', 0xFFFFFF),
-                    compute_pod_resource(pod, "memory") <= flavor.max_resources.get('memory', 1e42),
+                    compute_pod_resource(pod, "cpu") <= _get_max_resource(flavor, 'cpu', '1Ei'),
+                    compute_pod_resource(pod, "memory") <= _get_max_resource(flavor, 'memory', '1Ei')
             ]
+
+            # If a generic resource is not specified, it is considered as not available for the flavor.
             for key in [k for k in flavor.max_resources.keys() if k not in ('cpu', 'memory')]:
                 conditions.append(
-                    compute_pod_resource(pod, key, default_per_container="0") <= flavor.max_resources.get(key, 0)
+                    compute_pod_resource(pod, key, default_per_container="0") <= _get_max_resource(flavor, key, 0)
                 )
 
             if all(conditions):
@@ -115,6 +121,8 @@ class SlurmProvider(BaseNatsProvider):
 
         if options.memory is None:
             options.memory = options.max_resources.get('memory', '4G')
+            if isinstance(options.memory, int):
+                options.memory = format_quantity(options.memory)
 
         requested_cpu = compute_pod_resource(pod, "cpu")
         if requested_cpu is not None:
@@ -122,7 +130,7 @@ class SlurmProvider(BaseNatsProvider):
 
         requested_memory = compute_pod_resource(pod, "memory")
         if requested_memory is not None:
-            options.memory = requested_memory
+            options.memory = format_quantity(requested_memory)
 
         self.logger.info(f"""{v1pod.metadata.name}.{v1pod.metadata.namespace} requested:
             CPU:        {requested_cpu   }. Assigned: {options.cpu}.

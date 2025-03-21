@@ -137,7 +137,7 @@ class BuildConfig(BaseModel):
         mem_per_cpu: Optional[str] = Field(
             default=None,
             description="Memory per CPU (SLURM flag: --mem-per-cpu)",
-            json_schema_extra=dict(arg='--mem-per-cpu %sB'),
+            json_schema_extra=dict(arg='--mem-per-cpu %s'),
         )
         partition: Optional[str] = Field(
             default=None,
@@ -196,7 +196,7 @@ class BuildConfig(BaseModel):
         memory: Optional[str] = Field(
             default="4G",
             description="Default value of the RAM memory to assign to the job.",
-            json_schema_extra=dict(arg='--mem %sB'),
+            json_schema_extra=dict(arg='--mem %s'),
         )
         cpu: Optional[int] = Field(
             default=1,
