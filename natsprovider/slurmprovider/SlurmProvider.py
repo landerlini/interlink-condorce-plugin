@@ -10,7 +10,7 @@ import re
 from enum import IntEnum
 from typing import Union
 
-from kubernetes.utils import parse_quantity, format_quantity
+from kubernetes.utils.quantity import parse_quantity, format_quantity
 from math import ceil
 
 from .. import interlink
