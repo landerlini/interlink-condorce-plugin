@@ -256,7 +256,7 @@ class SlurmProvider(BaseNatsProvider):
                     )
                 elif BuildConfig.check_type(scfg, prop_name, ['string']) and getattr(scfg, prop_name) is not None:
                     sbatch_flags.append(
-                        "#SBATCH " + prop_schema['arg'] % (getattr(scfg, prop_name) % keywords)
+                        "#SBATCH " + (prop_schema['arg'] % (getattr(scfg, prop_name)) % keywords)
                     )
                 elif BuildConfig.check_type(scfg, prop_name, ['array']) and getattr(scfg, prop_name) is not None:
                     for value in getattr(scfg, prop_name):
