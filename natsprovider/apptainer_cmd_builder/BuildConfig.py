@@ -239,6 +239,18 @@ class BuildConfig(BaseModel):
             default_factory=lambda: os.environ.get("APPTAINER_FAKEROOT", "no").lower() in ["true", "yes", "y"],
             description="Enables --fakeroot in apptainer exec/run commands"
         )
+        userns: bool = Field(
+            default=False,
+            description="Enables --userns (user namespace) in apptainer exec/run commands"
+        )
+        uts: bool = Field(
+            default=False,
+            description="Enables --uts (hostname and nis domain namespace) in apptainer exec/run commands"
+        )
+        sharens: bool = Field(
+            default=False,
+            description="Share the namespace and image with other containers launched from the same parent process"
+        )
         containall: bool = Field(
             default_factory=lambda: os.environ.get("APPTAINER_FAKEROOT", "no").lower() in ["true", "yes", "y"],
             description="Enables --containall flag in apptainer exec/run commands",
@@ -396,6 +408,9 @@ class BuildConfig(BaseModel):
             shub_cache_seconds=self.shub_proxy.cache_validity_seconds,
             readonly_image_dir=self.volumes.image_dir,
             fakeroot=self.apptainer.fakeroot,
+            userns=self.apptainer.userns,
+            sharens=self.apptainer.sharens,
+            uts=self.apptainer.uts,
             containall=self.apptainer.containall,
             no_init=self.apptainer.no_init,
             no_home=self.apptainer.no_home,

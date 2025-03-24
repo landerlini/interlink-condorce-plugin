@@ -121,6 +121,24 @@ class ContainerSpec(BaseModel, extra="forbid"):
         json_schema_extra=dict(arg='--fakeroot'),
     )
 
+    userns: bool = Field(
+        default=False,
+        description="Enable --userns option in apptainer",
+        json_schema_extra=dict(arg='--userns'),
+    )
+
+    sharens: bool = Field(
+        default=False,
+        description="Enable --sharens option in apptainer",
+        json_schema_extra=dict(arg='--sharens'),
+    )
+
+    uts: bool = Field(
+        default=False,
+        description="Enable --uts option in apptainer",
+        json_schema_extra=dict(arg='--uts'),
+    )
+
     containall: bool = Field(
         default=cfg.APPTAINER_CONTAINALL,
         description="Contain not only file systems, but also PID, IPC, and environment",
