@@ -294,7 +294,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         if self.tmp_dir_mode == 'bind':
             ret += [f'--bind {self.tmp_dir}:/tmp', f'--bind {self.var_tmp_dir}:/var/tmp']
         elif self.tmp_dir_mode == 'scratch':
-            ret += [f'--scratch /tmp', f'--scratch /var/tmp']
+            ret += [f'--scratch /tmp', f'--scratch /var/tmp', f'--workdir {self.tmp_dir}']
         elif self.tmp_dir_mode == 'none':
             pass
 
