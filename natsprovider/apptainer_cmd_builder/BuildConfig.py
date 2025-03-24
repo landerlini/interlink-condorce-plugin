@@ -291,6 +291,10 @@ class BuildConfig(BaseModel):
             default=False,
             description="Convert SIF file to temporary sandbox before running",
         )
+        tmp_dir_mode: Literal['bind', 'scratch', 'none'] = Field(
+            default='scratch',
+            description="Technique to make /tmp and /var/tmp available to the contained application",
+        )
 
 
         @property
@@ -418,6 +422,7 @@ class BuildConfig(BaseModel):
             nvidia_support=self.apptainer.nvidia_support,
             cleanenv=self.apptainer.cleanenv,
             unsquash=self.apptainer.unsquash,
+            tmp_dir_mode=self.apptainer.tmp_dir_mode,
         )
 
     @property

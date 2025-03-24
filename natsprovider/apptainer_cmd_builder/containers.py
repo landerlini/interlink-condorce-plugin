@@ -212,6 +212,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
         json_schema_extra = dict(arg='--unsquash'),
     )
 
+    tmp_dir_mode: Literal['bind', 'scratch', 'none'] = Field(
+        default='scratch',
+        description="Technique to make /tmp and /var/tmp available to the contained application",
+    )
+
     @property
     def tmp_dir(self):
         return os.path.join(self.scratch_area, "tmp", self.uid)
@@ -286,7 +291,13 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [f'--env-file {self.env_file_path}']
 
         # Volumes
-        ret += [f'--bind {self.tmp_dir}:/tmp', f'--bind {self.var_tmp_dir}:/var/tmp']
+        if self.tmp_dir_mode == 'bind':
+            ret += [f'--bind {self.tmp_dir}:/tmp', f'--bind {self.var_tmp_dir}:/var/tmp']
+        elif self.tmp_dir_mode == 'scratch':
+            ret += [f'--scratch /tmp', f'--scratch /var/tmp']
+        elif self.tmp_dir_mode == 'none':
+            pass
+
         ret += [str(vb) for vb in set(self.volume_binds)]
 
         # Executable
