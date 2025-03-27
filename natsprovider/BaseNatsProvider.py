@@ -371,11 +371,17 @@ class BaseNatsProvider:
             else:
                 rsrc.gpus = int(rsrc.gpus)
 
+            payload = dict(
+                quotas=rsrc.to_kubernetes(),
+                labels=self.build_config.node.labels,
+                taints=self.build_config.node.taints,
+            )
+
             resources_subject = '.'.join((self._nats_subject, 'resources', self._nats_pool))
             async with self.nats_connection() as nc:
                 await nc.publish(
                     subject=resources_subject,
-                    payload=orjson.dumps(rsrc.to_kubernetes())
+                    payload=orjson.dumps(payload)
                 )
                 self.logger.info(f"Published allocatable resources on subject {resources_subject}")
 

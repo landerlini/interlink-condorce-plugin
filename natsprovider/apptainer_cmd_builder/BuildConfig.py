@@ -47,6 +47,19 @@ class BuildConfig(BaseModel):
             """
         )
 
+    class NodeOptions(BaseModel, extra='forbid'):
+        """
+        Options configuring the node with labels and taints to allow affinity and node selection mechanics.
+        """
+        labels: List[str] = Field(
+            default=[],
+            description="List of labels in format key=value to configure the Kueue ResourceFlavor",
+        )
+        taints: List[str] = Field(
+            default=[],
+            description="List of taints in format key=value:effect to configure the Kueue ResourceFlavor",
+        )
+
     class SlurmOptions(BaseModel, extra='forbid'):
         """
         Options configuring the behavior of SLURM runtime.
@@ -341,6 +354,10 @@ class BuildConfig(BaseModel):
     resources: Resources = Field(
         default=Resources(),
         description="Computing resources made available by the pool (not by the single submitter!)"
+    )
+    node: NodeOptions = Field(
+        default=NodeOptions(),
+        description=NodeOptions.__doc__
     )
 
     input_toml_filename: Optional[str] = Field(
