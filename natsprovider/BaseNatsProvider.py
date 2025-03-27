@@ -77,7 +77,7 @@ class BaseNatsProvider:
 
     @property
     def censored_nats_server(self):
-        password = re.findall("\w+://[\w\d-]+:([^@]+)@.*", self._nats_server)
+        password = re.findall(r"\w+://[\w\d-]+:([^@]+)@.*", self._nats_server)
         if len(password):
             return self._nats_server.replace(password[0], "***")
         return self._nats_server
