@@ -190,14 +190,18 @@ class NatsFlavor(Flavor):
                 flavor_name = '-'.join((self.master_queue_name, self.name, pool))
 
                 node_labels = {'type': 'virtual-kubelet'}
+                if self.virtual_node is not None:
+                    node_labels.update({'kubernetes.io/hostname': self.virtual_node})
+
+                rf_labels = {}
                 for label_string in self.labels[pool]:
                     if len(label_string) == 0:
                         continue
                     elif label_string[:-1].count('=') == 0:
-                        node_labels[label_string] = True
+                        rf_labels[label_string] = True
                     elif label_string[:-1].count('=') == 1:
                         key, value = label_string.split('=')
-                        node_labels[key] = value
+                        rf_labels[key] = value
                     else:
                         logging.getLogger(self.name).error(
                             f"Invalid label {label_string}"
@@ -216,14 +220,13 @@ class NatsFlavor(Flavor):
                             f"Invalid taint {taint_string}"
                         )
 
-
-                if self.virtual_node is not None:
-                    node_labels.update({'kubernetes.io/hostname': self.virtual_node})
-
                 body = dict(
                     apiVersion="kueue.x-k8s.io/v1beta1",
                     kind="ResourceFlavor",
-                    metadata=dict(name=flavor_name),
+                    metadata=dict(
+                        name=flavor_name,
+                        labels=rf_labels,
+                    ),
                     spec=dict(
                         nodeLabels=node_labels,
                         nodeTaints=node_taints,
