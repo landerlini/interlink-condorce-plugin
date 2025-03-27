@@ -345,6 +345,7 @@ class SlurmProvider(BaseNatsProvider):
         if job_status is None:
             return JobStatus(phase="unknown")
         elif any([s in job_status for s in SLURM_FAILED_STATUSES]):
+            self.logger.warning(f"Job {job_name} failed with status {job_status}")
             return JobStatus(phase="failed", reason=job_status)
         elif any([s in job_status for s in SLURM_PENDING_STATUSES]):
             return JobStatus(phase="pending")
