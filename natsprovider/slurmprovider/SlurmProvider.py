@@ -78,7 +78,7 @@ class SlurmProvider(BaseNatsProvider):
         ret = options.model_copy(deep=True)
 
         def _get_max_resource(f, name: str, default: Union[str, int]):
-            return parse_quantity(str(f.max_resources.get(name, '1Ei')))
+            return parse_quantity(str(f.max_resources.get(name, default)))
 
         for i_flavor, flavor in enumerate(options.flavors, 1):
             # If time, memory or CPU are not specified, they are considered as unlimited for the flavor.
@@ -101,6 +101,8 @@ class SlurmProvider(BaseNatsProvider):
                         setattr(ret, prop_name, getattr(flavor, prop_name))
 
                 return ret
+
+            self.logger.info(f"Flavor {i_flavor} did not match with conditions: {conditions}")
 
             if len(options.flavors):
                 self.logger.info(f"No SlurmFlavor was matched. Falling back on default configuration.")
