@@ -104,10 +104,10 @@ class SlurmProvider(BaseNatsProvider):
 
             self.logger.info(f"Flavor {i_flavor} did not match with conditions: {conditions}")
 
-            if len(options.flavors):
-                self.logger.info(f"No SlurmFlavor was matched. Falling back on default configuration.")
+        if len(options.flavors):
+            self.logger.info(f"No SlurmFlavor was matched. Falling back on default configuration.")
 
-            return ret
+        return ret
 
     def _update_with_resource_requests(
             self,
