@@ -200,9 +200,9 @@ class SlurmProvider(BaseNatsProvider):
                 statuses = {}
                 for line in lines:
                     if '|' in line:
-                        job_name, slurm_status = line.split('|')
-                        self._cached_squeue[job_name] = slurm_status
-                        statuses[slurm_status] = statuses.get(slurm_status, 0) + 1
+                        _job_name, _slurm_status = line.split('|')
+                        self._cached_squeue[_job_name] = _slurm_status
+                        statuses[_slurm_status] = statuses.get(_slurm_status, 0) + 1
 
                 self.logger.info(
                     f"Retrieved {len(lines)} jobs: {', '.join([f'{n} {k}' for k, n in statuses.items()])}"
