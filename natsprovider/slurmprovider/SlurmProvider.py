@@ -194,6 +194,7 @@ class SlurmProvider(BaseNatsProvider):
                 if len(sacct_stderr.replace(" ", "").replace("\n", "")):
                     self.logger.error(sacct_stderr)
 
+                self.logger.info("sacct output:\n"+sacct_stdout)
                 lines = sacct_stdout.split('\n')
 
                 statuses = {}
