@@ -254,6 +254,7 @@ class BaseNatsProvider:
             await msg.respond(
                 NatsResponse(status_code=200, data=job_id_in_backend.encode('ascii')).to_nats()
             )
+        self.logger.info(f"Job submission procedure terminated")
 
     async def create_pod(self, job_name: str, job_sh: str, pod: interlink.PodRequest) -> str:
         """Override me!"""
