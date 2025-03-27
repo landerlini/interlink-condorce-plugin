@@ -61,8 +61,8 @@ class Flavor(BaseModel):
     nominal_quota: Dict[ResourceKey, Union[int, str]]
     can_lend_to: List[LendingStruct] = Field([])
     allocatable_quota: Dict[str, Dict[ResourceKey, Union[int, str]]] = Field({})
-    labels: Dict[str, List[str]]
-    taints: Dict[str, List[str]]
+    labels: Dict[str, List[str]] = Field({})
+    taints: Dict[str, List[str]] = Field({})
 
     async def on_tick(self):
         pass
