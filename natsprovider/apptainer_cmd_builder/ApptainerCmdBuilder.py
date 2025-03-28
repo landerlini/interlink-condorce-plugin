@@ -154,9 +154,6 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         %(environment_files)s
         
         ################################################################################
-        ## Volumes settings
-        %(volume_files)s
-        
         ## Defines and register the callback for cleaning volumes up upon job termination
         cleanup() {
         echo "Cleaning up volumes"
@@ -165,6 +162,10 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         rm -rf %(workdir)s
         }
         trap cleanup SIGTERM SIGKILL EXIT
+        
+        ## Volumes settings
+        %(volume_files)s
+        
         
         
         ################################################################################
