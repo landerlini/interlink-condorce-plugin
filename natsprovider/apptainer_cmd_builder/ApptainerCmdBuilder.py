@@ -138,6 +138,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         ## Setting umask for creating new files read-writable from all
         umask 0011
         
+        export STARTING_DIR=$PWD
         export SANDBOX=${SANDBOX:-$PWD}
         touch $SANDBOX/logs 
         
@@ -160,7 +161,10 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         
         ## Defines and register the callback for cleaning volumes up upon job termination
         cleanup() {
+        echo "Cleaning up volumes"
         %(cleanup_volumes)s
+        cd $STARTING_DIR 
+        rm -rf %(workdir)s
         }
         trap cleanup SIGTERM SIGKILL EXIT
         
@@ -179,8 +183,6 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         echo $(gzip -c $SANDBOX/logs | base64)
         echo "==== OUTPUT END %(application_token)s ===="
         
-        cd - 
-        rm -rf %(workdir)s
         """) % dict(
             version=version,
             docs=''.join(["## " + line for line in self.description.splitlines()]),
