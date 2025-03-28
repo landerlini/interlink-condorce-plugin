@@ -278,6 +278,18 @@ class FuseVolume(BaseVolume, extra="forbid"):
             ret += [
                 f"CACHEDIR={cache_path}/cache " + self.fuse_mount_script_host_path + " \"\" " + host_path + " &",
                 f"FUSE_{sanitize_uid(self.uid).upper()}_PID=$!",
+                textwrap.dedent(
+                    f"""
+                    for attempt in $(seq 50); do
+                        if [ $(stat -c %d {base_path}) -ne $(stat -c %d {host_path} 2> /dev/null) ]; then
+                            echo "Fuse mount of volume {self.uid} complete"
+                            break;
+                        else
+                            sleep 0.1
+                        fi
+                    done
+                    """
+                )
             ]
 
         return '\n' + '\n'.join(ret)
