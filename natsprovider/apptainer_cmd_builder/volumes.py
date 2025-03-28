@@ -288,7 +288,12 @@ class FuseVolume(BaseVolume, extra="forbid"):
         ret = []
 
         if self.fuse_enabled_on_host:
-            ret += [  f"fusermount -u {host_path} || kill $FUSE_{sanitize_uid(self.uid).upper()}_PID" ]
+            ret += [
+                f"fusermount -u {host_path} "
+                f" || ( sleep 5 && fusermount -u {host_path} ) "
+                f" || ( sleep 5 && fusermount -u {host_path} ) "
+                f" || kill $FUSE_{sanitize_uid(self.uid).upper()}_PID"
+            ]
 
         # ret += [f"rm -rf {base_path}"]
 

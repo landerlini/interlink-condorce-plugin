@@ -158,6 +158,13 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         ## Volumes settings
         %(volume_files)s
         
+        ## Defines and register the callback for cleaning volumes up upon job termination
+        cleanup() {
+        %(cleanup_volumes)s
+        }
+        trap cleanup SIGTERM SIGKILL EXIT
+        
+        
         ################################################################################
         ## Initialization section
         %(exec_init_containers)s
@@ -171,10 +178,6 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         echo "==== OUTPUT BEGIN %(application_token)s ===="
         echo $(gzip -c $SANDBOX/logs | base64)
         echo "==== OUTPUT END %(application_token)s ===="
-        
-        ################################################################################
-        ## Clean-up section
-        %(cleanup_volumes)s
         
         cd - 
         rm -rf %(workdir)s
