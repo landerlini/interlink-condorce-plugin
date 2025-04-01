@@ -152,6 +152,9 @@ class SlurmProvider(BaseNatsProvider):
             else:
                 break
 
+        if self._cached_squeue_time == "processing":
+            self.logger.error(f"Timeout in processing squeue output.")
+
         if (
             self._cached_squeue_time != "processing" and (
                 self._cached_squeue_time is None or
@@ -345,6 +348,7 @@ class SlurmProvider(BaseNatsProvider):
         job_status = await self._retrieve_job_status(job_name)
 
         if job_status is None:
+            self.logger.warning(f"Status retrieved for job {job_name} is not valid ({job_status})")
             return JobStatus(phase="unknown")
         elif any([s in job_status for s in SLURM_FAILED_STATUSES]):
             self.logger.warning(f"Job {job_name} failed with status {job_status}")
