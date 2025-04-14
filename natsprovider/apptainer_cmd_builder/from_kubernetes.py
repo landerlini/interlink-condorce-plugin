@@ -2,7 +2,6 @@ import os.path
 import base64
 import re
 
-from dnf.util import empty
 from kubernetes import client as k8s
 from typing import Dict, Any, List, Mapping, Optional, Union, Literal
 from pprint import pprint
