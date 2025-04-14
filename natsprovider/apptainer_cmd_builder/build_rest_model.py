@@ -5,7 +5,7 @@ from ..utils import to_snakecase
 from .BuildConfig import BuildConfig
 
 KNOWN_FIXES = dict(
-    SingularityHub="shub_proxy",
+    SingularityHubProxy="shub_proxy",
     ApptainerOptions="apptainer",
     VolumeOptions="volumes",
 )
