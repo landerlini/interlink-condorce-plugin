@@ -128,6 +128,8 @@ async def build(build_model: BuildRestModel):
         build_config=build_config,
     )
 
+    logging.info(f"Generated jobscript:\n{builder.dump()}\n")
+
     return builder.dump() + "\n" + "\n".join([
         "cd $workingPath",
         "cp $SANDBOX/logs logs",
