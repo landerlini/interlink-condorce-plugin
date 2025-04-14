@@ -3,6 +3,7 @@ import base64
 import re
 from kubernetes import client as k8s
 from typing import Dict, Any, List, Mapping, Optional, Union, Literal
+from pprint import pprint
 
 from kubernetes.client import V1Container, V1KeyToPath
 
@@ -78,6 +79,8 @@ def _make_pod_volume_struct(
             if volume_mount.name not in volumes_counts:
                 volumes_counts[volume_mount.name] = 0
             volumes_counts[volume_mount.name] += 1
+
+    pprint(volume_counts)
 
     empty_dirs = [v for c in containers_raw for v in (c if c is not None else []).get('emptyDirs') or []]
     empty_dirs = {
