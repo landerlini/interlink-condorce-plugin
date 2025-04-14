@@ -86,8 +86,7 @@ def _make_pod_volume_struct(
 
     #empty_dirs = [v for c in containers_raw for v in (c if c is not None else []).get('emptyDirs') or []]
     empty_dirs = [
-        v.name for c in (pod.spec.containers or []) + (pod.spec.init_containers or []) for v in c.volumes
-        if v.empty_dir is not None
+        v.name for v in pod.spec.volumes if v.empty_dir is not None
     ]
     pprint(empty_dirs)
 
