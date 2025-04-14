@@ -1,6 +1,8 @@
 import os.path
 import base64
 import re
+
+from dnf.util import empty
 from kubernetes import client as k8s
 from typing import Dict, Any, List, Mapping, Optional, Union, Literal
 from pprint import pprint
@@ -83,6 +85,8 @@ def _make_pod_volume_struct(
     pprint(volumes_counts)
 
     empty_dirs = [v for c in containers_raw for v in (c if c is not None else []).get('emptyDirs') or []]
+    pprint(empty_dirs)
+
     empty_dirs = {
         k:  volumes.ScratchArea(**build_config.base_volume_config()) if volumes_counts.get(k, 0) <= 1
             else volumes.make_empty_dir(build_config)
