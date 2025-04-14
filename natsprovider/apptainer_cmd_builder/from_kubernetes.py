@@ -94,7 +94,7 @@ def _make_pod_volume_struct(
     empty_dirs = {
         k:  volumes.ScratchArea(**build_config.base_volume_config()) if volumes_counts.get(k, 0) <= 1
             else volumes.make_empty_dir(build_config)
-        for k in [os.path.split(dir_path)[-1] for dir_path in set(empty_dirs)]
+        for k in set(empty_dirs)
     }
 
     # Create a mapping for configmaps from the pod.spec.volumes structure: {cfgmap.name: cfgmap}
