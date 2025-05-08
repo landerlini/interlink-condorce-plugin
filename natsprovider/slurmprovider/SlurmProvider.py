@@ -343,7 +343,10 @@ class SlurmProvider(BaseNatsProvider):
         Get the Slurm job status and retrieve logs.
         """
 
-        job_status = await self._retrieve_job_status(job_name)
+        job_status = None
+        for _ in range(3):
+            if job_status is None:
+                job_status = await self._retrieve_job_status(job_name)
 
         if job_status is None:
             self.logger.warning(f"Status retrieved for job {job_name} is not valid ({job_status})")
