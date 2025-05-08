@@ -149,6 +149,7 @@ def _make_container_list(
         pod_volumes: Optional[Mapping[str, BaseVolume]] = None,
         use_fake_volumes: bool = False,
         is_init_container: bool = False,
+        user_cache: Optional[str] = None,
 ) -> List[ContainerSpec]:
     """
     Internal. Creates a list of ContainerSpec objects, mounting the volumes defined by pod_volumes.
@@ -170,6 +171,12 @@ def _make_container_list(
                     *[volumes.ScratchArea().mount(vm.mount_path) for vm in getattr(container, 'volume_mounts')],
                 ], [])
 
+        cache_volume = volumes.make_empty_dir(build_config) if user_cache is None else volumes.BaseVolume(
+            init_script="mkdir %(host_path)s",
+            host_path_override=user_cache,
+            **build_config.base_volume_config()
+        )
+
         return sum([
                 *[
                     pod_volumes.get(vm.name, volumes.ScratchArea()).mount(
@@ -179,7 +186,7 @@ def _make_container_list(
                     )
                     for vm in getattr(container, 'volume_mounts')
                 ],
-                volumes.make_empty_dir(build_config).mount(mount_path="/cache", read_only=False),
+                cache_volume.mount(mount_path="/cache", read_only=False),
             ], [])
 
     prefix = "init-" if is_init_container else "run-"
@@ -270,7 +277,13 @@ def from_kubernetes(
     pod = deserialize_kubernetes(pod_raw, 'V1Pod')
     pod_volumes = _make_pod_volume_struct(pod, containers_raw if containers_raw is not None else [], build_config)
 
+    # Special paths
     scratch_area = os.path.join(build_config.volumes.scratch_area, f".interlink.{pod.metadata.uid}")
+    user_cache = (
+        os.path.join(build_config.volumes.apptainer_cachedir, pod.metadata.labels['user'])
+        if 'user' in pod.metadata.labels.keys() else None
+    )
+
     return ApptainerCmdBuilder(
         uid=pod.metadata.name,
         init_containers=_make_container_list(
@@ -279,6 +292,7 @@ def from_kubernetes(
             pod_volumes=pod_volumes,
             use_fake_volumes=use_fake_volumes,
             is_init_container=True,
+            user_cache=user_cache,
         ),
         containers=_make_container_list(
             build_config=build_config,
@@ -286,6 +300,7 @@ def from_kubernetes(
             pod_volumes=pod_volumes,
             use_fake_volumes=use_fake_volumes,
             is_init_container=False,
+            user_cache=user_cache,
         ),
         scratch_area=scratch_area,
         additional_directories_in_path=build_config.volumes.additional_directories_in_path,
