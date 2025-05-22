@@ -75,6 +75,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
         description="SingularityHub proxy server without protocol"
     )
 
+    cvmfs_unpacked_path: Optional[str] = Field(
+        default=None,
+        description="SingularityHub proxy server without protocol"
+    )
+
     shub_proxy_master_token: Optional[str] = Field(
         default=cfg.SHUB_PROXY_MASTER_TOKEN,
         description="SingularityHub proxy master token used to generate client tokens"
@@ -365,6 +370,12 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
         local_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
         cached_image = os.path.join(self.cachedir, self.image.replace(":", "_"))
+        cvmfs_enable, cvmfs_image = (
+            (1, os.path.join(self.cvmfs_unpacked_path, self.image))
+            if self.cvmfs_unpacked_path is not None else
+            (0, None)
+        )
+
         rndid = generate_uid()
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
             ret += [dedent(f"""
@@ -372,6 +383,9 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 if [ -f {local_image} ]; then
                     echo "Using local static image from {local_image}"
                     IMAGE_{uid}={local_image}
+                elif [ {cvmfs_enable} -eq 1 ] && [ -f {cvmfs_image} ]; then
+                    echo "Using cvmfs image from {cvmfs_image}"
+                    IMAGE_{uid}={cvmfs_image}
                 elif [ -f {cached_image} ] && [[ "$REMOTE_IMAGE_MD5" == "$(md5sum {cached_image} | cut -d ' ' -f 1)" ]]; then
                     IMAGE_{uid}={cached_image}
                 else
@@ -401,7 +415,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
         else:
             ret += [
                 f"if [ -f {local_image} ]; then",
+                f"  echo Using local image from {local_image}",
                 f"  IMAGE_{uid}={local_image}",
+                f"elif [ {cvmfs_enable} -eq 1 ] && [ -f {cvmfs_image} ]; then",
+                f"  echo Using cvmfs image from {cvmfs_image}",
+                f"  IMAGE_{uid}={cvmfs_image}",
                 f"else",
                 f"  IMAGE_{uid}={self.formatted_image}",
                 f"fi",
