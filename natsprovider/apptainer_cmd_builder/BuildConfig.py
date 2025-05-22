@@ -30,6 +30,10 @@ class BuildConfig(BaseModel):
             default_factory=lambda: os.environ.get("IMAGE_DIR", "/opt/exp_software/opssw/budda"),
             description="Location where to look for pre-built images",
         )
+        cvmfs_unpacked_path: Optional[str] = Field(
+            default=None,
+            description="Optional path for the unpacked repository in cvmfs (used to docker images lookup)"
+        )
         additional_directories_in_path: List[str] = Field(
             default_factory=lambda: os.environ.get(
                 "ADDITIONAL_DIRECTORIES_IN_PATH",
@@ -448,6 +452,7 @@ class BuildConfig(BaseModel):
             shub_proxy_master_token=self.shub_proxy.master_token,
             shub_cache_seconds=self.shub_proxy.cache_validity_seconds,
             readonly_image_dir=self.volumes.image_dir,
+            cvmfs_unpacked_path=self.volumes.cvmfs_unpacked_path,
             fakeroot=self.apptainer.fakeroot,
             userns=self.apptainer.userns,
             sharens=self.apptainer.sharens,
