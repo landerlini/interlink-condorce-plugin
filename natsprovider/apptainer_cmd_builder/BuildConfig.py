@@ -114,6 +114,16 @@ class BuildConfig(BaseModel):
                 description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
                 json_schema_extra=dict(arg='--ntasks %d'),
             )
+            reservation: Optional[str] = Field(
+                default=None,
+                description="Specify a reservation in the slurm cluster",
+                json_schema_extra = dict(arg='--reservation %s'),
+            )
+            nodelist: Optional[str] = Field(
+                default=None,
+                description="Specify a list of node in the slurm cluster",
+                json_schema_extra = dict(arg='--nodelist %s'),
+            )
 
 
         flavors: Optional[List[SlurmFlavor]] = Field(
@@ -220,6 +230,16 @@ class BuildConfig(BaseModel):
             default=1,
             description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
             json_schema_extra=dict(arg='--ntasks %d'),
+        )
+        reservation: Optional[str] = Field(
+            default=None,
+            description="Specify a reservation in the slurm cluster",
+            json_schema_extra=dict(arg='--reservation %s'),
+        )
+        nodelist: Optional[str] = Field(
+            default=None,
+            description="Specify a list of node in the slurm cluster",
+            json_schema_extra=dict(arg='--nodelist %s'),
         )
         generic_resources: List[str] = Field(
             default=[],
