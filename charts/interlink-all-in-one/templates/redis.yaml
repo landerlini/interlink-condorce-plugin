@@ -82,7 +82,7 @@ spec:
               path: redis.conf
 
       nodeSelector:
-        kubernetes.io/hostname: {{ .Values.redisNodeName | required "redisNodeName, defining the node where to run redis, must be defined" }}
+        kubernetes.io/role: {{ .Values.redisNodeRole | default "db" }}
 
       priorityClassName: redis
 
