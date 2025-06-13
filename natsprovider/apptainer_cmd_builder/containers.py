@@ -75,6 +75,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
         description="SingularityHub proxy server without protocol"
     )
 
+    cvmfs_unpacked_path: Optional[str] = Field(
+        default=None,
+        description="SingularityHub proxy server without protocol"
+    )
+
     shub_proxy_master_token: Optional[str] = Field(
         default=cfg.SHUB_PROXY_MASTER_TOKEN,
         description="SingularityHub proxy master token used to generate client tokens"
@@ -119,6 +124,24 @@ class ContainerSpec(BaseModel, extra="forbid"):
         default=cfg.APPTAINER_FAKEROOT,
         description="Enable --fakeroot option in apptainer",
         json_schema_extra=dict(arg='--fakeroot'),
+    )
+
+    userns: bool = Field(
+        default=False,
+        description="Enable --userns option in apptainer",
+        json_schema_extra=dict(arg='--userns'),
+    )
+
+    sharens: bool = Field(
+        default=False,
+        description="Enable --sharens option in apptainer",
+        json_schema_extra=dict(arg='--sharens'),
+    )
+
+    uts: bool = Field(
+        default=False,
+        description="Enable --uts option in apptainer",
+        json_schema_extra=dict(arg='--uts'),
     )
 
     containall: bool = Field(
@@ -192,6 +215,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
         default=False,
         description="Convert SIF file to temporary sandbox before running",
         json_schema_extra = dict(arg='--unsquash'),
+    )
+
+    tmp_dir_mode: Literal['bind', 'scratch', 'none'] = Field(
+        default='scratch',
+        description="Technique to make /tmp and /var/tmp available to the contained application",
     )
 
     @property
@@ -268,7 +296,13 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [f'--env-file {self.env_file_path}']
 
         # Volumes
-        ret += [f'--bind {self.tmp_dir}:/tmp', f'--bind {self.var_tmp_dir}:/var/tmp']
+        if self.tmp_dir_mode == 'bind':
+            ret += [f'--bind {self.tmp_dir}:/tmp', f'--bind {self.var_tmp_dir}:/var/tmp']
+        elif self.tmp_dir_mode == 'scratch':
+            ret += [f'--scratch /tmp', f'--scratch /var/tmp', f'--workdir {self.tmp_dir}']
+        elif self.tmp_dir_mode == 'none':
+            pass
+
         ret += [str(vb) for vb in set(self.volume_binds)]
 
         # Executable
@@ -336,13 +370,22 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
         local_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
         cached_image = os.path.join(self.cachedir, self.image.replace(":", "_"))
+        cvmfs_enable, cvmfs_image = (
+            (1, os.path.join(self.cvmfs_unpacked_path, self.image))
+            if self.cvmfs_unpacked_path is not None else
+            (0, None)
+        )
+
         rndid = generate_uid()
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
             ret += [dedent(f"""
-                REMOTE_IMAGE_MD5=$(curl -vs {self.shub_proxy_server}/get-docker-md5/{self.image} -H \"X-Token: {self.shub_token}\" )
+                REMOTE_IMAGE_MD5=$(curl -Lvs {self.shub_proxy_server}/get-docker-md5/{self.image} -H \"X-Token: {self.shub_token}\" )
                 if [ -f {local_image} ]; then
                     echo "Using local static image from {local_image}"
                     IMAGE_{uid}={local_image}
+                elif [ {cvmfs_enable} -eq 1 ] && [ -f {cvmfs_image} ]; then
+                    echo "Using cvmfs image from {cvmfs_image}"
+                    IMAGE_{uid}={cvmfs_image}
                 elif [ -f {cached_image} ] && [[ "$REMOTE_IMAGE_MD5" == "$(md5sum {cached_image} | cut -d ' ' -f 1)" ]]; then
                     IMAGE_{uid}={cached_image}
                 else
@@ -372,7 +415,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
         else:
             ret += [
                 f"if [ -f {local_image} ]; then",
+                f"  echo Using local image from {local_image}",
                 f"  IMAGE_{uid}={local_image}",
+                f"elif [ {cvmfs_enable} -eq 1 ] && [ -f {cvmfs_image} ]; then",
+                f"  echo Using cvmfs image from {cvmfs_image}",
+                f"  IMAGE_{uid}={cvmfs_image}",
                 f"else",
                 f"  IMAGE_{uid}={self.formatted_image}",
                 f"fi",

@@ -61,6 +61,8 @@ class Flavor(BaseModel):
     nominal_quota: Dict[ResourceKey, Union[int, str]]
     can_lend_to: List[LendingStruct] = Field([])
     allocatable_quota: Dict[str, Dict[ResourceKey, Union[int, str]]] = Field({})
+    labels: Dict[str, List[str]] = Field({})
+    taints: Dict[str, List[str]] = Field({})
 
     async def on_tick(self):
         pass
@@ -170,7 +172,9 @@ class NatsFlavor(Flavor):
         if pool in self.pools or (self.pool_reg_exp is not None and len(re.findall(self.pool_reg_exp, pool)) > 0):
             resource_struct = json.loads(msg.data)
             logging.getLogger(self.name).info(f"Processing resource update for pool `{pool}`")
-            self.allocatable_quota[pool] = resource_struct
+            self.allocatable_quota[pool] = resource_struct.get('quotas', dict())
+            self.labels[pool] = resource_struct.get('labels', [])
+            self.taints[pool] = resource_struct.get('taints', [])
             if self._pool_timestamps is None:
                 self._pool_timestamps = {}
             self._pool_timestamps[pool] = datetime.now()
@@ -189,15 +193,43 @@ class NatsFlavor(Flavor):
                 if self.virtual_node is not None:
                     node_labels.update({'kubernetes.io/hostname': self.virtual_node})
 
+                rf_labels = {}
+                for label_string in self.labels[pool]:
+                    if len(label_string) == 0:
+                        continue
+                    elif label_string[:-1].count('=') == 0:
+                        rf_labels[label_string] = True
+                    elif label_string[:-1].count('=') == 1:
+                        key, value = label_string.split('=')
+                        rf_labels[key] = value
+                    else:
+                        logging.getLogger(self.name).error(
+                            f"Invalid label {label_string}"
+                        )
+
+                node_taints = [dict(key='virtual-node.interlink/no-schedule', value='true', effect='NoSchedule')]
+                for taint_string in self.taints[pool]:
+                    try:
+                        key_value, effect = taint_string.split(":")
+                        key, value = key_value.split("=")
+                        node_taints.append(
+                            dict(key=key, value=value, effect=effect)
+                        )
+                    except ValueError:
+                        logging.getLogger(self.name).error(
+                            f"Invalid taint {taint_string}"
+                        )
+
                 body = dict(
                     apiVersion="kueue.x-k8s.io/v1beta1",
                     kind="ResourceFlavor",
-                    metadata=dict(name=flavor_name),
+                    metadata=dict(
+                        name=flavor_name,
+                        labels=rf_labels,
+                    ),
                     spec=dict(
                         nodeLabels=node_labels,
-                        nodeTaints=[
-                            dict(key='virtual-node.interlink/no-schedule', value='true', effect='NoSchedule'),
-                        ],
+                        nodeTaints=node_taints,
                         tolerations=[
                             dict(key='pool.vk.io', value=pool, effect='NoSchedule')
                         ],

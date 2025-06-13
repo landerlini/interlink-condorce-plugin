@@ -198,7 +198,7 @@ def to_snakecase(s: str):
 
 
 
-def compute_pod_resource(pod: interlink.PodRequest, resource: str):
+def compute_pod_resource(pod: interlink.PodRequest, resource: str, default_per_container: str = "1"):
     """
     Loops over the containers of a pod to sum resource requests/limits.
 
@@ -208,11 +208,12 @@ def compute_pod_resource(pod: interlink.PodRequest, resource: str):
      - 'memory': number of bytes
     """
     _resource = 'cpu' if resource == 'millicpu' else resource
+    default = default_per_container
 
     # check if the pod has requested an nvidia.com/gpu resource
     if resource == 'nvidia.com/gpu':
         return sum([
-            int(parse_quantity(((c.get('resources') or {}).get('requests') or {}).get('nvidia.com/gpu') or "0"))
+            int(parse_quantity(((c.get('resources') or {}).get('requests') or {}).get('nvidia.com/gpu') or default))
             for c in pod.spec['containers']
         ])
 
@@ -220,8 +221,8 @@ def compute_pod_resource(pod: interlink.PodRequest, resource: str):
         math.ceil(
             (1000 if resource == 'millicpu' else 1) * sum([
                 max(
-                    parse_quantity(((c.get('resources') or {}).get('requests') or {}).get(_resource) or "1"),
-                    parse_quantity(((c.get('resources') or {}).get('limit') or {}).get(_resource) or "1"),
+                    parse_quantity(((c.get('resources') or {}).get('requests') or {}).get(_resource) or default),
+                    parse_quantity(((c.get('resources') or {}).get('limit') or {}).get(_resource) or default),
                 ) for c in pod.spec['containers'] ]
             )
         )

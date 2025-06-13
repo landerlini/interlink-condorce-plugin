@@ -10,6 +10,9 @@ import re
 from enum import IntEnum
 from typing import Union
 
+from kubernetes.utils import parse_quantity
+from math import ceil
+
 from .. import interlink
 from ..utils import  compute_pod_resource, JobStatus, Resources
 from ..BaseNatsProvider import BaseNatsProvider
@@ -62,6 +65,85 @@ class SlurmProvider(BaseNatsProvider):
         self._cached_squeue_time: Union[datetime, str, None] = None
         BaseNatsProvider.__init__(self, build_config=build_config, **kwargs)
 
+
+    def _resolve_slurm_flavor(
+            self,
+            pod: interlink.PodRequest,
+            options: BuildConfig.SlurmOptions
+    ) -> BuildConfig.SlurmOptions:
+        """
+        Based on PodSpec matches the first compliant SlurmFlavor and use it to override and return SlurmOptions
+        """
+        v1pod = pod.deserialize()
+        ret = options.model_copy(deep=True)
+
+        def _get_max_resource(f, name: str, default: Union[str, int]):
+            return parse_quantity(str(f.max_resources.get(name, default)))
+
+        for i_flavor, flavor in enumerate(options.flavors, 1):
+            # If time, memory or CPU are not specified, they are considered as unlimited for the flavor.
+            conditions = [
+                    flavor.max_time_seconds is None or v1pod.spec.active_deadline_seconds <= flavor.max_time_seconds,
+                    compute_pod_resource(pod, "cpu") <= _get_max_resource(flavor, 'cpu', '1Ei'),
+                    compute_pod_resource(pod, "memory") <= _get_max_resource(flavor, 'memory', '1Ei')
+            ]
+
+            # If a generic resource is not specified, it is considered as not available for the flavor.
+            for key in [k for k in flavor.max_resources.keys() if k not in ('cpu', 'memory')]:
+                conditions.append(
+                    compute_pod_resource(pod, key, default_per_container="0") <= _get_max_resource(flavor, key, 0)
+                )
+
+            if all(conditions):
+                self.logger.info(f"Matched slurm flavor #{i_flavor}.")
+                for prop_name in options.model_json_schema()['properties'].keys():
+                    if hasattr(flavor, prop_name) and getattr(flavor, prop_name) is not None:
+                        setattr(ret, prop_name, getattr(flavor, prop_name))
+
+                return ret
+
+            self.logger.info(f"Flavor {i_flavor} did not match with conditions: {conditions}")
+
+        if len(options.flavors):
+            self.logger.info(f"No SlurmFlavor was matched. Falling back on default configuration.")
+
+        return ret
+
+    def _update_with_resource_requests(
+            self,
+            pod: interlink.PodRequest,
+            options: BuildConfig.SlurmOptions,
+    ) -> BuildConfig.SlurmOptions:
+        v1pod = pod.deserialize()
+        options = options.model_copy()
+
+        self.logger.info(f"Pre-Configured options.memory {options.memory}")
+
+        # Prepare the defaults for CPU and memory
+        if options.cpu is None:
+            options.cpu = int(ceil(parse_quantity(options.max_resources.get('cpu', 1))))
+
+        if options.memory is None:
+            options.memory = options.max_resources.get('memory', '4G')
+            options.memory = str( int(parse_quantity(options.memory)) >> 20 ) + "M"
+
+        requested_cpu = compute_pod_resource(pod, "cpu")
+        if requested_cpu is not None:
+            options.cpu = requested_cpu
+
+        requested_memory = compute_pod_resource(pod, "memory")
+        if requested_memory is not None:
+            options.memory = str( requested_memory >> 20 ) + "M"
+
+        self.logger.info(f"""{v1pod.metadata.name}.{v1pod.metadata.namespace} requested:
+            CPU:        {requested_cpu   }. Assigned: {options.cpu}.
+            Memory:     {requested_memory}. Assigned: {options.memory}.
+            Resources:  {", ".join(options.generic_resources)}. 
+            """
+        )
+
+        return options
+
     async def _retrieve_job_status(self, job_name: str) -> Union[str, None]:
         # Try to wait for previous sacct request to reply for up to 5 seconds
         for _ in range(50):
@@ -69,6 +151,9 @@ class SlurmProvider(BaseNatsProvider):
                 await asyncio.sleep(0.1)
             else:
                 break
+
+        if self._cached_squeue_time == "processing":
+            self.logger.error(f"Timeout in processing squeue output.")
 
         if (
             self._cached_squeue_time != "processing" and (
@@ -117,9 +202,9 @@ class SlurmProvider(BaseNatsProvider):
                 statuses = {}
                 for line in lines:
                     if '|' in line:
-                        job_name, slurm_status = line.split('|')
-                        self._cached_squeue[job_name] = slurm_status
-                        statuses[slurm_status] = statuses.get(slurm_status, 0) + 1
+                        _job_name, _slurm_status = line.split('|')
+                        self._cached_squeue[_job_name] = _slurm_status
+                        statuses[_slurm_status] = statuses.get(_slurm_status, 0) + 1
 
                 self.logger.info(
                     f"Retrieved {len(lines)} jobs: {', '.join([f'{n} {k}' for k, n in statuses.items()])}"
@@ -147,8 +232,10 @@ class SlurmProvider(BaseNatsProvider):
         # Ensure directories exist
         for dirname in (apptainer_cachedir, scratch_area, sandbox):
             self.logger.info(f"Creating directory {dirname}")
-            Path(dirname).mkdir(parents=True, exist_ok=True)
-            
+            try:
+                Path(dirname).mkdir(parents=True, exist_ok=True)
+            except PermissionError:
+                self.logger.error(f"Cannot create {dirname}. Permission denied. Might retry from compute node.")
 
         # Write job_sh to a script file
         with open(job_script_path, "w") as f:
@@ -162,30 +249,13 @@ class SlurmProvider(BaseNatsProvider):
         if self._build_config.slurm is None:
             self.logger.info("No slurm configuration specified in the build config. Using default values.")
 
-        # Default Slurm output and error log paths
-        sbatch_output_flag = f"#SBATCH --output={sandbox}/stdout.log"
-        sbatch_error_flag = f"#SBATCH --error={sandbox}/stderr.log"
+        # Overwrites the SLURM config based on the resolved SLURM flavor
+        scfg = self._resolve_slurm_flavor(pod, self.build_config.slurm)
 
-        scfg = self._build_config.slurm
+        # Updates the slurm config based on the resource limits defined in the pod
+        scfg = self._update_with_resource_requests(pod, scfg)
 
-        selected_flavor = None
-        if hasattr(scfg, 'flavors') and scfg.flavors:
-            required_gpu = compute_pod_resource(pod, 'nvidia.com/gpu')
-            self.logger.info(f"Required GPU: {required_gpu}")
-            for flavor in scfg.flavors:
-                flavor_gpu_limit = flavor.max_resources.get('nvidia.com/gpu', 0)
-                if flavor_gpu_limit >= required_gpu:
-                    selected_flavor = flavor
-                    self.logger.info(f"Selected flavor: partition={flavor.partition}, account={flavor.account}")
-                    break
-
-        if selected_flavor:
-            scfg.account = selected_flavor.account
-            scfg.partition = selected_flavor.partition
-            scfg.qos = selected_flavor.qos
-        else:
-            self.logger.info("No suitable flavor found. Using default slurm configuration.")
-
+        # Keywords are replaced in the json schema as defined in BuildConfig
         keywords = dict(sandbox=sandbox, job_name=job_name)
 
         # sbatch flags
@@ -200,36 +270,12 @@ class SlurmProvider(BaseNatsProvider):
                     )
                 elif BuildConfig.check_type(scfg, prop_name, ['string']) and getattr(scfg, prop_name) is not None:
                     sbatch_flags.append(
-                        "#SBATCH " + prop_schema['arg'] % (getattr(scfg, prop_name) % keywords)
+                        "#SBATCH " + (prop_schema['arg'] % (getattr(scfg, prop_name)) % keywords)
                     )
                 elif BuildConfig.check_type(scfg, prop_name, ['array']) and getattr(scfg, prop_name) is not None:
                     for value in getattr(scfg, prop_name):
                         sbatch_flags.append("#SBATCH " + prop_schema['arg'] % (value % keywords) )
 
-        if selected_flavor:
-            for prop_name, prop_schema in selected_flavor.model_json_schema()['properties'].items():
-                if not hasattr(scfg, prop_name):
-                    self.logger.warning(f"Flavor property {prop_name} not found in slurm configuration. Skipping.")
-                    continue
-                if 'arg' in prop_schema and 'type' in prop_schema:
-                    value = getattr(selected_flavor, prop_name)
-                    if value is not None:
-                        if prop_schema['type'] == 'boolean' and value:
-                            flag = "#SBATCH " + prop_schema['arg']
-                        elif prop_schema['type'] == 'integer':
-                            flag = "#SBATCH " + prop_schema['arg'] % value
-                        elif prop_schema['type'] == 'string':
-                            formatted_value = value % keywords if '%' in value else value
-                            flag = "#SBATCH " + prop_schema['arg'] % formatted_value
-                        elif prop_schema['type'] == 'array':
-                            for v in value:
-                                formatted_value = v % keywords if '%' in v else v
-                                flag = "#SBATCH " + prop_schema['arg'] % formatted_value
-                                if flag not in sbatch_flags:
-                                    sbatch_flags.append(flag)
-                            continue  # Skip the rest of the loop for arrays.
-                        if flag not in sbatch_flags:
-                            sbatch_flags.append(flag)
 
 
         # Create the Slurm script
@@ -300,8 +346,10 @@ class SlurmProvider(BaseNatsProvider):
         job_status = await self._retrieve_job_status(job_name)
 
         if job_status is None:
+            self.logger.warning(f"Status retrieved for job {job_name} is not valid ({job_status})")
             return JobStatus(phase="unknown")
         elif any([s in job_status for s in SLURM_FAILED_STATUSES]):
+            self.logger.warning(f"Job {job_name} failed with status {job_status}")
             return JobStatus(phase="failed", reason=job_status)
         elif any([s in job_status for s in SLURM_PENDING_STATUSES]):
             return JobStatus(phase="pending")

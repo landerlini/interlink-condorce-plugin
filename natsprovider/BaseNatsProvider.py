@@ -1,7 +1,6 @@
 import re
 import asyncio
 import logging
-import os
 from typing import Dict, Union, List
 
 from datetime import datetime
@@ -12,6 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import HTTPException
 import nats.aio.msg
 from . import interlink
+from .SubmissionRecord import SubmissionRecord
 import orjson
 import nats
 import nats.errors
@@ -57,6 +57,8 @@ class BaseNatsProvider:
         self._declared_resources = resources
         self._warned_on_unset_resources = list()
 
+        self._submission_record = SubmissionRecord()
+
     @property
     def config(self):
         if not hasattr(self._build_config, self._provider_config_key):
@@ -77,7 +79,7 @@ class BaseNatsProvider:
 
     @property
     def censored_nats_server(self):
-        password = re.findall("\w+://[\w\d-]+:([^@]+)@.*", self._nats_server)
+        password = re.findall(r"\w+://[\w\d-]+:([^@]+)@.*", self._nats_server)
         if len(password):
             return self._nats_server.replace(password[0], "***")
         return self._nats_server
@@ -229,6 +231,7 @@ class BaseNatsProvider:
     async def create_pod_callback(self, msg: nats.aio.msg.Msg):
         """Wrapper decompressing and parsing the nats body"""
         job_name = msg.subject.split(".")[-1]
+        self._submission_record.mark_job_as_submitted(job_name)
         body = orjson.loads(zlib.decompress(msg.data))
         job_sh = body['job_sh']
         pod = interlink.PodRequest(**body.get('pod', dict()))
@@ -254,6 +257,7 @@ class BaseNatsProvider:
             await msg.respond(
                 NatsResponse(status_code=200, data=job_id_in_backend.encode('ascii')).to_nats()
             )
+        self.logger.info(f"Job submission procedure terminated")
 
     async def create_pod(self, job_name: str, job_sh: str, pod: interlink.PodRequest) -> str:
         """Override me!"""
@@ -305,6 +309,13 @@ class BaseNatsProvider:
         else:
             if job_status is not None:
                 self.logger.info(f"Retrieved status of {job_name}: {job_status.phase}")
+                if job_status.phase == 'unknown':
+                    if self._submission_record.is_being_submitted(job_name):
+                        self.logger.warning(f"Status of job {job_name} set to `pending` (possibly it is being submitted)")
+                        job_status.phase = 'pending'
+                    else:
+                        self.logger.error(f"We are responsible for job {job_name}, but unable to recover its status!")
+
                 await msg.respond(
                     NatsResponse(status_code=200, data=job_status.model_dump()).to_nats()
                 )
@@ -371,11 +382,17 @@ class BaseNatsProvider:
             else:
                 rsrc.gpus = int(rsrc.gpus)
 
+            payload = dict(
+                quotas=rsrc.to_kubernetes(),
+                labels=self.build_config.node.labels,
+                taints=self.build_config.node.taints,
+            )
+
             resources_subject = '.'.join((self._nats_subject, 'resources', self._nats_pool))
             async with self.nats_connection() as nc:
                 await nc.publish(
                     subject=resources_subject,
-                    payload=orjson.dumps(rsrc.to_kubernetes())
+                    payload=orjson.dumps(payload)
                 )
                 self.logger.info(f"Published allocatable resources on subject {resources_subject}")
 

@@ -101,7 +101,8 @@ class NatsGateway:
 
     async def published_resources_callback(self, msg: nats.aio.msg.Msg):
         pool = msg.subject.split(".")[-1]
-        for resource, limit in orjson.loads(msg.data).items():
+        response = orjson.loads(msg.data)
+        for resource, limit in response.get('quotas', {}).items():
             metrics.gauges['pool_resources'].labels(pool, resource).set(parse_quantity(limit))
 
 

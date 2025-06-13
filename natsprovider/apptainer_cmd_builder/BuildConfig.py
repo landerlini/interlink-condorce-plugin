@@ -30,6 +30,10 @@ class BuildConfig(BaseModel):
             default_factory=lambda: os.environ.get("IMAGE_DIR", "/opt/exp_software/opssw/budda"),
             description="Location where to look for pre-built images",
         )
+        cvmfs_unpacked_path: Optional[str] = Field(
+            default=None,
+            description="Optional path for the unpacked repository in cvmfs (used to docker images lookup)"
+        )
         additional_directories_in_path: List[str] = Field(
             default_factory=lambda: os.environ.get(
                 "ADDITIONAL_DIRECTORIES_IN_PATH",
@@ -47,6 +51,19 @@ class BuildConfig(BaseModel):
             """
         )
 
+    class NodeOptions(BaseModel, extra='forbid'):
+        """
+        Options configuring the node with labels and taints to allow affinity and node selection mechanics.
+        """
+        labels: List[str] = Field(
+            default=[],
+            description="List of labels in format key=value to configure the Kueue ResourceFlavor",
+        )
+        taints: List[str] = Field(
+            default=[],
+            description="List of taints in format key=value:effect to configure the Kueue ResourceFlavor",
+        )
+
     class SlurmOptions(BaseModel, extra='forbid'):
         """
         Options configuring the behavior of SLURM runtime.
@@ -56,11 +73,13 @@ class BuildConfig(BaseModel):
             Define a flavor (partition and qos) for a slurm job, and criteria on the Kubernetes-defined
             resources to be matched.
             """
-            account: str = Field(
+            account: Optional[str] = Field(
+                default=None,
                 description="Slurm account (as for --account flag)",
                 json_schema_extra=dict(arg='--account %s'),
             )
-            partition: str = Field(
+            partition: Optional[str] = Field(
+                default=None,
                 description="Slurm partition (as for --partition flag)",
                 json_schema_extra=dict(arg='--partition %s'),
             )
@@ -75,13 +94,39 @@ class BuildConfig(BaseModel):
                 json_schema_extra=dict(arg='--gres %s'),
             )
             max_time_seconds: Optional[int] = Field(
-                default=3600,
+                default=None,
                 description="Maximum duration of a pod (as for activeDeadlineSeconds) for being assigned.",
                 json_schema_extra=dict(arg='--time %d'),
             )
             max_resources: Dict[Literal['cpu', 'memory', 'nvidia.com/gpu'], Union[str, int]] = Field(
                 default={},
                 description="Maximum (extended) resources of the pod for being assigned to this flavor."
+            )
+
+            memory: Optional[str] = Field(
+                default=None,
+                description="Default value of the RAM memory to assign to the job.",
+                json_schema_extra=dict(arg='--mem %sB'),
+            )
+            cpu: Optional[int] = Field(
+                default=None,
+                description="Number of CPUs per task",
+                json_schema_extra=dict(arg='--cpu-per-task %d'),
+            )
+            ntasks: Optional[int] = Field(
+                default=None,
+                description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
+                json_schema_extra=dict(arg='--ntasks %d'),
+            )
+            reservation: Optional[str] = Field(
+                default=None,
+                description="Specify a reservation in the slurm cluster",
+                json_schema_extra = dict(arg='--reservation %s'),
+            )
+            nodelist: Optional[str] = Field(
+                default=None,
+                description="Specify a list of node in the slurm cluster",
+                json_schema_extra = dict(arg='--nodelist %s'),
             )
 
 
@@ -110,11 +155,6 @@ class BuildConfig(BaseModel):
             default=1,
             description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
             json_schema_extra=dict(arg='--nodes %d'),
-        )
-        ntasks: Optional[int] = Field(
-            default=1,
-            description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
-            json_schema_extra=dict(arg='--ntasks %d'),
         )
         cpus_per_task: Optional[int] = Field(
             default=None,
@@ -180,6 +220,31 @@ class BuildConfig(BaseModel):
             description="Error file (SLURM flag: --error or -e)",
             json_schema_extra=dict(arg='--error %s'),
         )
+        memory: Optional[str] = Field(
+            default="4G",
+            description="Default value of the RAM memory to assign to the job.",
+            json_schema_extra=dict(arg='--mem %s'),
+        )
+        cpu: Optional[int] = Field(
+            default=1,
+            description="Number of CPUs per task",
+            json_schema_extra=dict(arg='--cpus-per-task %d'),
+        )
+        ntasks: Optional[int] = Field(
+            default=1,
+            description="Number of tasks to be run in parallel (SLURM flag: --ntasks or -n)",
+            json_schema_extra=dict(arg='--ntasks %d'),
+        )
+        reservation: Optional[str] = Field(
+            default=None,
+            description="Specify a reservation in the slurm cluster",
+            json_schema_extra=dict(arg='--reservation %s'),
+        )
+        nodelist: Optional[str] = Field(
+            default=None,
+            description="Specify a list of node in the slurm cluster",
+            json_schema_extra=dict(arg='--nodelist %s'),
+        )
         generic_resources: List[str] = Field(
             default=[],
             description="List of generic resources (SLURM flag: --gres)",
@@ -210,6 +275,18 @@ class BuildConfig(BaseModel):
         fakeroot: bool = Field(
             default_factory=lambda: os.environ.get("APPTAINER_FAKEROOT", "no").lower() in ["true", "yes", "y"],
             description="Enables --fakeroot in apptainer exec/run commands"
+        )
+        userns: bool = Field(
+            default=False,
+            description="Enables --userns (user namespace) in apptainer exec/run commands"
+        )
+        uts: bool = Field(
+            default=False,
+            description="Enables --uts (hostname and nis domain namespace) in apptainer exec/run commands"
+        )
+        sharens: bool = Field(
+            default=False,
+            description="Share the namespace and image with other containers launched from the same parent process"
         )
         containall: bool = Field(
             default_factory=lambda: os.environ.get("APPTAINER_FAKEROOT", "no").lower() in ["true", "yes", "y"],
@@ -250,6 +327,10 @@ class BuildConfig(BaseModel):
         unsquash: bool = Field(
             default=False,
             description="Convert SIF file to temporary sandbox before running",
+        )
+        tmp_dir_mode: Literal['bind', 'scratch', 'none'] = Field(
+            default='scratch',
+            description="Technique to make /tmp and /var/tmp available to the contained application",
         )
 
 
@@ -297,6 +378,10 @@ class BuildConfig(BaseModel):
     resources: Resources = Field(
         default=Resources(),
         description="Computing resources made available by the pool (not by the single submitter!)"
+    )
+    node: NodeOptions = Field(
+        default=NodeOptions(),
+        description=NodeOptions.__doc__
     )
 
     input_toml_filename: Optional[str] = Field(
@@ -367,7 +452,11 @@ class BuildConfig(BaseModel):
             shub_proxy_master_token=self.shub_proxy.master_token,
             shub_cache_seconds=self.shub_proxy.cache_validity_seconds,
             readonly_image_dir=self.volumes.image_dir,
+            cvmfs_unpacked_path=self.volumes.cvmfs_unpacked_path,
             fakeroot=self.apptainer.fakeroot,
+            userns=self.apptainer.userns,
+            sharens=self.apptainer.sharens,
+            uts=self.apptainer.uts,
             containall=self.apptainer.containall,
             no_init=self.apptainer.no_init,
             no_home=self.apptainer.no_home,
@@ -375,6 +464,7 @@ class BuildConfig(BaseModel):
             nvidia_support=self.apptainer.nvidia_support,
             cleanenv=self.apptainer.cleanenv,
             unsquash=self.apptainer.unsquash,
+            tmp_dir_mode=self.apptainer.tmp_dir_mode,
         )
 
     @property

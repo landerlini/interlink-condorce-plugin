@@ -117,8 +117,6 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
 
     def build_volume_files(self):
         ret = '\n'.join([volume.initialize() for volume in self.volumes])
-        if any([v.fuse_enabled_on_host and isinstance(v, FuseVolume) for v in self.volumes]):
-            ret += "\nsleep %d;\n" % self.fuse_sleep_seconds
         return ret
 
     def cleanup_volume_files(self):
@@ -138,6 +136,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         ## Setting umask for creating new files read-writable from all
         umask 0011
         
+        export STARTING_DIR=$PWD
         export SANDBOX=${SANDBOX:-$PWD}
         touch $SANDBOX/logs 
         
@@ -155,8 +154,19 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         %(environment_files)s
         
         ################################################################################
+        ## Defines and register the callback for cleaning volumes up upon job termination
+        cleanup() {
+        echo "Cleaning up volumes"
+        %(cleanup_volumes)s
+        cd $STARTING_DIR 
+        rm -rf %(workdir)s
+        }
+        trap cleanup SIGTERM SIGKILL EXIT
+        
         ## Volumes settings
         %(volume_files)s
+        
+        
         
         ################################################################################
         ## Initialization section
@@ -172,12 +182,6 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         echo $(gzip -c $SANDBOX/logs | base64)
         echo "==== OUTPUT END %(application_token)s ===="
         
-        ################################################################################
-        ## Clean-up section
-        %(cleanup_volumes)s
-        
-        cd - 
-        rm -rf %(workdir)s
         """) % dict(
             version=version,
             docs=''.join(["## " + line for line in self.description.splitlines()]),
