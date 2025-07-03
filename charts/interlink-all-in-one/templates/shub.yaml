@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shub-proxy
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shub-proxy
+
+  template:
+    metadata:
+      labels:
+        app: shub-proxy
+    spec:
+      containers:
+        - name: shub-proxy
+          image: {{ .Values.shubProxyImage | default "landerlini/shub-proxy:v0.0" }}
+          ports:
+            - containerPort: {{ .Values.shubProxyPort }}
+
+          env:
+            - name: PORT
+              value: {{ .Values.shubProxyPort | quote }}
+            - name: DEPLOYMENT_PKEY
+              value: {{ .Values.shubProxyDeploymentPrivateKey |  required "shubProxyDeploymentPrivateKey required" }}
+            - name: S3_ACCESS_KEY
+              value: {{ .Values.shubProxyS3AccessKey |  required "shubProxyS3AccessKey required" }} 
+            - name: S3_SECRET_KEY
+              value: {{ .Values.shubProxyS3SecretKey |  required "shubProxyS3SecretKey required" }} 
+            - name: S3_BUCKET
+              value: {{ .Values.shubProxyS3Bucket |  required "shubProxyS3Bucket required" }} 
+            - name: S3_ENDPOINT
+              value: {{ .Values.shubProxyS3Endpoint |  required "shubProxyS3Endpoint required" }} 
+            - name: MASTER_TOKEN
+              value: {{ .Values.shubProxyMasterToken |  required "shubProxyMasterToken required" }} 
+            - name: SQLITE3_DATABASE_PATH
+              value: {{ .Values.shubProxyInternalSQLitePath | default "/var/lib/shub" }}/metadata.db
+
+          volumeMounts:
+          - mountPath: {{ .Values.shubProxyInternalSQLitePath | default "/var/lib/shub" }}
+            name: sqlite
+
+      volumes:
+        - name: sqlite
+          hostPath:
+            path: {{ .Values.shubProxyHostSQLitePath | default "/var/lib/shub-proxy" }}/{{ .Release.Namespace }}/{{ .Values.nodeName | default .Release.Name }}
+            type: DirectoryOrCreate
+
+      nodeSelector:
+        kubernetes.io/role: {{ .Values.shubProxyNodeRole | default "db" }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: shub-proxy
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: shub-proxy
+
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      targetPort: {{ .Values.shubProxyPort }}
+      port: 80
+
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.natsClusterIssuerName | default "lets-issuer" }}
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+
+  name: shub-proxy
+  namespace: {{ .Release.Namespace }}
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: {{ .Values.hostname }} 
+    http:
+      paths:
+      - backend:
+            service:
+              name: shub-proxy
+              port:
+                name: http
+        path: /{{ .Values.shubProxyBaseUrl | default "shub-proxy" }}/?(.*)
+        pathType: ImplementationSpecific
+
+  {{ if .Values.certManagerEnabled }}
+  tls:
+  - hosts:
+    - {{ .Values.hostname }}
+    secretName: interlink-tls
+  {{ end }}
+
+
+

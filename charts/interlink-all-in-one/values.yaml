@@ -156,4 +156,45 @@ redisHostPath: /var/lib/redis
 # kueueNatsEnabled is a flag used to disable the kueue-nats operator 
 kueueNatsEnabled: true
 
+################################################################################
+## shub-proxy configuration
+
+# shubProxyImage is the docker image with the dependencies of the shub proxy
+shubProxyImage: "landerlini/shub-proxy:v0.0"
+
+# shubProxyPort internal port where to expose 
+shubProxyPort: 8080
+
+# shubProxyS3AccessKey is the access key for a bucket to be used to store images
+shubProxyS3AccessKey: 
+
+# shubProxyS3SecretKey is the secret key of a bucket to be used to store images
+shubProxyS3SecretKey: 
+
+# shubProxyS3Bucket is the bucket name where to store
+shubProxyS3Bucket: 
+
+# shubProxyS3Endpoint is the endpoint of the S3 service to be used for images
+shubProxyS3Endpoint:
+
+# shubProxyMasterToken is the token shared with submitters to request client tokens
+shubProxyMasterToken:
+ 
+# shubProxyDeploymentPrivateKey is the private key of a Deployment Key to access the GitHub repo
+shubProxyDeploymentPrivateKey: 
+
+# shubProxyInternalSQLitePath is the path, internal to the container, where metadata.db is stored
+shubProxyInternalSQLitePath: /var/lib/shub
+
+# shubProxyHostSQLitePath is the path, in the HOST file system , where metadata.db is stored
+shubProxyHostSQLitePath: /var/lib/shub-proxy
+
+# shubProxyNodeRole is the role (kubernetes.io/role label) 
+shubProxyNodeRole: db
+
+# shubProxyBaseUrl is the ingress-defined base URL to access shub-proxy
+shubProxyBaseUrl: shub-proxy
+
+
+
 
