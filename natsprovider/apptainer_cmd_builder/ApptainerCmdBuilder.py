@@ -112,8 +112,8 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         ]
         return '\n'.join(ret)
 
-    def cleanup_environment_files(self):
-        return '\n'.join([container.finalize() for container in self.init_containers + self.container])
+    # def cleanup_environment_files(self):
+    #     return '\n'.join([container.finalize() for container in self.init_containers + self.container])
 
     def build_volume_files(self):
         ret = '\n'.join([volume.initialize() for volume in self.volumes])
@@ -123,6 +123,11 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         ret = []
         if any([v.fuse_enabled_on_host and isinstance(v, FuseVolume) for v in self.volumes]):
             ret += ["sleep %d;\n" % self.fuse_sleep_seconds]
+
+        # Clean-up temporary data
+        for container in (self.containers + self.init_containers):
+            ret += [f"rm -rf {container.tmp_dir}", f"rm -rf {container.var_tmp_dir}"]
+
         return '\n'.join(ret + [volume.finalize() for volume in self.volumes])
 
     def dump(self):
