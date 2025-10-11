@@ -31,7 +31,7 @@ class BuildConfig(BaseModel):
             description="Location where to look for pre-built images",
         )
         cvmfs_unpacked_path: Optional[str] = Field(
-            default="/cvmfs/unpacked.infn.it",
+            default=None,
             description="Optional path for the unpacked repository in cvmfs (used to docker images lookup)"
         )
         additional_directories_in_path: List[str] = Field(
