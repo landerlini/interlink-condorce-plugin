@@ -126,14 +126,15 @@ class SlurmProvider(BaseNatsProvider):
         if options.cpu is None:
             options.cpu = int(ceil(parse_quantity(options.max_resources.get('cpu', 1))))
 
-        if options.memory is None:
-            options.memory = options.max_resources.get('memory', '4G')
-        options.memory = str(max(requested_memory, int(parse_quantity(options.memory))) >> 20) + "M"
-
         options.cpu = options.cpu if requested_cpu is None else max(options.cpu, requested_cpu)
 
+        if options.memory is None:
+            options.memory = options.max_resources.get('memory', '4G')
+
         if requested_memory is not None:
-            options.memory = str( requested_memory >> 20 ) + "M"
+            options.memory = str(max(requested_memory, int(parse_quantity(options.memory))) >> 20) + "M"
+
+
 
         self.logger.info(f"""{v1pod.metadata.name}.{v1pod.metadata.namespace} requested:
             CPU:        {requested_cpu   }. Assigned: {options.cpu}.
