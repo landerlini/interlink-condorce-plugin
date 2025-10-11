@@ -119,19 +119,20 @@ class SlurmProvider(BaseNatsProvider):
 
         self.logger.info(f"Pre-Configured options.memory {options.memory}")
 
+        requested_cpu = compute_pod_resource(pod, "cpu")
+        requested_memory = compute_pod_resource(pod, "memory")
+
         # Prepare the defaults for CPU and memory
         if options.cpu is None:
             options.cpu = int(ceil(parse_quantity(options.max_resources.get('cpu', 1))))
 
         if options.memory is None:
             options.memory = options.max_resources.get('memory', '4G')
-            options.memory = str( int(parse_quantity(options.memory)) >> 20 ) + "M"
+            options.memory = str(max(requested_memory, int(parse_quantity(options.memory))) >> 20) + "M"
 
-        requested_cpu = compute_pod_resource(pod, "cpu")
         if requested_cpu is not None:
-            options.cpu = requested_cpu
+            options.cpu = max(options.cpu, requested_cpu)
 
-        requested_memory = compute_pod_resource(pod, "memory")
         if requested_memory is not None:
             options.memory = str( requested_memory >> 20 ) + "M"
 
