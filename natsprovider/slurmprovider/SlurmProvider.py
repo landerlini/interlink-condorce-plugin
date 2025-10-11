@@ -128,10 +128,9 @@ class SlurmProvider(BaseNatsProvider):
 
         if options.memory is None:
             options.memory = options.max_resources.get('memory', '4G')
-            options.memory = str(max(requested_memory, int(parse_quantity(options.memory))) >> 20) + "M"
+        options.memory = str(max(requested_memory, int(parse_quantity(options.memory))) >> 20) + "M"
 
-        if requested_cpu is not None:
-            options.cpu = max(options.cpu, requested_cpu)
+        options.cpu = options.cpu if requested_cpu is None else max(options.cpu, requested_cpu)
 
         if requested_memory is not None:
             options.memory = str( requested_memory >> 20 ) + "M"
