@@ -281,7 +281,7 @@ def from_kubernetes(
     scratch_area = os.path.join(build_config.volumes.scratch_area, f".interlink.{pod.metadata.uid}")
     user_cache = (
         os.path.join(build_config.volumes.apptainer_cachedir, pod.metadata.labels['user'])
-        if 'user' in pod.metadata.labels.keys() else None
+        if pod.metadata.labels is not None and 'user' in pod.metadata.labels.keys() else None
     )
 
     return ApptainerCmdBuilder(
