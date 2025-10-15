@@ -119,6 +119,23 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         ret = '\n'.join([volume.initialize() for volume in self.volumes])
         return ret
 
+    def export_of_additional_directories_in_path(self):
+        if len(self.additional_directories_in_path) == 0:
+            return ""
+
+        ret = ["\n## Creating symbolic links to mask symbols (e.g. colon) in PATH"]
+        link = f"{os.path.join(self.workdir, 'bin')}%02d"
+        links = []
+        for i_path, path in enumerate(self.additional_directories_in_path):
+            ret.append(f"ln -s {path} {link % i_path}")
+            links.append(link % i_path)
+
+        ret.append(f"export PATH={':'.join(links)}")
+
+        return '\n'.join(ret)
+
+
+
     def cleanup_volume_files(self):
         ret = []
         if any([v.fuse_enabled_on_host and isinstance(v, FuseVolume) for v in self.volumes]):
@@ -171,8 +188,6 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         ## Volumes settings
         %(volume_files)s
         
-        
-        
         ################################################################################
         ## Initialization section
         %(exec_init_containers)s
@@ -197,9 +212,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
             exec_init_containers=self.exec_init_containers(),
             exec_containers=self.exec_containers(),
             cleanup_volumes=self.cleanup_volume_files(),
-            export_of_additional_directories_in_path="" if len(self.additional_directories_in_path) == 0 else (
-                f"export PATH={':'.join(self.additional_directories_in_path)}:$PATH"
-            ),
+            export_of_additional_directories_in_path=self.export_of_additional_directories_in_path(),
             application_token=cfg.APPLICATION_TOKEN,
         )
 
