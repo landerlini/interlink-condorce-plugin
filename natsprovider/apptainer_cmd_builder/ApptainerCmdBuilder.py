@@ -130,7 +130,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
             ret.append(f"ln -s {path} {link % i_path}")
             links.append(link % i_path)
 
-        ret.append(f"export PATH={':'.join(links)}")
+        ret.append(f"export PATH={':'.join(links)}:$PATH")
 
         return '\n'.join(ret)
 
