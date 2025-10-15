@@ -276,6 +276,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
         # If possible, will execute the fuse command on host, instead of inside the container
         if self.fuse_enabled_on_host:
             ret += [
+                f"ls /shared/home/anderlin/bin",
                 f"which juicefs",
                 f"/bin/bash -c env | grep PATH",
                 f"CACHEDIR={cache_path}/cache /bin/bash " + self.fuse_mount_script_host_path + " \"\" " + host_path + " &",
