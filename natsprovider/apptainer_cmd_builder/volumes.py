@@ -276,7 +276,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
         # If possible, will execute the fuse command on host, instead of inside the container
         if self.fuse_enabled_on_host:
             ret += [
-                f"CACHEDIR={cache_path}/cache " + self.fuse_mount_script_host_path + " \"\" " + host_path + " &",
+                f"CACHEDIR={cache_path}/cache /bin/bash " + self.fuse_mount_script_host_path + " \"\" " + host_path + " &",
                 f"FUSE_{sanitize_uid(self.uid).upper()}_PID=$!",
                 textwrap.dedent(
                     f"""
