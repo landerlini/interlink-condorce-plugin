@@ -187,7 +187,7 @@ spec:
               mountPath: /etc/interlink
 
         - name: plugin-api-server
-          image: {{ .Values.pluginImage | default "landerlini/interlink-condorce-plugin:v0.1.3" }}
+          image: {{ .Values.pluginImage | default "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor:main" }}
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -222,7 +222,7 @@ spec:
               readOnly: true
 
         - name: virtual-kubelet
-          image: {{ .Values.virtualKubeletImage | default "ghcr.io/intertwin-eu/interlink/virtual-kubelet-inttw:latest" }}
+          image: {{ .Values.virtualKubeletImage | default "ghcr.io/interlink-hq/interlink/virtual-kubelet-inttw:0.6.0" }}
           imagePullPolicy: Always
           env:
           - name: NODENAME

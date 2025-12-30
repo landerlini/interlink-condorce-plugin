@@ -31,7 +31,7 @@ serverExportPodData: true
 ## Interlink Virtual Kubelet configuration
   
 # virtualKubeletImage is the docker image of the virtual kubelet container
-virtualKubeletImage: "ghcr.io/intertwin-eu/interlink/virtual-kubelet-inttw:0.3.7"
+virtualKubeletImage: "ghcr.io/interlink-hq/interlink/virtual-kubelet-inttw:0.6.0"
 
 # virtualKubeletCommandPrefix is a prefix to the interlink command useful to hack the config
 virtualKubeletCommandPrefix: ""
@@ -70,7 +70,7 @@ virtualKubeletMemoryRequest: "100Mi"
 pluginShutdownSubject: null
 
 # pluginImage is the image of the plugin defining the environment where the plugin is run (as sync'ed from the git repository)
-pluginImage: "landerlini/interlink-condorce-plugin:v0.1.3"
+pluginImage: "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor:main"
 
 # pluginGitRepository and pluginGitRepositoryBranch identify the git branch to pick the nats plugin from
 pluginGitRepository: "https://github.com/landerlini/interlink-condorce-plugin"
