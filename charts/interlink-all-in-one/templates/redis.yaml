@@ -1,9 +1,10 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: redis
+  name: redis-{{ .Release.Name }}
   namespace: {{ .Release.Namespace }}
 data:
+  connector: "redis://:{{ .Values.redisDefaultPassword }}@redis-{{ .Values.nodeName | default .Release.Name }}:6379"
   redis-config: |
     requirepass {{ .Values.redisDefaultPassword }}
     save 600 1
@@ -27,7 +28,7 @@ description: "This priority class should be used for redis service pods only."
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redis
+  name: redis-{{ .Release.Name }}
   namespace: {{ .Release.Namespace }}
   labels:
     app: redis
@@ -76,7 +77,7 @@ spec:
             type: DirectoryOrCreate
         - name: config
           secret:
-            secretName: redis
+            secretName: redis-{{ .Release.Name }}
             items:
             - key: redis-config
               path: redis.conf

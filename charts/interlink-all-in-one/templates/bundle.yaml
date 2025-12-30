@@ -205,7 +205,10 @@ spec:
             - name: NATS_SERVER
               value: nats://{{ (index .Values.natsUsers 0).username }}:{{ (index .Values.natsUsers 0).password }}@{{ .Values.pluginNatsServer | default "nats:4222" }}
             - name: REDIS_CONNECTOR
-              value: "redis://:{{ .Values.redisDefaultPassword }}@redis-{{ .Values.nodeName | default .Release.Name }}:6379"
+              valueFrom:
+                secretKeyRef:
+                  name: redis-{{ .Release.Name }}
+                  key: connector
           ports:
             - containerPort: 8000
 
