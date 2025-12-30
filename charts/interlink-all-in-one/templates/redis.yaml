@@ -3,7 +3,7 @@ kind: Secret
 metadata:
   name: redis-{{ .Release.Name }}
   namespace: {{ .Release.Namespace }}
-data:
+stringData:
   connector: "redis://:{{ .Values.redisDefaultPassword }}@redis-{{ .Values.nodeName | default .Release.Name }}:6379"
   redis-config: |
     requirepass {{ .Values.redisDefaultPassword }}

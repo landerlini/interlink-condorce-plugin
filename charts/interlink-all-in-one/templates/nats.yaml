@@ -5,7 +5,7 @@ kind: Secret
 metadata:
   name: nats-config
   namespace: {{ .Release.Namespace }}
-data:
+stringData:
   nats-server-conf: |
     cluster 
     {
