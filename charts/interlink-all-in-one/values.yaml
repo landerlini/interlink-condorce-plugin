@@ -143,8 +143,8 @@ redisCpuLimit:  "1000m"
 # redisMemoryLimit is the limit on the memory usable by the redis container
 redisMemoryLimit:  "16Mi"
  
-# redisNodeName is the name of the node where to place redis (relevant to persistence)
-redisNodeName: null
+# redisNodeRole is the name of the node where to place redis (relevant to persistence)
+redisNodeRole: database
 
 # redisHostPath is the location in the host file system where to store redis persitent data
 redisHostPath: /var/lib/redis

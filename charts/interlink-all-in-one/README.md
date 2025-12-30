@@ -32,7 +32,7 @@ natsUsers:
 redisDefaultPassword: < a randomly generated token>
 
 # redisNodeName is the name of the node where to place redis (relevant to persistence)
-redisNodeName: < name of the node where you wish to place the redis persistence >
+redisNodeRole: database # then don't forget to `kubectl label node <your node> node-role.kubernetes.io/database=true`
 
 # natsClusterIssuerEmail is the email of the user taking care of the certification
 natsClusterIssuerEmail: 
