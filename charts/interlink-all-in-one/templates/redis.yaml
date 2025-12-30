@@ -83,7 +83,7 @@ spec:
               path: redis.conf
 
       nodeSelector:
-        node-role.kubernetes.io/{{- .Values.redisNodeRole | default "database" -}}: true
+        node-role.kubernetes.io/{{- .Values.redisNodeRole | default "database" -}}: "true"
 
       priorityClassName: redis
 
