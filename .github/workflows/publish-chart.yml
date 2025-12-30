@@ -48,7 +48,7 @@ jobs:
         env:
           HELM_EXPERIMENTAL_OCI: 1
         run: |
-          CHART_PKG=$( find . | grep *.tgz$ )
+          CHART_PKG=$( find . | grep \.tgz$ )
           REPO="oci://${{ github.repository }}/charts/${{ env.CHART_NAME }}"
           echo "Pushing $CHART_PKG to $REPO"
           helm push "$CHART_PKG" "$REPO"

@@ -6,8 +6,9 @@ RUN dnf install -y \
   python3 \
   python3-pip \
   oidc-agent \
-  epel-release apptainer \
-    
+  epel-release \
+  apptainer
+
 COPY . /var/lib/interlink-nats-plugin
 
 RUN pip install \
@@ -24,7 +25,7 @@ RUN pip install \
   "aiohttp" \
   "redis" \
   "prometheus-client" \
-  "/var/lib/interlink-nats-plugin" 
+  "/var/lib/interlink-nats-plugin"
 
-RUN rm -rf /var/lib/interlink-nats-plugin 
+RUN rm -rf /var/lib/interlink-nats-plugin
 
