@@ -1,0 +1,42 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - contextdir: .
+            dockerfile: docker/Dockerfile.condor
+            imagename: interlink-nats-condor
+
+          - contextdir: docker/
+            dockerfile: docker/pilot.Dockerfile
+            imagename: interlink-nats-pilot
+
+          - contextdir: kueue-nats/docker/
+            dockerfile: kueue-nats/docker/Dockerfile
+            imagename: kueue-nats-controller
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build image ${{ matrix.imagename }} from ${{ matrix.contextdir }}
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository }}/${{ matrix.imagename }}:${{ github.ref_name }}
+          docker build -t $IMAGE_NAME -f ${{ matrix.dockerfile }} ${{ matrix.contextdir }} 
+
+      - name: Push image ${{ matrix.imagename }} to GHCR
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository }}/${{ matrix.imagename }}:${{ github.ref_name }}
+          docker push $IMAGE_NAME

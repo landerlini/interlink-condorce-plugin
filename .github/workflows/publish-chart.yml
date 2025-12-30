@@ -1,0 +1,55 @@
+name: Publish Helm chart to GHCR (OCI)
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: ${{ github.repository_owner }}
+  CHART_DIR: charts/interlink-all-in-one
+  CHART_NAME: interlink-with-nats
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4  # usa una 3.8+ (OCI nativo)
+
+      - name: Helm registry login (GHCR)
+        env:
+          HELM_EXPERIMENTAL_OCI: 1  # superfluo con Helm 3.8+, ma innocuo
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            helm registry login ${{ env.REGISTRY }} \
+              --username "${{ github.actor }}" \
+              --password-stdin
+
+
+      - name: Package chart
+        working-directory: ${{ env.CHART_DIR }}
+        run: |
+          helm package . --version "${{ github.ref_name }}" 
+
+      - name: Push to GHCR as OCI
+        working-directory: ${{ env.CHART_DIR }}
+        env:
+          HELM_EXPERIMENTAL_OCI: 1
+        run: |
+          CHART_PKG=$( find . | grep *.tgz$ )
+          REPO="oci://${{ github.repository }}/charts/${{ env.CHART_NAME }}"
+          echo "Pushing $CHART_PKG to $REPO"
+          helm push "$CHART_PKG" "$REPO"
+
