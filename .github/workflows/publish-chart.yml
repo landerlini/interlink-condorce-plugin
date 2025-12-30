@@ -3,7 +3,7 @@ name: Publish Helm chart to GHCR (OCI)
 on:
   push:
     branches:
-      - master
+      - main
 
 permissions:
   contents: read
