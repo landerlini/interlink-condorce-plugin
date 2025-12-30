@@ -41,7 +41,7 @@ jobs:
       - name: Package chart
         working-directory: ${{ env.CHART_DIR }}
         run: |
-          helm package . --version "${{ github.ref_name }}" 
+          helm package . 
 
       - name: Push to GHCR as OCI
         working-directory: ${{ env.CHART_DIR }}
