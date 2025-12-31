@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: redis-{{ .Release.Name }}
+  name: {{ .Release.Name }}-redis-config
   namespace: {{ .Release.Namespace }}
 stringData:
   connector: "redis://:{{ .Values.redisDefaultPassword }}@redis-{{ .Values.nodeName | default .Release.Name }}:6379"
@@ -77,7 +77,7 @@ spec:
             type: DirectoryOrCreate
         - name: config
           secret:
-            secretName: redis-{{ .Release.Name }}
+            secretName: {{ .Release.Name }}-redis-config
             items:
             - key: redis-config
               path: redis.conf

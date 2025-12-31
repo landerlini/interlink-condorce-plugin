@@ -216,11 +216,14 @@ spec:
             - name: NATS_SUBJECT
               value: {{ .Values.pluginNatsSubject | default "interlink" }}
             - name: NATS_SERVER
-              value: nats://{{ (index .Values.natsUsers 0).username }}:{{ (index .Values.natsUsers 0).password }}@{{ .Values.pluginNatsServer | default "nats:4222" }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-nats-config
+                  key: connector
             - name: REDIS_CONNECTOR
               valueFrom:
                 secretKeyRef:
-                  name: redis-{{ .Release.Name }}
+                  name: {{ .Release.Name }}-redis-config
                   key: connector
           ports:
             - containerPort: 8000
