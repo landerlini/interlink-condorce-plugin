@@ -61,7 +61,16 @@ virtualKubeletMemoryLimit: "1500Mi"
 # virtualKubeletCpuRequest, virtualKubeletMemoryRequest defines requests to the *container* managing the virtual kubelet (unrelated to allocatable resources)
 virtualKubeletCpuRequest: "150m"
 virtualKubeletMemoryRequest: "100Mi"
- 
+
+virtualKubeletNodeLabels: []
+virtualKubeletNodeTaints: []
+virtualKubeletNetworkConfig:
+  EnableTunnel: false
+  # TunnelImage: "ghcr.io/erebe/wstunnel:latest"
+  # WildcardDNS: "131.154.96.73.myip.cloud.infn.it"
+  # WstunnelTemplatePath: "/etc/templates/wstunnel.yaml"
+  # WstunnelCommand: "curl -L https://github.com/erebe/wstunnel/releases/download/v10.4.4/wstunnel_10.4.4_linux_amd64.tar.gz -o wstunnel.tar.gz && tar -xzvf wstunnel.tar.gz && chmod +x wstunnel && ./wstunnel client --http-upgrade-path-prefix %s %s ws://%s:80 &\n"
+
 
 ################################################################################
 ## Interlink NATS Plugin configuration

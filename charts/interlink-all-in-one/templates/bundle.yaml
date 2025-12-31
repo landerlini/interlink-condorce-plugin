@@ -20,20 +20,33 @@ data:
   virtual-kubelet.yaml: |
     InterlinkURL: "http://localhost"
     InterlinkPort: 55457
+    KubernetesApiAddr: "kubernetes.default.svc.cluster.local"                                                                                                                        
+    KubernetesApiPort: "443"                                                                                                                                                         
+    DisableProjectedVolumes: true                                                                                                                                                    
     CommandPrefix: {{ .Values.virtualKubeletCommandPrefix | default "" | quote }}
     ExportPodData: {{ .Values.virtualKubeletExportPodData | default true }}
     ServiceAccount: {{ .Values.virtualKubeletServiceAccountName | default "interlink" }}
     Namespace: {{ .Release.Namespace }}
     VKTokenFile: null
     VerboseLogging: {{ .Values.virtualKubeletVerboseLogging | default "true" }}
-    CPU: {{ .Values.virtualKubeletAllocatableCpu | default 10000 | quote }}
-    Memory: {{ .Values.virtualKubeletAllocatableMemory | default "2Ei" | quote }}
-    Pods: {{ .Values.virtualKubeletAllocatablePods | default "1000" | quote }}
-    nvidia.com/gpu: {{ .Values.virtualKubeletAllocatableGpus | default "10000" | quote }}
+    Resources:                                                                                                                                                                       
+      CPU: {{ .Values.virtualKubeletAllocatableCpu | default 10000 | quote }}
+      Memory: {{ .Values.virtualKubeletAllocatableMemory | default "2Ei" | quote }}
+      Pods: {{ .Values.virtualKubeletAllocatablePods | default "1000" | quote }}
+      Accelerators:
+        nvidia.com/gpu: {{ .Values.virtualKubeletAllocatableGpus | default "10000" | quote }}
+    
+    ErrorsOnlyLogging:  false
     HTTP:
       Insecure: true
+      CaCert:
     KubeletHTTP:
-      Insecure: true
+      insecure: true
+    
+    NodeLabels: {{ .Values.virtualKubeletNodeLabels | toJson }}
+    NodeTaints: {{ .Values.virtualKubeletNodeTaints | toJson }}
+    
+    Network: {{ .Values.virtualKubeletNetworkConfig | toJson }}
 
 ---
 
