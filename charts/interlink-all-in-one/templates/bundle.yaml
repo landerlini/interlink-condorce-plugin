@@ -33,8 +33,8 @@ data:
       CPU: {{ .Values.virtualKubeletAllocatableCpu | default 10000 | quote }}
       Memory: {{ .Values.virtualKubeletAllocatableMemory | default "2Ei" | quote }}
       Pods: {{ .Values.virtualKubeletAllocatablePods | default "1000" | quote }}
+      nvidia.com/gpu: {{ .Values.virtualKubeletAllocatableGpus | default "10000" | quote }}
       Accelerators:
-        nvidia.com/gpu: {{ .Values.virtualKubeletAllocatableGpus | default "10000" | quote }}
     
     ErrorsOnlyLogging:  false
     HTTP:
