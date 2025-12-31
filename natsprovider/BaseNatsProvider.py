@@ -122,6 +122,8 @@ class BaseNatsProvider:
         """
         Request the list of pods assigned to the pool. Warning: may lead to errors if multi-responder setup.
         """
+        response = None
+
         max_attempts = 5
         while max_attempts:
             try:
@@ -142,6 +144,9 @@ class BaseNatsProvider:
                 await asyncio.sleep(3)
             else:
                 break
+
+        if response is None:
+            return
 
         response.raise_for_status()
 
