@@ -6,7 +6,7 @@ metadata:
   name: {{ .Release.Name }}-nats-config
   namespace: {{ .Release.Namespace }}
 stringData:
-  connector:
+  connector: nats://{{ (index .Values.natsUsers 0).username }}:{{ (index .Values.natsUsers 0).password }}@{{ .Values.pluginNatsServer | default "nats:4222" }}
   nats-server-conf: |
     cluster 
     {
