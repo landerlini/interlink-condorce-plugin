@@ -49,7 +49,7 @@ virtualKubeletVerboseLogging: true
 virtualKubeletAllocatableCpu: "10000"
 virtualKubeletAllocatableMemory: "2Ei"
 virtualKubeletAllocatablePods: "10000"
-virtualKubeletAllocatableGpus: "10000"
+virtualKubeletAllocatableGpus: 10000
 
 # kubeletPort is the port of the virtualized kubelet
 kubeletPort: 10250

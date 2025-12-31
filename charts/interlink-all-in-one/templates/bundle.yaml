@@ -36,7 +36,7 @@ data:
       Accelerators:
         - ResourceType: nvidia.com/gpu
           Model: "gpu"
-          Available: {{ .Values.virtualKubeletAllocatableGpus | default "10000" | quote }}
+          Available: {{ .Values.virtualKubeletAllocatableGpus | default 10000 }}
     
     ErrorsOnlyLogging:  false
     HTTP:
