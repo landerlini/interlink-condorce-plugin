@@ -134,7 +134,7 @@ class BaseNatsProvider:
                             timeout=120,
                         )
                     )
-            except nats.errors.TimeoutError:
+            except (nats.errors.TimeoutError, nats.errors.NoRespondersError):
                 max_attempts -= 1
                 self.logger.error(
                     f"Failed to retrieve list of pods from remote. {max_attempts} attempt(s) remaining."
