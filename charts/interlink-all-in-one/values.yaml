@@ -15,7 +15,7 @@ nodeName: null
 ## Interlink API Server configuration
 
 # serverVersion defines the version of the interlink api server
-serverVersion: "0.3.7"
+serverVersion: "0.6.0"
 
 # serverVerboseLogging, if true, enhance verbosity of the interlink api server
 serverVerboseLogging: true
