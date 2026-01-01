@@ -189,7 +189,7 @@ class NatsFlavor(Flavor):
             for pool, last_update in self._pool_timestamps.items():
                 flavor_name = '-'.join((self.master_queue_name, self.name, pool))
 
-                node_labels = {'type': 'virtual-kubelet'}
+                node_labels = {}
                 if self.virtual_node is not None:
                     node_labels.update({'kubernetes.io/hostname': self.virtual_node})
 
