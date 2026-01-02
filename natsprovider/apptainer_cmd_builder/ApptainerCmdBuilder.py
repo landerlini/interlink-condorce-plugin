@@ -59,8 +59,8 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
 
     fuse_sleep_seconds: int = Field(default=5, description="Time in seconds between fuse mount and job execution.")
 
-    network_config: NetworkingConfig = Field(
-        default_factory=lambda: NetworkingConfig(enabled=False),
+    network_config: NetworkConfig = Field(
+        default_factory=lambda: NetworkConfig(enabled=False),
         description="Configuration of the network infrastructure"
     )
 
@@ -80,7 +80,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         ret = []
         for container in self.init_containers:
             ret += [
-                container.exec(),
+                container.exec(self.network_config.proxy()),
                 "echo -n $? > %s" % container.return_code_path,
                 "cp %s %s" % (container.log_path, container.log_path),
             ]
@@ -94,7 +94,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
 
         for i_container, container in enumerate(self.containers):
             ret += [
-                container.exec() + " &",
+                container.exec(self.network_config.proxy()) + " &",
                 f"pids[{i_container}]=$!",
             ]
 
@@ -218,6 +218,7 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         echo "==== OUTPUT END %(application_token)s ===="
         
         %(finalize_network)s
+        
         """) % dict(
             version=version,
             docs=''.join(["## " + line for line in self.description.splitlines()]),
@@ -230,6 +231,9 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
             cleanup_volumes=self.cleanup_volume_files(),
             export_of_additional_directories_in_path=self.export_of_additional_directories_in_path(),
             application_token=cfg.APPLICATION_TOKEN,
+            initialize_network=self.network_config.initialize(),
+            connect_network=self.network_config.connect(),
+            finalize_network=self.network_config.finalize(),
         )
 
         script_lines = script.split('\n')

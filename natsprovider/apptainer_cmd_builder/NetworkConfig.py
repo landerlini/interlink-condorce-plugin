@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Optional
 
 class NetworkConfig(BaseModel, extra='forbid'):
     initialization: str = Field(
@@ -41,12 +42,12 @@ class NetworkConfig(BaseModel, extra='forbid'):
                 ])
         return ""
 
-    def proxy(self) -> str:
+    def proxy(self) -> Optional[str]:
         """Proxy prefix to be executed before apptainer"""
         if self.enabled:
             return self.proxy_cmd
 
-        return ""
+        return None
 
     def finalize(self) -> str:
         """Finalizer"""
