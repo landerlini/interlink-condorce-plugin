@@ -47,7 +47,7 @@ logging.basicConfig(
 logging.debug("Enabled debug mode.")
 
 @app.post("/create")
-async def create_pod(pod: Dict[Literal['pod', 'container'], Any]) -> interlink.CreateStruct:
+async def create_pod(pod: Dict[Literal['pod', 'container', 'jobConfig'], Any]) -> interlink.CreateStruct:
     metrics.counters['api_call'].labels('/create').inc()
 
     pod = interlink.Pod(
