@@ -510,10 +510,10 @@ class NatsGateway:
         with tarfile.open(fileobj=io.BytesIO(job_status.logs_tarball), mode='r:*') as tar:
             for member in tar.getmembers():
                 if member.isfile():
-                    self.logger.debug(f"Pod has log for container {member.name}, requested {log_request.ContainerName}.log")
+                    self.logger.debug(f"Pod has log for container {member.name}, requested {log_request.ContainerName}.out")
                     if member.name in [
-                            "run-" + log_request.ContainerName + ".log",
-                            "init-" + log_request.ContainerName + ".log",
+                            "init-" + log_request.ContainerName + ".out",
+                            "run-" + log_request.ContainerName + ".out",
                         ]:
                         full_log = tar.extractfile(member).read().decode('utf-8')
 
