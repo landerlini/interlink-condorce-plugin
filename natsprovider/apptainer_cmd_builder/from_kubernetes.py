@@ -236,7 +236,7 @@ def _make_network_config(
         return NetworkConfig(enabled=False)
 
     return NetworkConfig(
-        initialization=textwrap.dedent(build_config.network.tunnel_setup),
+        initialization=textwrap.dedent(build_config.network.tunnel_setup) % build_config.network.model_dump(),
         connection=connection,
         proxy_cmd=build_config.network.proxy_cmd,
         finalization=build_config.network.tunnel_finalization,
