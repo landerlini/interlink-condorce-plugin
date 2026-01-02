@@ -368,6 +368,14 @@ class BuildConfig(BaseModel):
             description="Allow using port forwarding for enabling networking with the origin cluster"
         )
 
+        wstunnel_local: str = Field(
+            default="$HOME/bin/wstunnel",
+            description="""Local path of the wstunnel executable. Obtain as 
+                curl -L https://github.com/erebe/wstunnel/releases/download/v10.4.4/wstunnel_10.4.4_linux_amd64.tar.gz -o wstunnel.tar.gz 
+                tar -xzvf wstunnel.tar.gz && chmod +x wstunnel
+            """
+        )
+
         tunnel_setup: str = Field(
             default="""
                 function ws_connect {
@@ -375,10 +383,7 @@ class BuildConfig(BaseModel):
                     PORT_MAPPING="$2"
                     WEBSOCKET_URL="ws://$3:80"
                     
-                    curl -L https://github.com/erebe/wstunnel/releases/download/v10.4.4/wstunnel_10.4.4_linux_amd64.tar.gz -o wstunnel.tar.gz 
-                    tar -xzvf wstunnel.tar.gz && chmod +x wstunnel
-                    
-                    ./wstunnel client --http-upgrade-path-prefix --http-upgrade-path-prefix $AUTH_TOKEN $PORT_MAPPING $WEBSOCKET_URL &
+                    %(wstunnel)s client --http-upgrade-path-prefix $AUTH_TOKEN $PORT_MAPPING $WEBSOCKET_URL 
                 }
             """,
             description="Definition of the function (usually ws_connect) opening the tunnel",
