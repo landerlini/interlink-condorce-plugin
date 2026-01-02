@@ -79,7 +79,7 @@ virtualKubeletNetworkConfig:
 pluginShutdownSubject: null
 
 # pluginImage is the image of the plugin defining the environment where the plugin is run (as sync'ed from the git repository)
-pluginImage: "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor:main"
+pluginImage: "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor:dev"
 
 # pluginGitRepository and pluginGitRepositoryBranch identify the git branch to pick the nats plugin from
 pluginGitRepository: "https://github.com/landerlini/interlink-condorce-plugin"
