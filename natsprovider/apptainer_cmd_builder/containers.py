@@ -311,9 +311,13 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
         return ret
 
-    def exec(self, proxy_cmd: Optional[List[str]] = None):
+    def exec(self, proxy_cmd: Union[str, List[str], None] = None):
         uid = sanitize_uid(self.uid).upper()
+
         proxy_cmd = proxy_cmd if proxy_cmd is not None else []
+        if isinstance(proxy_cmd, str):
+            proxy_cmd = [proxy_cmd]
+
         if self.entrypoint is not None:
             # Execute a custom entrypoint
             return " \\\n    ".join(proxy_cmd + [
