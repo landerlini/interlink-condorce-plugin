@@ -501,7 +501,10 @@ class NatsGateway:
             return ""
 
         if job_status.phase in ["running"]:
-            return "Unfortunately the log cannot retrieved for a running job... "
+            return (
+                "\nNot implemented. " +
+                "Unfortunately the log cannot be retrieved for a running job.\n "
+            )
 
         if job_status.phase not in ["succeeded", "failed"]:
             return f"Error. Cannot return log for job status '{job_name}'"
