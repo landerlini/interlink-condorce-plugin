@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dev
 
 permissions:
   contents: read
@@ -26,11 +27,11 @@ jobs:
       - name: Setup Helm
         uses: azure/setup-helm@v4
         with:
-          version: v3.14.4  # usa una 3.8+ (OCI nativo)
+          version: v3.14.4
 
       - name: Helm registry login (GHCR)
         env:
-          HELM_EXPERIMENTAL_OCI: 1  # superfluo con Helm 3.8+, ma innocuo
+          HELM_EXPERIMENTAL_OCI: 1
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | \
             helm registry login ${{ env.REGISTRY }} \
@@ -49,7 +50,7 @@ jobs:
           HELM_EXPERIMENTAL_OCI: 1
         run: |
           CHART_PKG=$( find . | grep \.tgz$ )
-          REPO="oci://${{ env.REGISTRY }}/${{ github.repository }}/charts/${{ env.CHART_NAME }}"
+          REPO="oci://${{ env.REGISTRY }}/${{ github.repository }}/charts/${{ env.CHART_NAME }}-${{ github.ref_name }}"
           echo "Pushing $CHART_PKG to $REPO"
           helm push "$CHART_PKG" "$REPO"
 
