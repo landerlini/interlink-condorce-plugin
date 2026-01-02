@@ -83,7 +83,7 @@ pluginImage: "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor
 
 # pluginGitRepository and pluginGitRepositoryBranch identify the git branch to pick the nats plugin from
 pluginGitRepository: "https://github.com/landerlini/interlink-condorce-plugin"
-pluginGitRepositoryBranch: HEAD
+pluginGitRepositoryBranch: dev
 
 # pluginGitSyncPeriod is the period of calls to github to check for new a version of the plugin
 pluginGitSyncPeriod: "10s"
