@@ -359,6 +359,41 @@ class BuildConfig(BaseModel):
         )
 
 
+    class NetworkOptions(BaseModel, extra='forbid'):
+        """
+        Proxy to download pre-build Docker Images instead of rebuilding at each execution
+        """
+        allowed: bool = Field(
+            default=True,
+            description="Allow using port forwarding for enabling networking with the origin cluster"
+        )
+
+        tunnel_setup: str = Field(
+            default="""
+                function ws_connect {
+                    AUTH_TOKEN="$1"
+                    PORT_MAPPING="$2"
+                    WEBSOCKET_URL="ws://$3:80"
+                    
+                    curl -L https://github.com/erebe/wstunnel/releases/download/v10.4.4/wstunnel_10.4.4_linux_amd64.tar.gz -o wstunnel.tar.gz 
+                    tar -xzvf wstunnel.tar.gz && chmod +x wstunnel
+                    
+                    ./wstunnel client --http-upgrade-path-prefix --http-upgrade-path-prefix $AUTH_TOKEN $PORT_MAPPING $WEBSOCKET_URL &
+                }
+            """,
+            description="Definition of the function (usually ws_connect) opening the tunnel",
+        )
+
+        proxy_cmd: str = Field(
+            default="",
+            description="How to start the proxy command (if any) in front of apptainer",
+        )
+
+        tunnel_finalization: str = Field(
+            default="",
+            description="Finalize the tunnel",
+        )
+
     volumes: Volumes = Field(
         default=Volumes(),
         description=Volumes.__doc__
@@ -382,6 +417,10 @@ class BuildConfig(BaseModel):
     node: NodeOptions = Field(
         default=NodeOptions(),
         description=NodeOptions.__doc__
+    )
+    network: NetworkOptions = Field(
+        default=NetworkOptions(),
+        description=NetworkOptions.__doc__
     )
 
     input_toml_filename: Optional[str] = Field(

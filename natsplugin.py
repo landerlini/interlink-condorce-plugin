@@ -120,6 +120,7 @@ async def build(build_model: BuildRestModel):
     builder = from_kubernetes(pod.model_dump(),
         [volume.model_dump() for volume in volumes],
         build_config=build_config,
+        setup_network=False,
     )
 
     logging.info(f"Generated jobscript:\n{builder.dump()}\n")
