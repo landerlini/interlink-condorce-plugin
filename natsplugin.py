@@ -47,27 +47,21 @@ logging.basicConfig(
 logging.debug("Enabled debug mode.")
 
 @app.post("/create")
-async def create_pod(pods: List[Dict[Literal['pod', 'container'], Any]]) -> interlink.CreateStruct:
+async def create_pod(pod: Dict[Literal['pod', 'container'], Any]) -> interlink.CreateStruct:
     metrics.counters['api_call'].labels('/create').inc()
 
-    if len(pods) != 1:
-        raise HTTPException(402, f"Can only treat one pod creation at once. {len(pods)} were requested.")
-
-    pods = [
-        interlink.Pod(
+    pod = interlink.Pod(
             pod=interlink.PodRequest(**(pod['pod'])),
             container=[interlink.Volume(**c) for c in pod['container']]
         )
-        for pod in pods
-    ]
 
-    pod = pods[0].pod
-    container = pods[0].container
+    pod_req = pod.pod
+    container = pod.container
 
-    logging.info(f"Creating pod {pod}")
+    logging.info(f"Creating pod {pod_req}")
     return interlink.CreateStruct(
-        PodUID=pod.metadata['uid'],
-        PodJID=await nats_gateway.create_job(pod, container)
+        PodUID=pod_req.metadata['uid'],
+        PodJID=await nats_gateway.create_job(pod_req, container)
     )
 
 @app.post("/delete")
