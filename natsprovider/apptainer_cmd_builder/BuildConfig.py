@@ -381,9 +381,13 @@ class BuildConfig(BaseModel):
                 function ws_connect {
                     AUTH_TOKEN="$1"
                     PORT_MAPPING="$2"
-                    WEBSOCKET_URL="$3"
+                    PATH_PREFIX="$3"
+                    WEBSOCKET_URL="$4"
                     
-                    %(wstunnel_local)s client --http-upgrade-path-prefix $AUTH_TOKEN $PORT_MAPPING $WEBSOCKET_URL 
+                    %(wstunnel_local)s client \\
+                        $PORT_MAPPING \\
+                        --http-upgrade-path-prefix $PATH_PREFIX/$AUTH_TOKEN \\
+                        $WEBSOCKET_URL 
                 }
             """,
             description="Definition of the function (usually ws_connect) opening the tunnel",
