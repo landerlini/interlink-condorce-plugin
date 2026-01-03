@@ -258,9 +258,6 @@ spec:
               mountPath: /interlink
             - name: api-server-config
               mountPath: /etc/interlink
-            - name: wstunnel-config
-              mountPath: /etc/templates/wstunnel.yaml
-              subPath: wstunnel.yaml
 
         - name: plugin-api-server
           image: {{ .Values.pluginImage | default "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor:main" }}
@@ -338,6 +335,9 @@ spec:
           - name: virtual-kubelet-config
             mountPath: /etc/interlink/InterLinkConfig.yaml
             subPath: InterLinkConfig.yaml
+          - name: wstunnel-config
+            mountPath: /etc/templates/wstunnel.yaml
+            subPath: wstunnel.yaml
 
           resources:
             limits:

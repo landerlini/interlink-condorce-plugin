@@ -1,6 +1,7 @@
 {{- $name := "{{ .Name }}" -}}
 {{- $namespace := "{{ .Namespace }}" -}}
 {{- $pwd := "{{ .RandomPassword }}" -}}
+{{- $wildcardDNS := "{{ .WildcardDNS }}" -}}
 
 apiVersion: v1
 kind: ConfigMap
@@ -52,7 +53,9 @@ data:
                 memory: 90Mi
           nodeSelector:
             kubernetes.io/os: linux
+    
     ---                                                                                                                                                                              
+    
     apiVersion: v1
     kind: Service
     metadata:
@@ -76,7 +79,10 @@ data:
           {{- end}}
         {{- end}}
         ` -}}
+        
+        
     ---                                                                                                                                                                              
+    
     apiVersion: networking.k8s.io/v1
     kind: Ingress
     metadata:
@@ -87,3 +93,17 @@ data:
         nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
         nginx.org/websocket-services: {{ $name }}
         kubernetes.io/ingress.class: "nginx"
+        release: {{ .Release.Name }}
+
+      spec:
+        rules:
+        - host: {{ $name }}-{{ $namespace }}.{{ $wildcardDNS }}
+          http:
+            paths:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: {{.Name}}
+                  port:
+                    number: 28080
