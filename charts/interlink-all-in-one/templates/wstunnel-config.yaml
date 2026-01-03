@@ -103,7 +103,7 @@ data:
       - host: {{ .Values.hostname }}
         http:
           paths:
-          - path: /{{ $name }}-{{ $namespace }}/(.*)
+          - path: /{{ $name }}/(.*)
             pathType: ImplementationSpecific
             backend:
               service:
