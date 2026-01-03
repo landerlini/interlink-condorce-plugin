@@ -95,15 +95,15 @@ data:
         kubernetes.io/ingress.class: "nginx"
         release: {{ .Release.Name }}
 
-      spec:
-        rules:
-        - host: {{ $name }}-{{ $namespace }}.{{ $wildcardDNS }}
-          http:
-            paths:
-            - path: /
-              pathType: Prefix
-              backend:
-                service:
-                  name: {{.Name}}
-                  port:
-                    number: 28080
+    spec:
+      rules:
+      - host: {{ $name }}-{{ $namespace }}.{{ $wildcardDNS }}
+        http:
+          paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{.Name}}
+                port:
+                  number: 28080
