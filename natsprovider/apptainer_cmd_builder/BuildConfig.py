@@ -381,7 +381,7 @@ class BuildConfig(BaseModel):
                 function ws_connect {
                     AUTH_TOKEN="$1"
                     PORT_MAPPING="$2"
-                    WEBSOCKET_URL="ws://$3:80"
+                    WEBSOCKET_URL="$3"
                     
                     %(wstunnel_local)s client --http-upgrade-path-prefix $AUTH_TOKEN $PORT_MAPPING $WEBSOCKET_URL 
                 }

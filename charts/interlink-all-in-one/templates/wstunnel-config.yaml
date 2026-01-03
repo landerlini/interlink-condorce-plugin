@@ -1,0 +1,89 @@
+{{- $name := "{{ .Name }}" -}}
+{{- $namespace := "{{ .Namespace }}" -}}
+{{- $pwd := "{{ .RandomPassword }}" -}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: interlink-wstunnel-{{ .Values.nodeName | default .Release.Name }}
+data:
+  wstunnel.yaml: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: {{ $name }}
+      namespace: {{ $namespace }}
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/component: {{ $name }}
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/component: {{ $name }}
+        spec:
+          containers:
+          - args:
+            - ./wstunnel server --log-lvl DEBUG --dns-resolver-prefer-ipv4 --restrict-http-upgrade-path-prefix {{ $pwd }}  ws://0.0.0.0:28080
+            command:
+            - bash 
+            - -c  
+            image: ghcr.io/erebe/wstunnel:latest
+            imagePullPolicy: IfNotPresent
+            name: wstunnel
+            ports:
+            - containerPort: 28080
+              name: webhook
+              protocol: TCP
+            - containerPort: 51820
+              name: vpn
+              protocol: UDP
+            {{- ` 
+            {{- range .ExposedPorts}}                                                                                                                                                
+            - containerPort: {{.Port}}                                                                                                                                               
+              name: {{.Name}}                                                                                                                                                        
+              protocol: {{.Protocol}}                                                                                                                                                
+            {{- end}}                                                                                                                                                                
+            ` -}}
+            resources:
+              requests:
+                cpu: 100m
+                memory: 90Mi
+          nodeSelector:
+            kubernetes.io/os: linux
+    ---                                                                                                                                                                              
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: {{ $name }}
+      namespace: {{ $namespace }}
+    spec:
+      type: ClusterIP
+      selector:
+        app.kubernetes.io/component: {{ $name }}
+      ports:
+        - port: 28080
+          targetPort: 28080
+          name: ws
+        {{- `
+        {{- range .ExposedPorts}}
+        - port: {{.Port}}
+          targetPort: {{.Port}}
+          name: {{.Name}}
+          {{- if .Protocol}}
+          protocol: {{.Protocol}}
+          {{- end}}
+        {{- end}}
+        ` -}}
+    ---                                                                                                                                                                              
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: {{ $name }}
+      namespace: {{ $namespace }}
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+        nginx.org/websocket-services: {{ $name }}
+        kubernetes.io/ingress.class: "nginx"
