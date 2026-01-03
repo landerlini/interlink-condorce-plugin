@@ -104,6 +104,6 @@ data:
             pathType: Prefix
             backend:
               service:
-                name: {{.Name}}
+                name: {{ $name }}
                 port:
                   number: 28080
