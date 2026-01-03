@@ -78,7 +78,7 @@ data:
           protocol: {{.Protocol}}
           {{- end}}
         {{- end}}
-        ` -}}
+        ` }}
         
         
     ---                                                                                                                                                                              
