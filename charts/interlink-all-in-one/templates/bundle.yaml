@@ -211,10 +211,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: interlink-all-in-one
-  namespace: {{ .Release.Namespace }}
   labels:
     app: interlink
     component: bundle
+    revision: {{ .Release.Revision }}
 spec:
   replicas: 1
   selector:
