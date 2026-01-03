@@ -91,17 +91,20 @@ data:
       annotations:
         nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
         nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+        nginx.ingress.kubernetes.io/proxy-body-size: "0"
+        nginx.ingress.kubernetes.io/use-regex: "true"
+        nginx.ingress.kubernetes.io/rewrite-target: "/$1"
         nginx.org/websocket-services: {{ $name }}
         kubernetes.io/ingress.class: "nginx"
         release: {{ .Release.Name }}
 
     spec:
       rules:
-      - host: {{ $name }}-{{ $namespace }}.{{ $wildcardDNS }}
+      - host: {{ .Values.hostname }}
         http:
           paths:
-          - path: /
-            pathType: Prefix
+          - path: /{{ $name }}-{{ $namespace }}/(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: {{ $name }}
