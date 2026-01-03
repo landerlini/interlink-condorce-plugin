@@ -214,7 +214,6 @@ metadata:
   labels:
     app: interlink
     component: bundle
-    revision: {{ .Release.Revision | quote }}
 spec:
   replicas: 1
   selector:
@@ -224,6 +223,7 @@ spec:
   template:
     metadata:
       labels:
+        revision: {{ .Release.Revision | quote }}
         app: interlink
         component: server
     spec:
