@@ -1,11 +1,19 @@
-from pydantic import BaseModel, Field
 from typing import Optional
+import os
+
+from pydantic import BaseModel, Field
+
 
 class NetworkConfig(BaseModel, extra='forbid'):
     initialization: str = Field(
         default="",
         description="Preparatory statements executed early in the job, "
             "usually defining bash functions",
+    )
+
+    definition_file: str = Field(
+        default=os.path.join(os.path.dirname(__file__), "network.sh"),
+        description="Path to the network definition script",
     )
 
     connection: str = Field(
