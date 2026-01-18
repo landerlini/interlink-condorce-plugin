@@ -368,38 +368,58 @@ class BuildConfig(BaseModel):
             description="Allow using port forwarding for enabling networking with the origin cluster"
         )
 
-        wstunnel_local: str = Field(
+        wstunnel_binary: str = Field(
             default="$HOME/bin/wstunnel",
-            description="""Local path of the wstunnel executable. Obtain as 
-                curl -L https://github.com/erebe/wstunnel/releases/download/v10.4.4/wstunnel_10.4.4_linux_amd64.tar.gz -o wstunnel.tar.gz 
-                tar -xzvf wstunnel.tar.gz && chmod +x wstunnel
-            """
+            description="Local path of the wstunnel executable"
         )
 
-        tunnel_setup: str = Field(
-            default="""
-                function ws_connect {
-                    AUTH_TOKEN="$1"
-                    PORT_MAPPING="$2"
-                    PATH_PREFIX="$3"
-                    WEBSOCKET_URL="$4"
-                    
-                    %(wstunnel_local)s client \\
-                        $PORT_MAPPING \\
-                        --http-upgrade-path-prefix $PATH_PREFIX/$AUTH_TOKEN \\
-                        $WEBSOCKET_URL 
-                }
-            """,
-            description="Definition of the function (usually ws_connect) opening the tunnel",
+        slirp4netns_binary: str = Field(
+            default="$HOME/bin/slirp4netns",
+            description="Local path to slirp4netns binary"
+        )
+
+        dynamic_fwd_port: int = Field(
+            default=54006,
+            description="Port of the netns used for dynamic port forwarding",
+        )
+
+        tmp_resolv_conf: str = Field(
+            default="$(pwd)/.resolv.$RANDOM$RANDOM.conf",
+            description="Location for the generated resolv.conf file with nameserver config"
+        )
+
+        tap_cidr: str = Field(
+            default="172.18.2.0/24",
+            description="Network CIDR for the TAP device"
+        )
+
+        tap_mtu: int = Field(
+            default=1280,
+            description="Maximum transfer unit of the TAP device"
+        )
+
+        tun_ip: str = Field(
+            default="172.18.3.1",
+            description="Static IP configuration for the TUN network interface"
+        )
+
+        tun2socks_binary: str = Field(
+            default="$HOME/bin/tun2socks",
+            description="Local path to slirp4netns binary"
+        )
+
+        slirp4netns_binary: str = Field(
+            default="$HOME/bin/slirp4netns",
+            description="Local path to slirp4netns binary"
         )
 
         proxy_cmd: str = Field(
-            default="",
+            default="interlink_proxy_cmd",
             description="How to start the proxy command (if any) in front of apptainer",
         )
 
         tunnel_finalization: str = Field(
-            default="",
+            default="interlink_cleanup",
             description="Finalize the tunnel",
         )
 

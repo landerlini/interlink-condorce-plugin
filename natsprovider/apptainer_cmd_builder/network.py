@@ -35,14 +35,14 @@ class NetworkConfig(BaseModel, extra='forbid'):
     enabled: bool = True
 
     def initialize(self) -> str:
-        """Preparatory statements"""
+        """Configuration for the network cluster <-> remote site, independent of the pod"""
         if self.enabled:
             return self.initialization
 
         return ""
 
     def connect(self) -> str:
-        """Minimal connection string"""
+        """Minimal command establishing the connection with parameters of the pod"""
         if self.enabled:
             return "\n".join([
                 self.connection + " &",
@@ -51,14 +51,14 @@ class NetworkConfig(BaseModel, extra='forbid'):
         return ""
 
     def proxy(self) -> Optional[str]:
-        """Proxy prefix to be executed before apptainer"""
+        """Proxy command prependend to the container runtime execution"""
         if self.enabled:
             return self.proxy_cmd
 
         return None
 
     def finalize(self) -> str:
-        """Finalizer"""
+        """Finalization included in the cleanup function invoked by bash trap"""
         if self.enabled:
             return "\n".join([
                 self.finalization,

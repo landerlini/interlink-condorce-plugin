@@ -6,6 +6,7 @@ import re
 from kubernetes import client as k8s
 from typing import Dict, Any, List, Mapping, Optional, Union, Literal
 from pprint import pprint
+import logging
 
 from kubernetes.client import V1Container, V1KeyToPath
 
@@ -231,12 +232,43 @@ def _make_network_config(
     if not setup_network or not build_config.network.allowed:
         return NetworkConfig(enabled=False)
 
+    # Load the template from file
+    with open(os.path.join(os.path.dirname(__file__), "network.sh")) as template_file:
+        net_init_template = template_file.read()
+
+    # Initialize the connection
     connection = annotations.get("interlink.eu/wstunnel-client-commands")
     if connection is None or connection in ["", " ", False]:
         return NetworkConfig(enabled=False)
 
+    # Initialize the configuration based on the target site
+    net_build_cfg = build_config.network.model_dump()
+
+    # Update information on the cluster network from either the pod or the plugin
+    net_build_cfg['cluster_resolv_conf'] = annotations.get(
+        "interlink.eu/resolv-conf",
+        open("/etc/resolv.conf").read()
+    )
+    if "interlink.eu/cluster-cidr" not in annotations:
+        logging.getLogger('from_kubernetes').warning(
+            "Annotation interlink.eu/resolv-conf not set. "
+            f"Assuming the same as for the plugin api server."
+        )
+
+    net_build_cfg['cluster_cidr'] = annotations.get(
+        "interlink.eu/cluster-cidr",
+        "10.0.0.0/8"
+    )
+
+    if "interlink.eu/cluster-cidr" not in annotations:
+        logging.getLogger('from_kubernetes').warning(
+            "Annotation interlink.eu/cluster-cidr not set. "
+            f"Assuming {net_build_cfg['cluster_cidr']}."
+        )
+
+    # Plugs the built configuration in the NetworkConfig structure
     return NetworkConfig(
-        initialization=textwrap.dedent(build_config.network.tunnel_setup) % build_config.network.model_dump(),
+        initialization=net_init_template % net_build_cfg,
         connection=connection,
         proxy_cmd=build_config.network.proxy_cmd,
         finalization=build_config.network.tunnel_finalization,

@@ -29,7 +29,6 @@ setup_cgroup() {
   fi
 }
 
-
 # Track background jobs started via nsenter so we can kill them on exit.
 interlink_cleanup() {
   set +e
@@ -77,9 +76,7 @@ interlink_cleanup() {
   echo "[network] Done."
 }
 
-
 # ====== Helpers ======
-
 interlink_make_namespace() {
   # Create the namespace. `setpriv --pdeathsig TERM` ensures that when this script dies,
   # the child process receives SIGTERM. The `unshare ... sleep infinity` process acts as
@@ -146,7 +143,7 @@ interlink_ws_connect() {
 # Ensure cleanup runs on script exit and on SIGINT/SIGTERM.
 echo "[network] Configure the networking..."
 echo "[network] Configuring the cleanup strategy"
-trap interlink_cleanup EXIT INT TERM
+# trap interlink_cleanup EXIT INT TERM
 interlink_setup_cgroup
 
 # DPORT is the dynamic port assigned for SOCKS5 proxying
@@ -175,14 +172,14 @@ interlink_make_tap_device \
 echo "[network] Configuring a new TUN device and run tun2socks"
 
 # Run network setup and then `exec tun2socks` so the only long-lived process is tun2socks.
-proxy_cmd_bg /bin/bash -c "
+interlink_proxy_cmd_bg /bin/bash -c "
   set -e
   ip tuntap add mode tun dev tun0
   ip addr add %(tun_ip)s/24 dev tun0
   ip link set dev tun0 up
   ip route add %(cluster_cidr)s via %(tun_ip)s dev tun0
   mount --bind $TMP_RESOLV_CONF /etc/resolv.conf
-  exec \"%(tun2socks)s\" -device tun0 -proxy \"socks5://localhost:$DPORT\" -interface tap0
+  exec \"%(tun2socks_binary)s\" -device tun0 -proxy \"socks5://localhost:$DPORT\" -interface tap0
 "
 
 ## echo "Connecting via websocket"

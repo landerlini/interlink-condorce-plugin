@@ -193,12 +193,16 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         ################################################################################
         ## Defines and register the callback for cleaning volumes up upon job termination
         cleanup() {
-        echo "Cleaning up volumes"
-        %(cleanup_volumes)s
-        cd $STARTING_DIR 
-        rm -rf %(workdir)s
+            echo "Cleaning up interlink machinery..."
+            %(finalize_network)s
+        
+            %(cleanup_volumes)s
+            cd $STARTING_DIR 
+            rm -rf %(workdir)s
+            
+            echo "Cleanup completed successfully"
         }
-        trap cleanup SIGTERM SIGKILL EXIT
+        trap cleanup EXIT INT TERM
         
         ## Volumes settings
         %(volume_files)s
@@ -216,8 +220,6 @@ class ApptainerCmdBuilder(BaseModel, extra='forbid'):
         echo "==== OUTPUT BEGIN %(application_token)s ===="
         echo $(gzip -c $SANDBOX/logs | base64)
         echo "==== OUTPUT END %(application_token)s ===="
-        
-        %(finalize_network)s
         
         """) % dict(
             version=version,
