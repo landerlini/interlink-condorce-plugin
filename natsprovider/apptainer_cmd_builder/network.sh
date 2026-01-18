@@ -18,7 +18,7 @@ INTERLINK_SLIRP_PID=""
 # If cgroup v2 is available and writable, we create a dedicated cgroup for the script.
 # All child processes are added to this cgroup. On cleanup, we kill the entire cgroup
 # (this catches daemons and processes that change session/pgid).
-setup_cgroup() {
+interlink_setup_cgroup() {
   if [ -d /sys/fs/cgroup ]; then
     INTERLINK_CG="/sys/fs/cgroup/nsenter-scope.$$"
     if mkdir -p "$INTERLINK_CG" 2>/dev/null; then
@@ -146,6 +146,7 @@ interlink_ws_connect() {
 echo "[network] Configure the networking..."
 echo "[network] Configuring the cleanup strategy"
 interlink_setup_cgroup
+interlink_make_namespace
 
 # DPORT is the dynamic port assigned for SOCKS5 proxying
 DPORT=%(dynamic_fwd_port)d 
