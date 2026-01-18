@@ -135,6 +135,7 @@ interlink_ws_connect() {
 
   # Start wstunnel in background inside the namespace and track it.
   interlink_proxy_cmd_bg "%(wstunnel_binary)s" client \
+    --no-color true \
     $PORT_MAPPING \
     -L socks5://127.0.0.1:%(dynamic_fwd_port)d \
     --http-upgrade-path-prefix "$PATH_PREFIX/$AUTH_TOKEN" \
