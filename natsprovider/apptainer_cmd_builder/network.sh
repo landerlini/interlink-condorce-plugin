@@ -85,6 +85,7 @@ interlink_make_namespace() {
     sleep infinity &
   
   INTERLINK_NETNS_PID=$!
+  echo "[network] Net namespace pid: $INTERLINK_NETNS_PID"
   
   # Add anchor to the cgroup so we can clean it up reliably.
   [ "$INTERLINK_HAVE_CG" -eq 1 ] && echo "$INTERLINK_NETNS_PID" > "$INTERLINK_CG/cgroup.procs" 2>/dev/null || true
@@ -101,6 +102,8 @@ interlink_make_tap_device() {
     %(slirp4netns_binary)s --configure --mtu="$mtu" --cidr="$cidr"  --disable-host-loopback "$nspid" tap0 &
 
   INTERLINK_SLIRP_PID=$!
+
+  echo "[network] Emulated TAP device (cidr: $cidr, mtu: $mtu, nspid: $nspid) with pid: $INTERLINK_SLIRP_PID"
   [ "$INTERLINK_HAVE_CG" -eq 1 ] && echo "$INTERLINK_SLIRP_PID" > "$INTERLINK_CG/cgroup.procs" 2>/dev/null || true
 
   sleep 1
@@ -142,15 +145,14 @@ interlink_ws_connect() {
 # Ensure cleanup runs on script exit and on SIGINT/SIGTERM.
 echo "[network] Configure the networking..."
 echo "[network] Configuring the cleanup strategy"
-# trap interlink_cleanup EXIT INT TERM
 interlink_setup_cgroup
 
 # DPORT is the dynamic port assigned for SOCKS5 proxying
 DPORT=%(dynamic_fwd_port)d 
 
-echo "[network] Creating temporary resolv.conf file in '$TMP_RESOLV_CONF'"
 # Setup the /etc/resolv.conf file with precedence to cluster DNS
 TMP_RESOLV_CONF=%(tmp_resolv_conf)s
+echo "[network] Creating temporary resolv.conf file in '$TMP_RESOLV_CONF'"
 cat <<EOF > $TMP_RESOLV_CONF
 %(cluster_resolv_conf)s
 EOF
