@@ -257,7 +257,7 @@ def _make_network_config(
 
     net_build_cfg['cluster_cidr'] = annotations.get(
         "interlink.eu/cluster-cidr",
-        "10.0.0.0/8"
+        "10.42.0.0/15"
     )
 
     if "interlink.eu/cluster-cidr" not in annotations:
