@@ -7,7 +7,7 @@ from . import version
 import textwrap
 
 from . import configuration as cfg
-from .NetworkConfig import NetworkConfig
+from .network import NetworkConfig
 from .volumes import BaseVolume, FuseVolume
 from .containers import ContainerSpec
 from ..utils import generate_uid
