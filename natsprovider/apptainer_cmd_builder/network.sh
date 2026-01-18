@@ -99,7 +99,7 @@ interlink_make_tap_device() {
   local nspid="$3"                # command to execute in the namespace
 
   setpriv --pdeathsig TERM \
-    %(slirp4netns_binary) --configure --mtu="$mtu" --cidr="$cidr"  --disable-host-loopback "$nspid" tap0 &
+    %(slirp4netns_binary)s --configure --mtu="$mtu" --cidr="$cidr"  --disable-host-loopback "$nspid" tap0 &
 
   INTERLINK_SLIRP_PID=$!
   [ "$INTERLINK_HAVE_CG" -eq 1 ] && echo "$INTERLINK_SLIRP_PID" > "$INTERLINK_CG/cgroup.procs" 2>/dev/null || true
@@ -160,8 +160,7 @@ EOF
 cat /etc/resolv.conf | grep nameserver >> $TMP_RESOLV_CONF
 echo "options use-vc ndots:5" >> $TMP_RESOLV_CONF
 
-echo "[network] Creating network namespace in user space"
-interlink_make_namespace
+
 
 echo "[network] Making TAP device"
 #interlink_make_tap_device "172.18.2.0/24" "1280" "$INTERLINK_NETNS_PID"
