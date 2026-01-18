@@ -44,10 +44,8 @@ class NetworkConfig(BaseModel, extra='forbid'):
     def connect(self) -> str:
         """Minimal command establishing the connection with parameters of the pod"""
         if self.enabled:
-            return "\n".join([
-                self.connection + " &",
-                "WSTUNNEL_PID=$!"
-                ])
+            return self.connection
+
         return ""
 
     def proxy(self) -> Optional[str]:
@@ -60,9 +58,6 @@ class NetworkConfig(BaseModel, extra='forbid'):
     def finalize(self) -> str:
         """Finalization included in the cleanup function invoked by bash trap"""
         if self.enabled:
-            return "\n".join([
-                self.finalization,
-                "kill $WSTUNNEL_PID",
-                ])
+            return self.finalization
 
         return ""

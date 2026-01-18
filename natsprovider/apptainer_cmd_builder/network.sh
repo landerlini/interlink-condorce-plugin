@@ -32,7 +32,6 @@ setup_cgroup() {
 # Track background jobs started via nsenter so we can kill them on exit.
 interlink_cleanup() {
   set +e
-
   echo "[network] Shutting down..."
 
   # First try SIGTERM on tracked jobs, then SIGKILL if needed.
@@ -160,10 +159,7 @@ EOF
 cat /etc/resolv.conf | grep nameserver >> $TMP_RESOLV_CONF
 echo "options use-vc ndots:5" >> $TMP_RESOLV_CONF
 
-
-
 echo "[network] Making TAP device"
-#interlink_make_tap_device "172.18.2.0/24" "1280" "$INTERLINK_NETNS_PID"
 interlink_make_tap_device \
     "%(tap_cidr)s" "%(tap_mtu)s" \
     "$INTERLINK_NETNS_PID"
@@ -181,26 +177,4 @@ interlink_proxy_cmd_bg /bin/bash -c "
   exec \"%(tun2socks_binary)s\" -device tun0 -proxy \"socks5://localhost:$DPORT\" -interface tap0
 "
 
-## echo "Connecting via websocket"
-## interlink_ws_connect \
-##     "c4ecbdb37cec9bf1d766a147bc950b11" \
-##     "-R tcp://0.0.0.0:8081:localhost:8081 " \
-##     "ingress-probe-manual-cst-zgcbm-interlink" \
-##     "wss://131.154.98.96.myip.cloud.infn.it"
-##
-## echo "Executing the container (query example.com)"
-##
-## # Foreground test command; ends by itself. No need to track its PID.
-## proxy_cmd apptainer exec docker://docker.io/python:3.12 /bin/sh <<EOF
-## cat /etc/resolv.conf
-## dig @10.43.0.10 kubernetes.default.svc.cluster.local +tcp
-## echo "getent"
-## getent hosts jupyter-hub.jupyter
-## echo "wget"
-## dig @10.43.0.10 jupyter-hub.jupyter +tcp
-## curl -L http://jupyter-hub.jupyter.svc.cluster.local:8081
-## echo "fine"
-## EOF
-
 echo "[network] Setup completed"
-# No explicit kill here; the trap 'cleanup' will run automatically on exit.
