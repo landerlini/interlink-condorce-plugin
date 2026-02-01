@@ -176,8 +176,8 @@ interlink_proxy_cmd_bg /bin/bash -c "
   ip tuntap add mode tun dev tun0
   ip addr add %(tun_ip)s/24 dev tun0
   ip link set dev tun0 up
-  # ip route add %(cluster_cidr)s via %(tun_ip)s dev tun0
-  ip route add default via %(tun_ip)s dev tun0
+  sudo ip route del default
+  sudo ip route add default dev tun0
   mount --bind $TMP_RESOLV_CONF /etc/resolv.conf
   exec \"%(tun2socks_binary)s\" -device tun0 -proxy \"socks5://localhost:$DPORT\" -interface tap0
 "
