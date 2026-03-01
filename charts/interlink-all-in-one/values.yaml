@@ -181,14 +181,18 @@ shubProxyS3AccessKey:
 shubProxyS3SecretKey: 
 
 # shubProxyS3Bucket is the bucket name where to store
-shubProxyS3Bucket: 
+shubProxyS3Bucket:
+
+# shubProxyS3Region is the region of the S3 backend
+shubProxyS3Region: us-east-1
 
 # shubProxyS3Endpoint is the endpoint of the S3 service to be used for images
 shubProxyS3Endpoint:
 
 # shubProxyMasterToken is the token shared with submitters to request client tokens
 shubProxyMasterToken:
- 
+
+
 # shubProxyDeploymentPrivateKey is the private key of a Deployment Key to access the GitHub repo
 shubProxyDeploymentPrivateKey: 
 
