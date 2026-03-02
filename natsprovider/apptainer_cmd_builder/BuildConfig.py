@@ -359,6 +359,70 @@ class BuildConfig(BaseModel):
         )
 
 
+    class NetworkOptions(BaseModel, extra='forbid'):
+        """
+        Proxy to download pre-build Docker Images instead of rebuilding at each execution
+        """
+        allowed: bool = Field(
+            default=True,
+            description="Allow using port forwarding for enabling networking with the origin cluster"
+        )
+
+        wstunnel_binary: str = Field(
+            default="$HOME/bin/wstunnel",
+            description="Local path of the wstunnel executable"
+        )
+
+        slirp4netns_binary: str = Field(
+            default="$HOME/bin/slirp4netns",
+            description="Local path to slirp4netns binary"
+        )
+
+        dynamic_fwd_port: int = Field(
+            default=54006,
+            description="Port of the netns used for dynamic port forwarding",
+        )
+
+        tmp_resolv_conf: str = Field(
+            default="$(pwd)/.resolv.$RANDOM$RANDOM.conf",
+            description="Location for the generated resolv.conf file with nameserver config"
+        )
+
+        tap_cidr: str = Field(
+            default="172.18.2.0/24",
+            description="Network CIDR for the TAP device"
+        )
+
+        tap_mtu: int = Field(
+            default=1280,
+            description="Maximum transfer unit of the TAP device"
+        )
+
+        tun_ip: str = Field(
+            default="172.18.3.1",
+            description="Static IP configuration for the TUN network interface"
+        )
+
+        tun2socks_binary: str = Field(
+            default="$HOME/bin/tun2socks",
+            description="Local path to slirp4netns binary"
+        )
+
+        slirp4netns_binary: str = Field(
+            default="$HOME/bin/slirp4netns",
+            description="Local path to slirp4netns binary"
+        )
+
+        proxy_cmd: str = Field(
+            default="interlink_proxy_cmd",
+            description="How to start the proxy command (if any) in front of apptainer",
+        )
+
+        tunnel_finalization: str = Field(
+            default="interlink_cleanup",
+            description="Finalize the tunnel",
+        )
+
     volumes: Volumes = Field(
         default=Volumes(),
         description=Volumes.__doc__
@@ -382,6 +446,10 @@ class BuildConfig(BaseModel):
     node: NodeOptions = Field(
         default=NodeOptions(),
         description=NodeOptions.__doc__
+    )
+    network: NetworkOptions = Field(
+        default=NetworkOptions(),
+        description=NetworkOptions.__doc__
     )
 
     input_toml_filename: Optional[str] = Field(

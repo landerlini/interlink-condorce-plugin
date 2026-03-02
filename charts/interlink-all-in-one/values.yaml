@@ -79,11 +79,11 @@ virtualKubeletNetworkConfig:
 pluginShutdownSubject: null
 
 # pluginImage is the image of the plugin defining the environment where the plugin is run (as sync'ed from the git repository)
-pluginImage: "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor:main"
+pluginImage: "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor:dev"
 
 # pluginGitRepository and pluginGitRepositoryBranch identify the git branch to pick the nats plugin from
 pluginGitRepository: "https://github.com/landerlini/interlink-condorce-plugin"
-pluginGitRepositoryBranch: HEAD
+pluginGitRepositoryBranch: dev
 
 # pluginGitSyncPeriod is the period of calls to github to check for new a version of the plugin
 pluginGitSyncPeriod: "10s"
@@ -181,14 +181,18 @@ shubProxyS3AccessKey:
 shubProxyS3SecretKey: 
 
 # shubProxyS3Bucket is the bucket name where to store
-shubProxyS3Bucket: 
+shubProxyS3Bucket:
+
+# shubProxyS3Region is the region of the S3 backend
+shubProxyS3Region: us-east-1
 
 # shubProxyS3Endpoint is the endpoint of the S3 service to be used for images
 shubProxyS3Endpoint:
 
 # shubProxyMasterToken is the token shared with submitters to request client tokens
 shubProxyMasterToken:
- 
+
+
 # shubProxyDeploymentPrivateKey is the private key of a Deployment Key to access the GitHub repo
 shubProxyDeploymentPrivateKey: 
 

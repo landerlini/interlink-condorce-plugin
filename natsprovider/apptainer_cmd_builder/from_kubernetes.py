@@ -1,10 +1,12 @@
 import os.path
+import textwrap
 import base64
 import re
 
 from kubernetes import client as k8s
 from typing import Dict, Any, List, Mapping, Optional, Union, Literal
 from pprint import pprint
+import logging
 
 from kubernetes.client import V1Container, V1KeyToPath
 
@@ -13,6 +15,7 @@ from natsprovider.apptainer_cmd_builder import (
     ContainerSpec,
     volumes,
     BuildConfig,
+    NetworkConfig,
 )
 from natsprovider.apptainer_cmd_builder.volumes import BaseVolume
 from natsprovider.interlink import deserialize_kubernetes
@@ -221,12 +224,62 @@ def _clean_keys_of_none_values(dictionary):
     for key in keys_to_drop:
         del dictionary[key]
 
+def _make_network_config(
+        setup_network: bool,
+        build_config: BuildConfig,
+        annotations: Mapping[str, str],
+) -> NetworkConfig:
+    if not setup_network or not build_config.network.allowed:
+        return NetworkConfig(enabled=False)
+
+    # Load the template from file
+    with open(os.path.join(os.path.dirname(__file__), "network.sh")) as template_file:
+        net_init_template = template_file.read()
+
+    # Initialize the connection
+    connection = annotations.get("interlink.eu/wstunnel-client-commands")
+    if connection is None or connection in ["", " ", False]:
+        return NetworkConfig(enabled=False)
+
+    # Initialize the configuration based on the target site
+    net_build_cfg = build_config.network.model_dump()
+
+    # Update information on the cluster network from either the pod or the plugin
+    net_build_cfg['cluster_resolv_conf'] = annotations.get(
+        "interlink.eu/resolv-conf",
+        open("/etc/resolv.conf").read()
+    )
+    if "interlink.eu/cluster-cidr" not in annotations:
+        logging.getLogger('from_kubernetes').warning(
+            "Annotation interlink.eu/resolv-conf not set. "
+            f"Assuming the same as for the plugin api server."
+        )
+
+    net_build_cfg['cluster_cidr'] = annotations.get(
+        "interlink.eu/cluster-cidr",
+        "10.42.0.0/15"
+    )
+
+    if "interlink.eu/cluster-cidr" not in annotations:
+        logging.getLogger('from_kubernetes').warning(
+            "Annotation interlink.eu/cluster-cidr not set. "
+            f"Assuming {net_build_cfg['cluster_cidr']}."
+        )
+
+    # Plugs the built configuration in the NetworkConfig structure
+    return NetworkConfig(
+        initialization=net_init_template % net_build_cfg,
+        connection=connection,
+        proxy_cmd=build_config.network.proxy_cmd,
+        finalization=build_config.network.tunnel_finalization,
+    )
 
 def from_kubernetes(
         pod_raw: Dict[str, Any],
         containers_raw: Optional[List[Dict[str, Any]]] = None,
         use_fake_volumes: bool = False,
         build_config: BuildConfig = None,
+        setup_network: bool = True
 ) -> ApptainerCmdBuilder:
     """
     :param pod_raw:
@@ -305,5 +358,10 @@ def from_kubernetes(
         scratch_area=scratch_area,
         additional_directories_in_path=build_config.volumes.additional_directories_in_path,
         cachedir=build_config.volumes.apptainer_cachedir,
+        network_config=_make_network_config(
+            setup_network=setup_network,
+            build_config=build_config,
+            annotations=pod.metadata.annotations,
+        ),
     )
 

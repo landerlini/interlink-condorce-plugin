@@ -33,6 +33,8 @@ spec:
               value: {{ .Values.shubProxyS3Bucket |  required "shubProxyS3Bucket required" }} 
             - name: S3_ENDPOINT
               value: {{ .Values.shubProxyS3Endpoint |  required "shubProxyS3Endpoint required" }} 
+            - name: AWS_DEFAULT_REGION
+              value: {{ .Values.shubProxyS3Region |  default "us-east-1" }}
             - name: MASTER_TOKEN
               value: {{ .Values.shubProxyMasterToken |  required "shubProxyMasterToken required" }} 
             - name: SQLITE3_DATABASE_PATH

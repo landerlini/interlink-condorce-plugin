@@ -501,7 +501,10 @@ class NatsGateway:
             return ""
 
         if job_status.phase in ["running"]:
-            return "Unfortunately the log cannot retrieved for a running job... "
+            return (
+                "\nNot implemented. " +
+                "Unfortunately the log cannot be retrieved for a running job.\n "
+            )
 
         if job_status.phase not in ["succeeded", "failed"]:
             return f"Error. Cannot return log for job status '{job_name}'"
@@ -510,10 +513,10 @@ class NatsGateway:
         with tarfile.open(fileobj=io.BytesIO(job_status.logs_tarball), mode='r:*') as tar:
             for member in tar.getmembers():
                 if member.isfile():
-                    self.logger.debug(f"Pod has log for container {member.name}, requested {log_request.ContainerName}.log")
+                    self.logger.debug(f"Pod has log for container {member.name}, requested {log_request.ContainerName}.out")
                     if member.name in [
-                            "run-" + log_request.ContainerName + ".log",
-                            "init-" + log_request.ContainerName + ".log",
+                            "init-" + log_request.ContainerName + ".out",
+                            "run-" + log_request.ContainerName + ".out",
                         ]:
                         full_log = tar.extractfile(member).read().decode('utf-8')
 
