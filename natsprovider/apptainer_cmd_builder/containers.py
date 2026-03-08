@@ -414,7 +414,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
                             mv {cached_image} {cached_image}-{rndid}.rm || echo "No need to clean cache: no such {cached_image} file or directory"   # Replace image with metadata operation
                             mkdir -p {cached_image}
                             echo "Untarring the image"
-                            tar xfvz {cached_image}-{rndid}.tar.gz -C {cached_image}
+                            tar xfz {cached_image}-{rndid}.tar.gz -C {cached_image}
                             rm -rf {cached_image}-{rndid}.rm                 # Clean the old image
                             IMAGE_{uid}={cached_image} 
                             echo "Successfully obtained and cached image in {cached_image}"
