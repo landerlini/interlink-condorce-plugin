@@ -392,15 +392,14 @@ class ContainerSpec(BaseModel, extra="forbid"):
                     echo "Using cvmfs image from {cvmfs_image}"
                     IMAGE_{uid}={cvmfs_image}
                 else 
-
                     REMOTE_IMAGE_MD5=$(curl -Lvs {self.shub_proxy_server}/get-docker-md5/{self.image} -H \"X-Token: {self.shub_token}\" )
 
-                    if [ -f {cached_image} ] && [[ "$REMOTE_IMAGE_MD5" == "$(md5sum {cached_image} | cut -d ' ' -f 1)" ]]; then
+                    if [ -e {cached_image} ] && [[ "$REMOTE_IMAGE_MD5" == "$(md5sum {cached_image} | cut -d ' ' -f 1)" ]]; then
                         echo "Using cached image (from shub-proxy): {cached_image}"
                         IMAGE_{uid}={cached_image}
                     else
                         echo "Failed local caching: will download from remote cache {self.image}"
-                        if [ -f {cached_image} ]; then
+                        if [ -e {cached_image} ]; then
                             touch {cached_image}  # Avoid concurrent jobs to update the spoiled image
                         fi
                         
@@ -425,6 +424,8 @@ class ContainerSpec(BaseModel, extra="forbid"):
                         fi 
                     fi
                 fi
+
+                echo "Selected image for container {uid}: $IMAGE_{uid}"
                 """
             )]
         else:
