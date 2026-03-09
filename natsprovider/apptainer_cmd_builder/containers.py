@@ -394,7 +394,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 else 
                     REMOTE_IMAGE_MD5=$(curl -Lvs {self.shub_proxy_server}/get-docker-md5/{self.image} -H \"X-Token: {self.shub_token}\" )
 
-                    if [ -e {cached_image} ] && [[ "$REMOTE_IMAGE_MD5" == "$(md5sum {cached_image} | cut -d ' ' -f 1)" ]]; then
+                    if [ -e {cached_image}/md5 ] && [[ "$REMOTE_IMAGE_MD5" == $(cat {cached_image}/md5) ]]; then
                         echo "Using cached image (from shub-proxy): {cached_image}"
                         IMAGE_{uid}={cached_image}
                     else
@@ -414,6 +414,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
                             mkdir -p {cached_image}
                             echo "Untarring the image"
                             tar xfz {cached_image}-{rndid}.tar.gz -C {cached_image}
+                            echo "$(md5sum {cached_image}-{rndid}.tar.gz | cut -d ' ' -f 1)" > {cached_image}/md5
                             rm -rf {cached_image}-{rndid}.rm                 # Clean the old image
                             IMAGE_{uid}={cached_image} 
                             echo "Successfully obtained and cached image in {cached_image}"
