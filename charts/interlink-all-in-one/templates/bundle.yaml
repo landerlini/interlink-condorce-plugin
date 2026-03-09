@@ -29,6 +29,7 @@ data:
     Namespace: {{ .Release.Namespace }}
     VKTokenFile: null
     VerboseLogging: {{ .Values.virtualKubeletVerboseLogging | default "true" }}
+    SkipDownwardAPIResolution: true
     Resources:                                                                                                                                                                       
       CPU: {{ .Values.virtualKubeletAllocatableCpu | default 10000 | quote }}
       Memory: {{ .Values.virtualKubeletAllocatableMemory | default "2Ei" | quote }}
