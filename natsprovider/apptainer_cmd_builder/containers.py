@@ -309,7 +309,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         if self.entrypoint:
             ret += [f'--bind {self.executable_path}:/mnt/apptainer_cmd_builder/run']
 
-        return ret
+        return list(set(ret))
 
     def exec(self, proxy_cmd: Union[str, List[str], None] = None):
         uid = sanitize_uid(self.uid).upper()
