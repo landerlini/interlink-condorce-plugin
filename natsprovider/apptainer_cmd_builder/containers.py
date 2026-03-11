@@ -25,6 +25,8 @@ ImageFormat = Literal[  # See https://apptainer.org/docs/user/main/cli/apptainer
     "oras",
 ]
 
+SPECIAL_CHARS = "'\"$%#\n\r"
+
 class ContainerSpec(BaseModel, extra="forbid"):
     uid: str = Field(
         default_factory=generate_uid,
@@ -250,6 +252,13 @@ class ContainerSpec(BaseModel, extra="forbid"):
     def executable_path(self):
         return os.path.join(self.workdir, 'run')
 
+    @property 
+    def execution_full_cmd(self):
+        return self.entrypoint + ' ' + ' '.join([shlex.quote(arg) for arg in self.args])
+
+    @property
+    def is_simple_cmd(self):
+        return not any(special_char in self.execution_full_cmd for special_char in SPECIAL_CHARS)
 
 
     def __hash__(self):
@@ -306,7 +315,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [str(vb) for vb in set(self.volume_binds)]
 
         # Executable
-        if self.entrypoint:
+        if self.entrypoint and not self.is_simple_cmd:
             ret += [f'--bind {self.executable_path}:/mnt/apptainer_cmd_builder/run']
 
         return list(set(ret))
@@ -325,8 +334,8 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 "exec",
                 *self.flags,
                 f"$IMAGE_{uid}",
-                '/mnt/apptainer_cmd_builder/run &> ',
-                self.log_path
+                self.execution_full_cmd if self.is_simple_cmd else '/mnt/apptainer_cmd_builder/run ',
+                f"&> {self.log_path}"
                 ])
         else:
             # Execute the default entrypoint
@@ -361,7 +370,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
             f"mkdir -p {self.var_tmp_dir}",
         ]
 
-        if self.entrypoint:
+        if self.entrypoint and not self.is_simple_cmd:
             ret += [
                 embed_ascii_file(
                     path=self.executable_path,
