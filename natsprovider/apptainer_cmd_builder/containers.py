@@ -233,6 +233,10 @@ class ContainerSpec(BaseModel, extra="forbid"):
         return os.path.join(self.scratch_area, "var-tmp", self.uid)
 
     @property
+    def termination_log(self):
+        return os.path.join(self.scratch_area, f"termination-log-{self.uid}")
+
+    @property
     def workdir(self):
         return os.path.join(self.scratch_area, f".acb.cnt.{self.uid}")
 
@@ -303,6 +307,9 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
         # Environment
         ret += [f'--env-file {self.env_file_path}']
+        
+        # Mounts termination log
+        ret += [f'--bind {self.termination_log}:/dev/termination-log']
 
         # Volumes
         if self.tmp_dir_mode == 'bind':
@@ -368,6 +375,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [
             f"mkdir -p {self.tmp_dir}",
             f"mkdir -p {self.var_tmp_dir}",
+            f"touch {self.termination_log}"
         ]
 
         if self.entrypoint and not self.is_simple_cmd:
