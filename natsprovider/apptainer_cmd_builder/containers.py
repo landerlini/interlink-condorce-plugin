@@ -309,7 +309,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [f'--env-file {self.env_file_path}']
         
         # Mounts termination log
-        ret += [f'--bind {self.termination_log}:/dev/termination-log']
+        # ret += [f'--bind {self.termination_log}:/dev/termination-log']
 
         # Volumes
         if self.tmp_dir_mode == 'bind':
