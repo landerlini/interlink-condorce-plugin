@@ -35,3 +35,9 @@ APPLICATION_TOKEN = os.environ.get("APPLICATION_TOKEN", "w5WU3yaaQiKBzF2HzYhvw9s
 
 # REDIS_CONNECTOR is a connector to redis for subscription persistence
 REDIS_CONNECTOR = os.environ.get("REDIS_CONNECTOR")
+
+# LOGDIR is the directory where the logs are stored. Optional.
+LOGDIR = os.environ.get("LOGDIR", "/var/log/interlink")
+
+# LOG_PERSISTENCY_HOURS is the time (in hours) after which a log can be deleted
+LOG_PERSISTENCY_HOURS = float(os.environ.get("LOG_PERSISTENCY_HOURS", "36"))

@@ -17,8 +17,10 @@ from natsprovider import metrics
 from natsprovider import NatsGateway, interlink
 from natsprovider import configuration as cfg
 from natsprovider.apptainer_cmd_builder import BuildRestModel, from_kubernetes
-# Please Take my provider and handle the interLink REST layer for me
+from natsprovider._logging import logging_setup, log_pod
 
+# Initialize logging services
+logging_setup()
 
 nats_gateway = NatsGateway(
     nats_server=cfg.NATS_SERVER,
@@ -39,17 +41,11 @@ metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
 
-log_format = '%(asctime)-22s %(name)-10s %(levelname)-8s %(message)-90s'
-logging.basicConfig(
-    format=log_format,
-    level=logging.DEBUG if cfg.DEBUG else logging.INFO,
-)
-logging.debug("Enabled debug mode.")
-
 @app.post("/create")
 async def create_pod(pod: Dict[Literal['pod', 'container', 'jobConfig'], Any]) -> interlink.CreateStruct:
     metrics.counters['api_call'].labels('/create').inc()
 
+    log_pod(pod)
 
     pod = interlink.Pod(
             pod=interlink.PodRequest(**(pod['pod'])),
@@ -58,10 +54,6 @@ async def create_pod(pod: Dict[Literal['pod', 'container', 'jobConfig'], Any]) -
 
     pod_req = pod.pod
     container = pod.container
-
-    os.makedirs("/var/log/interlink", exist_ok=True)
-    with open(os.path.join("/var/log/interlink", str(pod_req)), "w") as f:
-        f.write(pformat(pod))
 
     logging.info(f"Creating pod {pod_req}")
     return interlink.CreateStruct(
