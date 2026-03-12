@@ -50,6 +50,7 @@ logging.debug("Enabled debug mode.")
 async def create_pod(pod: Dict[Literal['pod', 'container', 'jobConfig'], Any]) -> interlink.CreateStruct:
     metrics.counters['api_call'].labels('/create').inc()
 
+
     pod = interlink.Pod(
             pod=interlink.PodRequest(**(pod['pod'])),
             container=[interlink.Volume(**c) for c in pod['container']]
@@ -57,6 +58,10 @@ async def create_pod(pod: Dict[Literal['pod', 'container', 'jobConfig'], Any]) -
 
     pod_req = pod.pod
     container = pod.container
+
+    os.makedirs("/var/log/interlink", exist_ok=True)
+    with open(os.path.join("/var/log/interlink", pod_req), "w") as f:
+        f.write(pformat(pod))
 
     logging.info(f"Creating pod {pod_req}")
     return interlink.CreateStruct(
