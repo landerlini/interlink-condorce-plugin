@@ -60,7 +60,7 @@ async def create_pod(pod: Dict[Literal['pod', 'container', 'jobConfig'], Any]) -
     container = pod.container
 
     os.makedirs("/var/log/interlink", exist_ok=True)
-    with open(os.path.join("/var/log/interlink", pod_req), "w") as f:
+    with open(os.path.join("/var/log/interlink", str(pod_req)), "w") as f:
         f.write(pformat(pod))
 
     logging.info(f"Creating pod {pod_req}")
