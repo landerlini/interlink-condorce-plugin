@@ -23,6 +23,9 @@ def logging_setup():
 
 
 def log_pod(pod: Dict[Literal['pod', 'container', 'jobConfig'], Any]):
+    """
+    Log the description of a pod in a file, cleaning the older ones.
+    """
     global LAST_LOG_SCAN
 
     if cfg.LOGDIR is None:
