@@ -9,19 +9,24 @@ from . import configuration as cfg, BuildConfig
 
 from natsprovider.utils import generate_uid
 
-MountType = Literal['bind', 'scratch', 'fuse']
+MountType = Literal["bind", "scratch", "fuse"]
+
 
 class AsciiFileSpec(BaseModel, extra="forbid"):
     content: str = Field(description="Content of the file")
-    executable: bool = Field(default=False, description="Marks the file as executable (chmod +x)")
+    executable: bool = Field(
+        default=False, description="Marks the file as executable (chmod +x)"
+    )
+
 
 class BinaryFileSpec(BaseModel, extra="forbid"):
     content: bytes = Field(description="Content of the file")
-    executable: bool = Field(default=False, description="Marks the file as executable (chmod +x)")
+    executable: bool = Field(
+        default=False, description="Marks the file as executable (chmod +x)"
+    )
 
 
-
-class BaseVolume (BaseModel, extra="forbid"):
+class BaseVolume(BaseModel, extra="forbid"):
     uid: str = Field(
         default_factory=generate_uid,
         description="Unique identifier for the volume",
@@ -39,22 +44,22 @@ class BaseVolume (BaseModel, extra="forbid"):
 
     cleanup_script: Optional[str] = Field(
         default=None,
-        description="A script to cleanup the runtime environment at the end of the job (or to upload volume data)"
+        description="A script to cleanup the runtime environment at the end of the job (or to upload volume data)",
     )
 
-    fuse_mode: Literal['host', 'container', 'host-privileged'] = Field(
+    fuse_mode: Literal["host", "container", "host-privileged"] = Field(
         default=cfg.FUSE_MODE,
-        description="Indicate how fuse is mounted for the user. Refer to BuildConfig for the docs."
+        description="Indicate how fuse is mounted for the user. Refer to BuildConfig for the docs.",
     )
 
     fuse_enabled_on_host: bool = Field(
         default=False,
-        description="Indicate the executor is privileged enough to mount fuse volumes without userns tricks"
+        description="Indicate the executor is privileged enough to mount fuse volumes without userns tricks",
     )
 
     host_path_override: Optional[str] = Field(
         default=None,
-        description="If set, overrides generation of a temporary volume for hosting volume data"
+        description="If set, overrides generation of a temporary volume for hosting volume data",
     )
 
     additional_directories_in_path: List[str] = Field(
@@ -66,7 +71,6 @@ class BaseVolume (BaseModel, extra="forbid"):
         default="/tmp/cache/apptainer",
         description="Directory where to cache remote data. Used by fuse volumes, only.",
     )
-
 
     @property
     def host_path(self):
@@ -97,17 +101,19 @@ class BaseVolume (BaseModel, extra="forbid"):
 
     def initialize(self) -> str:
         if self.parsed_init_script:
-            return '\n' + textwrap.dedent(self.parsed_init_script)
+            return "\n" + textwrap.dedent(self.parsed_init_script)
 
         return ""
 
     def finalize(self) -> str:
         if self.parsed_cleanup_script:
-            return '\n' + textwrap.dedent(self.parsed_cleanup_script)
+            return "\n" + textwrap.dedent(self.parsed_cleanup_script)
 
         return ""
 
-    def mount(self, mount_path: str, sub_path: Optional[str] = None, read_only: bool = False):
+    def mount(
+        self, mount_path: str, sub_path: Optional[str] = None, read_only: bool = False
+    ):
         return [
             VolumeBind(
                 volume=self,
@@ -118,17 +124,20 @@ class BaseVolume (BaseModel, extra="forbid"):
         ]
 
 
-class ScratchArea (BaseVolume, extra="forbid"):
-    def mount(self, mount_path: str, sub_path: Optional[str] = None, read_only: bool = False):
+class ScratchArea(BaseVolume, extra="forbid"):
+    def mount(
+        self, mount_path: str, sub_path: Optional[str] = None, read_only: bool = False
+    ):
         return [
             VolumeBind(
                 volume=self,
                 container_path=mount_path,
                 read_only=read_only,
-                mount_type='scratch',
+                mount_type="scratch",
                 sub_path=sub_path,
             )
         ]
+
 
 class StaticVolume(BaseVolume, extra="forbid"):
     config: Dict[str, AsciiFileSpec] = Field(
@@ -138,7 +147,7 @@ class StaticVolume(BaseVolume, extra="forbid"):
 
     binaries: Dict[str, BinaryFileSpec] = Field(
         default={},
-        description="key:spec mapping of small binary files to make available from within the container (e.g. secrets)"
+        description="key:spec mapping of small binary files to make available from within the container (e.g. secrets)",
     )
 
     def initialize(self):
@@ -146,51 +155,59 @@ class StaticVolume(BaseVolume, extra="forbid"):
         ret = [
             f"rm -rf {base_path}",
             f"mkdir -p {base_path}",
-            self.parsed_init_script or '',
+            self.parsed_init_script or "",
         ]
 
         for key, config in self.config.items():
             host_filename = os.path.join(base_path, f"{key}.ascii")
-            ret.append(embed_ascii_file(host_filename, config.content, config.executable))
+            ret.append(
+                embed_ascii_file(host_filename, config.content, config.executable)
+            )
 
         for key, binary in self.binaries.items():
             host_filename = os.path.join(base_path, f"{key}.binary")
-            ret.append(embed_binary_file(host_filename, binary.content, binary.executable))
+            ret.append(
+                embed_binary_file(host_filename, binary.content, binary.executable)
+            )
 
-        return '\n'+'\n'.join(ret)
-
+        return "\n" + "\n".join(ret)
 
     def finalize(self):
         base_path = self.host_path
         ret = [
             f"rm -rf {base_path}",
-            self.parsed_cleanup_script or '',
+            self.parsed_cleanup_script or "",
         ]
-        return '\n'+'\n'.join(ret)
+        return "\n" + "\n".join(ret)
 
-    def mount(self, mount_path: str, sub_path: Optional[str] = None, read_only: bool = True, key: Optional[str] = None):
+    def mount(
+        self,
+        mount_path: str,
+        sub_path: Optional[str] = None,
+        read_only: bool = True,
+        key: Optional[str] = None,
+    ):
         if sub_path is not None:
             print("Warning sub_path for StaticVolumes is not implemented. Ignored.")
 
         if key is None:
-            return (
-                [   # Bind ascii files
-                    VolumeBind(
-                        volume=self,
-                        host_path_override=f"{os.path.join(self.host_path, k)}.ascii",
-                        container_path=f"{mount_path}/{k}",
-                        read_only=read_only,
-                    ) for k in self.config.keys()
-                ] +
-                [   # Bind binary files
-                    VolumeBind(
-                        volume=self,
-                        host_path_override=f"{os.path.join(self.host_path, k)}.binary",
-                        container_path=f"{mount_path}/{k}",
-                        read_only=read_only,
-                    ) for k in self.binaries.keys()
-                ]
-            )
+            return [  # Bind ascii files
+                VolumeBind(
+                    volume=self,
+                    host_path_override=f"{os.path.join(self.host_path, k)}.ascii",
+                    container_path=f"{mount_path}/{k}",
+                    read_only=read_only,
+                )
+                for k in self.config.keys()
+            ] + [  # Bind binary files
+                VolumeBind(
+                    volume=self,
+                    host_path_override=f"{os.path.join(self.host_path, k)}.binary",
+                    container_path=f"{mount_path}/{k}",
+                    read_only=read_only,
+                )
+                for k in self.binaries.keys()
+            ]
 
         if key in self.config.keys():
             return [
@@ -228,6 +245,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
     :return: a BaseVolume instance describing the fuse volume
 
     """
+
     fuse_mount_script: str = Field(
         description="Script to configure the fuse volume with software distributed within the container"
     )
@@ -253,30 +271,40 @@ class FuseVolume(BaseVolume, extra="forbid"):
         ]
 
         # executed by apptainer, but on the host filesystem: requires re-setting PATH
-        if self.fuse_mode in ('host',):
+        if self.fuse_mode in ("host",):
             envvars += [
                 f"export PATH={':'.join(self.additional_directories_in_path)}:$PATH",
                 f"export CACHEDIR={cache_path}",
-                ]
+            ]
 
-        mount_script = "\n".join([line for line in mount_script.split('\n') if len(line)])
-        if not mount_script.split('\n')[0].startswith("#!/"):
-            mount_script = '\n'.join(["#!/bin/sh", *envvars, mount_script])
+        mount_script = "\n".join(
+            [line for line in mount_script.split("\n") if len(line)]
+        )
+        if not mount_script.split("\n")[0].startswith("#!/"):
+            mount_script = "\n".join(["#!/bin/sh", *envvars, mount_script])
         else:
-            mount_script = '\n'.join([mount_script.split('\n')[0], *envvars, mount_script])
+            mount_script = "\n".join(
+                [mount_script.split("\n")[0], *envvars, mount_script]
+            )
 
         ret = [
             f"rm -rf {base_path}",
             f"mkdir -p {host_path}",
             f"mkdir -p {cache_path}",
-            embed_ascii_file(self.fuse_mount_script_host_path, mount_script, executable=True),
-            self.parsed_init_script or '',
+            embed_ascii_file(
+                self.fuse_mount_script_host_path, mount_script, executable=True
+            ),
+            self.parsed_init_script or "",
         ]
 
         # If possible, will execute the fuse command on host, instead of inside the container
         if self.fuse_enabled_on_host:
             ret += [
-                f"CACHEDIR={cache_path}/cache /bin/bash " + self.fuse_mount_script_host_path + " \"\" " + host_path + " &",
+                f"CACHEDIR={cache_path}/cache /bin/bash "
+                + self.fuse_mount_script_host_path
+                + ' "" '
+                + host_path
+                + " &",
                 f"FUSE_{sanitize_uid(self.uid).upper()}_PID=$!",
                 textwrap.dedent(
                     f"""
@@ -289,10 +317,10 @@ class FuseVolume(BaseVolume, extra="forbid"):
                         fi
                     done
                     """
-                )
+                ),
             ]
 
-        return '\n' + '\n'.join(ret)
+        return "\n" + "\n".join(ret)
 
     def finalize(self):
         host_path = os.path.join(self.host_path, "mnt")
@@ -312,12 +340,15 @@ class FuseVolume(BaseVolume, extra="forbid"):
         if self.parsed_cleanup_script is not None:
             ret.append(self.parsed_cleanup_script)
 
+        return "\n" + "\n".join(ret)
 
-        return '\n' + '\n'.join(ret)
-
-    def mount(self, mount_path: str, sub_path: Optional[str] = None, read_only: bool = False):
+    def mount(
+        self, mount_path: str, sub_path: Optional[str] = None, read_only: bool = False
+    ):
         if read_only:
-            raise NotImplementedError("Read-only constrain is fuse-lib specific. Implement it in mount script.")
+            raise NotImplementedError(
+                "Read-only constrain is fuse-lib specific. Implement it in mount script."
+            )
 
         if self.fuse_enabled_on_host:
             return [
@@ -325,7 +356,7 @@ class FuseVolume(BaseVolume, extra="forbid"):
                     volume=self,
                     host_path_override=os.path.join(self.host_path, "mnt"),
                     container_path=mount_path,
-                    mount_type='bind',
+                    mount_type="bind",
                     sub_path=sub_path,
                 )
             ]
@@ -336,14 +367,14 @@ class FuseVolume(BaseVolume, extra="forbid"):
                 host_path_override=self.fuse_mount_script_host_path,
                 container_path=self.fuse_mount_script_container_path,
                 read_only=False,
-                mount_type='bind',
+                mount_type="bind",
             ),
             VolumeBind(
                 volume=self,
                 container_path=mount_path,
-                mount_type='fuse',
+                mount_type="fuse",
                 sub_path=sub_path,
-            )
+            ),
         ]
 
 
@@ -356,10 +387,13 @@ def make_empty_dir(build_config: BuildConfig):
         cleanup_script=textwrap.dedent(f"""
         rm -rf %(host_path)s
         """),
-        **build_config.base_volume_config()
+        **build_config.base_volume_config(),
     )
 
-def clone_git_repo(git_repo: str, build_config: BuildConfig, apptainer_exec: str = "apptainer"):
+
+def clone_git_repo(
+    git_repo: str, build_config: BuildConfig, apptainer_exec: str = "apptainer"
+):
     """
     An example of customization: clone a git repository in a directory.
 
@@ -377,22 +411,21 @@ def clone_git_repo(git_repo: str, build_config: BuildConfig, apptainer_exec: str
         cleanup_script=textwrap.dedent(f"""
         rm -rf %(host_path)s
         """),
-        **build_config.base_volume_config()
+        **build_config.base_volume_config(),
     )
 
 
 class VolumeBind(BaseModel, extra="forbid"):
     volume: BaseVolume = Field(description="The volume this bind refers to")
-    container_path: str = Field(description="Path of the volume (or file) in the container file system")
+    container_path: str = Field(
+        description="Path of the volume (or file) in the container file system"
+    )
     read_only: bool = Field(default=False)
     host_path_override: Optional[str] = Field(
         default=None,
-        description=f"Specialize (or overrides) the host path with respect to the volume"
+        description=f"Specialize (or overrides) the host path with respect to the volume",
     )
-    mount_type: MountType = Field(
-        default='bind',
-        description="Type of binding"
-    )
+    mount_type: MountType = Field(default="bind", description="Type of binding")
     sub_path: Optional[str] = Field(
         default=None,
         description="Mount in mount_path a subPath of the volume instead of its root",
@@ -400,34 +433,67 @@ class VolumeBind(BaseModel, extra="forbid"):
 
     @property
     def host_path(self):
-        ret_path = self.host_path_override if self.host_path_override is not None else self.volume.host_path
-        return os.path.join(ret_path, self.sub_path) if self.sub_path is not None else ret_path
+        ret_path = (
+            self.host_path_override
+            if self.host_path_override is not None
+            else self.volume.host_path
+        )
+        return (
+            os.path.join(ret_path, self.sub_path)
+            if self.sub_path is not None
+            else ret_path
+        )
 
     def __str__(self):
-        if self.mount_type in ['bind']:
+        if self.mount_type in ["bind"]:
             return f"--bind {self.host_path}:{self.container_path}:{'ro' if self.read_only else 'rw'}"
-        elif self.mount_type in ['scratch']:
+        elif self.mount_type in ["scratch"]:
             return f"--scratch {self.container_path}"
-        elif self.mount_type in ['fuse']:
-            return f"--fusemount \"%(fuse_mode)s:%(script)s %(sub_path)s %(mount_point)s %(fake_arg)s\"" % dict(
-                fuse_mode='container' if self.volume.fuse_mode in ('container', 'container-privileged') else 'host',
-                sub_path=self.sub_path if self.sub_path is not None else "",
-                script=(
-                    self.volume.fuse_mount_script_container_path
-                    if self.volume.fuse_mode in ('container', 'container-privileged') else
-                    self.volume.fuse_mount_script_host_path
-                ),
-                mount_point=self.container_path,
-                # fake_arg adds a fake last argument in case the host allows using fuse inside the container directly
-                # without /dev/fd tricks. If the argument is not passed, then the last argument is intercepted by
-                # apptainer and replaced with the /dev/fd device.
-                fake_arg=self.container_path if self.volume.fuse_enabled_on_host else '',
+        elif self.mount_type in ["fuse"]:
+            return (
+                f'--fusemount "%(fuse_mode)s:%(script)s %(sub_path)s %(mount_point)s %(fake_arg)s"'
+                % dict(
+                    fuse_mode="container"
+                    if self.volume.fuse_mode in ("container", "container-privileged")
+                    else "host",
+                    sub_path=self.sub_path if self.sub_path is not None else "",
+                    script=(
+                        self.volume.fuse_mount_script_container_path
+                        if self.volume.fuse_mode
+                        in ("container", "container-privileged")
+                        else self.volume.fuse_mount_script_host_path
+                    ),
+                    mount_point=self.container_path,
+                    # fake_arg adds a fake last argument in case the host allows using fuse inside the container directly
+                    # without /dev/fd tricks. If the argument is not passed, then the last argument is intercepted by
+                    # apptainer and replaced with the /dev/fd device.
+                    fake_arg=self.container_path
+                    if self.volume.fuse_enabled_on_host
+                    else "",
+                )
             )
 
-        raise KeyError(f"Unexpected mount_type '{self.mount_type}', expect 'bind', 'scratch', or 'fuse'.")
+        raise KeyError(
+            f"Unexpected mount_type '{self.mount_type}', expect 'bind', 'scratch', or 'fuse'."
+        )
 
     def __hash__(self):
         return self.__str__().__hash__()
 
 
+def make_token_volume(
+    build_config: BuildConfig,
+    token: str,
+    namespace: str = "default",
+):
 
+    with open("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt") as f:
+        certificate = f.read()
+
+    config: Dict[str, AsciiFileSpec] = dict(
+        token=AsciiFileSpec(token),
+        certificate=AsciiFileSpec(certificate),
+        namespace=AsciiFileSpec(namespace),
+    )
+
+    return StaticVolume(**build_config.base_volume_config(), config=config)

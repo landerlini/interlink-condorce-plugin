@@ -1,4 +1,6 @@
 import os.path
+import traceback
+import time
 import textwrap
 import base64
 import re
@@ -17,15 +19,16 @@ from natsprovider.apptainer_cmd_builder import (
     BuildConfig,
     NetworkConfig,
 )
-from natsprovider.apptainer_cmd_builder.volumes import BaseVolume
+from natsprovider.apptainer_cmd_builder.volumes import BaseVolume, make_token_volume
 from natsprovider.interlink import deserialize_kubernetes
 
-StaticVolKey = Literal['volume_name', 'items']
+StaticVolKey = Literal["volume_name", "items"]
+
 
 def _create_static_volume_dict(
-        volume_source_by_name: Dict[str, Dict[StaticVolKey, Any]],
-        volume_definitions: List[Union[k8s.V1ConfigMap, k8s.V1Secret]],
-        build_config: BuildConfig,
+    volume_source_by_name: Dict[str, Dict[StaticVolKey, Any]],
+    volume_definitions: List[Union[k8s.V1ConfigMap, k8s.V1Secret]],
+    build_config: BuildConfig,
 ):
     """
     Internal. Creates a dictionary mapping the name of each volume to a StaticVolume object that can then
@@ -35,9 +38,11 @@ def _create_static_volume_dict(
     volume_definitions: List of configMap or secret objects
 
     """
+
     # Service function to resolve the correct key to retrieve either binary or ascii data from ConfigMaps and Secrets
-    def get_data(vol, dtype: Literal['string', 'binary']):
-        if vol is None: return {}
+    def get_data(vol, dtype: Literal["string", "binary"]):
+        if vol is None:
+            return {}
         if isinstance(vol, k8s.V1ConfigMap):
             return dict(string=vol.data, binary=vol.binary_data)[dtype] or {}
         if isinstance(vol, k8s.V1Secret):
@@ -51,27 +56,92 @@ def _create_static_volume_dict(
                 return item.path
 
     return {
-        volume_source_by_name[vol.metadata.name]['volume_name']: volumes.StaticVolume(
+        volume_source_by_name[vol.metadata.name]["volume_name"]: volumes.StaticVolume(
             **build_config.base_volume_config(),
             config={
-                _resolve_key2path(volume_source_by_name[vol.metadata.name]['items'], k):
-                    volumes.AsciiFileSpec(content=v)
-                for k, v in get_data(vol, 'string').items()
+                _resolve_key2path(
+                    volume_source_by_name[vol.metadata.name]["items"], k
+                ): volumes.AsciiFileSpec(content=v)
+                for k, v in get_data(vol, "string").items()
             },
             binaries={
-                _resolve_key2path(volume_source_by_name[vol.metadata.name]['items'], k):
-                    volumes.BinaryFileSpec(content=base64.b64decode(v.encode('ascii')))
-                for k, v in get_data(vol, 'binary').items()
+                _resolve_key2path(
+                    volume_source_by_name[vol.metadata.name]["items"], k
+                ): volumes.BinaryFileSpec(content=base64.b64decode(v.encode("ascii")))
+                for k, v in get_data(vol, "binary").items()
             },
         )
-        for vol in volume_definitions if vol.metadata.name in volume_source_by_name.keys()
+        for vol in volume_definitions
+        if vol.metadata.name in volume_source_by_name.keys()
     }
 
+
+def _create_token_volume_dict(
+    pod: k8s.V1Pod,
+    build_config: BuildConfig,
+):
+    """
+    Internal. Creates a token volume, retrieving information from the cluster itself.
+    """
+    # Retrieve the token names from pod spec
+    token_names = [
+        volume.name
+        for volume in pod.spec.volumes or []
+        if volume.name.startswith("kube-api-access-") and volume.projected is not None
+    ]
+
+    # Handles cases where token is not mounted
+    if len(token_names) == 0:
+        return {}
+
+    # Create the token request body
+    token_request = k8s.V1TokenRequest(
+        spec=k8s.V1TokenRequestSpec(
+            audiences=["https://kubernetes.default.svc"],
+            expiration_seconds=3 * 24 * 3600,
+            bound_object_reference=k8s.V1BoundObjectReference(
+                api_version="v1",
+                kind="Pod",
+                name=pod.metadata.name,
+                uid=pod.metadata.uid,
+            ),
+        )
+    )
+
+    # Submit the token request (with retrial)
+    MAX_ATTEMPTS = 3
+    for attempt in range(MAX_ATTEMPTS):
+        try:
+            resp = k8s.CoreV1Api().create_namespaced_service_account_token(
+                name=pod.spec.service_account_name,
+                namespace=pod.metadata.namespace,
+                body=token_request,
+            )
+            break
+        except Exception as e:
+            logging.getLogger("from_kubernetes").warning(
+                f"Attempt {attempt + 1} to retrieve token for pod {pod.metadata.name} failed with error: {e}"
+            )
+            if attempt == MAX_ATTEMPTS - 1:
+                logging.getLogger("from_kubernetes").error(
+                    f"Failed to retrieve token for pod {pod.metadata.name} after {MAX_ATTEMPTS} attempts. No token will be provided."
+                )
+                logging.getLogger("from_kubernetes").error(traceback.format_exc())
+                return {}
+            else:
+                time.sleep(1.0)
+
+    return {
+        name: make_token_volume(resp.status.token, build_config) for name in token_names
+    }
+
+
 def _make_pod_volume_struct(
-        pod: k8s.V1Pod,
-        containers_raw: List[Dict[str, Any]],
-        build_config: BuildConfig
-    ):
+    pod: k8s.V1Pod,
+    containers_raw: List[Dict[str, Any]],
+    setup_network: bool,
+    build_config: BuildConfig,
+):
     """
     Internal. Create a dictionary mapping the volume name to a BaseVolume object that can then be mounted
     in containers with .mount(<path>).
@@ -79,22 +149,21 @@ def _make_pod_volume_struct(
     # Count the number of times volumes appear, this is mainly relevant to emptyDirs
     volumes_counts = {}
     for container in (pod.spec.containers or []) + (pod.spec.init_containers or []):
-        for volume_mount in (container.volume_mounts or []):
+        for volume_mount in container.volume_mounts or []:
             if volume_mount.name not in volumes_counts:
                 volumes_counts[volume_mount.name] = 0
             volumes_counts[volume_mount.name] += 1
 
     pprint(volumes_counts)
 
-    #empty_dirs = [v for c in containers_raw for v in (c if c is not None else []).get('emptyDirs') or []]
-    empty_dirs = [
-        v.name for v in pod.spec.volumes if v.empty_dir is not None
-    ]
+    # empty_dirs = [v for c in containers_raw for v in (c if c is not None else []).get('emptyDirs') or []]
+    empty_dirs = [v.name for v in pod.spec.volumes if v.empty_dir is not None]
     pprint(empty_dirs)
 
     empty_dirs = {
-        k:  volumes.ScratchArea(**build_config.base_volume_config()) if volumes_counts.get(k, 0) <= 1
-            else volumes.make_empty_dir(build_config)
+        k: volumes.ScratchArea(**build_config.base_volume_config())
+        if volumes_counts.get(k, 0) <= 1
+        else volumes.make_empty_dir(build_config)
         for k in set(empty_dirs)
     }
 
@@ -102,41 +171,57 @@ def _make_pod_volume_struct(
     config_maps = _create_static_volume_dict(
         volume_source_by_name={
             str(v.config_map.name): {"volume_name": v.name, "items": v.config_map.items}
-            for v in (pod.spec.volumes or []) if v is not None and v.config_map is not None
+            for v in (pod.spec.volumes or [])
+            if v is not None and v.config_map is not None
         },
         volume_definitions=[
-            deserialize_kubernetes(cm_raw, 'V1ConfigMap')
+            deserialize_kubernetes(cm_raw, "V1ConfigMap")
             for container in containers_raw
-            for cm_raw in container.get('configMaps') or []
+            for cm_raw in container.get("configMaps") or []
         ],
         build_config=build_config,
     )
 
-    # Create a mapping for configmaps from the pod.spec.volumes structure: {secret.name: secret}
+    # Create a mapping for secrets from the pod.spec.volumes structure: {secret.name: secret}
     secrets = _create_static_volume_dict(
         volume_source_by_name={
             str(v.secret.secret_name): {"volume_name": v.name, "items": v.secret.items}
-            for v in (pod.spec.volumes or []) if v is not None and v.secret is not None
+            for v in (pod.spec.volumes or [])
+            if v is not None and v.secret is not None
         },
         volume_definitions=[
-            deserialize_kubernetes(cm_raw, 'V1Secret')
+            deserialize_kubernetes(cm_raw, "V1Secret")
             for container in containers_raw
-            for cm_raw in container.get('secrets') or []
+            for cm_raw in container.get("secrets") or []
         ],
         build_config=build_config,
     )
 
     fuse_vol = {
-        vol_name: volumes.FuseVolume(fuse_mount_script=ann_val, **build_config.base_volume_config())
+        vol_name: volumes.FuseVolume(
+            fuse_mount_script=ann_val, **build_config.base_volume_config()
+        )
         for ann_key, ann_val in (pod.metadata.annotations or {}).items()
         for vol_name in re.findall("fuse.vk.io/([\w-]+)", ann_key)
     }
 
     cvmfs = {
-        vol_name: volumes.BaseVolume(host_path_override="/cvmfs", **build_config.base_volume_config())
+        vol_name: volumes.BaseVolume(
+            host_path_override="/cvmfs", **build_config.base_volume_config()
+        )
         for ann_key, ann_val in (pod.metadata.annotations or {}).items()
         for vol_name in re.findall("cvmfs.vk.io/([\w-]+)", ann_key)
     }
+
+    _provide_token = all(
+        (
+            pod.spec.service_account_name is not None,
+            setup_network,
+            build_config.network.allowed,
+            build_config.network.mount_token,
+        )
+    )
+    token = _create_token_volume_dict(pod, build_config) if _provide_token else {}
 
     return {
         **empty_dirs,
@@ -144,15 +229,17 @@ def _make_pod_volume_struct(
         **secrets,
         **fuse_vol,
         **cvmfs,
+        **token,
     }
 
+
 def _make_container_list(
-        build_config: BuildConfig,
-        containers: Optional[List[V1Container]] = None,
-        pod_volumes: Optional[Mapping[str, BaseVolume]] = None,
-        use_fake_volumes: bool = False,
-        is_init_container: bool = False,
-        user_cache: Optional[str] = None,
+    build_config: BuildConfig,
+    containers: Optional[List[V1Container]] = None,
+    pod_volumes: Optional[Mapping[str, BaseVolume]] = None,
+    use_fake_volumes: bool = False,
+    is_init_container: bool = False,
+    user_cache: Optional[str] = None,
 ) -> List[ContainerSpec]:
     """
     Internal. Creates a list of ContainerSpec objects, mounting the volumes defined by pod_volumes.
@@ -170,39 +257,58 @@ def _make_container_list(
             return []
 
         if use_fake_volumes:
-            return sum([
-                    *[volumes.ScratchArea().mount(vm.mount_path) for vm in getattr(container, 'volume_mounts')],
-                ], [])
+            return sum(
+                [
+                    *[
+                        volumes.ScratchArea().mount(vm.mount_path)
+                        for vm in getattr(container, "volume_mounts")
+                    ],
+                ],
+                [],
+            )
 
-        cache_volume = volumes.make_empty_dir(build_config) if user_cache is None else volumes.BaseVolume(
-            init_script="mkdir %(host_path)s",
-            host_path_override=user_cache,
-            **build_config.base_volume_config()
+        cache_volume = (
+            volumes.make_empty_dir(build_config)
+            if user_cache is None
+            else volumes.BaseVolume(
+                init_script="mkdir %(host_path)s",
+                host_path_override=user_cache,
+                **build_config.base_volume_config(),
+            )
         )
 
-        return sum([
+        return sum(
+            [
                 *[
                     pod_volumes.get(vm.name, volumes.ScratchArea()).mount(
                         vm.mount_path,
                         sub_path=vm.sub_path,
-                        read_only=vm.read_only if vm.read_only is not None else False
+                        read_only=vm.read_only if vm.read_only is not None else False,
                     )
-                    for vm in getattr(container, 'volume_mounts')
+                    for vm in getattr(container, "volume_mounts")
                 ],
                 cache_volume.mount(mount_path="/cache", read_only=False),
-            ], [])
+            ],
+            [],
+        )
 
     prefix = "init-" if is_init_container else "run-"
     return [
         ContainerSpec(
-            uid=prefix+c.name,
-            entrypoint=c.command[0] if c.command is not None and len(c.command) else None,
-            args=(c.command[1:] if c.command and len(c.command) else []) + (c.args if c.args is not None else []),
+            uid=prefix + c.name,
+            entrypoint=c.command[0]
+            if c.command is not None and len(c.command)
+            else None,
+            args=(c.command[1:] if c.command and len(c.command) else [])
+            + (c.args if c.args is not None else []),
             image=c.image,
             volume_binds=_volumes_for_container(c),
-            environment={env.name: env.value for env in (c.env or []) if env.value is not None},
+            environment={
+                env.name: env.value for env in (c.env or []) if env.value is not None
+            },
             **build_config.container_spec_config(),
-        ) for c in containers
+        )
+        for c in containers
     ]
 
 
@@ -224,10 +330,11 @@ def _clean_keys_of_none_values(dictionary):
     for key in keys_to_drop:
         del dictionary[key]
 
+
 def _make_network_config(
-        setup_network: bool,
-        build_config: BuildConfig,
-        annotations: Mapping[str, str],
+    setup_network: bool,
+    build_config: BuildConfig,
+    annotations: Mapping[str, str],
 ) -> NetworkConfig:
     if not setup_network or not build_config.network.allowed:
         return NetworkConfig(enabled=False)
@@ -245,23 +352,21 @@ def _make_network_config(
     net_build_cfg = build_config.network.model_dump()
 
     # Update information on the cluster network from either the pod or the plugin
-    net_build_cfg['cluster_resolv_conf'] = annotations.get(
-        "interlink.eu/resolv-conf",
-        open("/etc/resolv.conf").read()
+    net_build_cfg["cluster_resolv_conf"] = annotations.get(
+        "interlink.eu/resolv-conf", open("/etc/resolv.conf").read()
     )
     if "interlink.eu/cluster-cidr" not in annotations:
-        logging.getLogger('from_kubernetes').warning(
+        logging.getLogger("from_kubernetes").warning(
             "Annotation interlink.eu/resolv-conf not set. "
             f"Assuming the same as for the plugin api server."
         )
 
-    net_build_cfg['cluster_cidr'] = annotations.get(
-        "interlink.eu/cluster-cidr",
-        "10.42.0.0/15"
+    net_build_cfg["cluster_cidr"] = annotations.get(
+        "interlink.eu/cluster-cidr", "10.42.0.0/15"
     )
 
     if "interlink.eu/cluster-cidr" not in annotations:
-        logging.getLogger('from_kubernetes').warning(
+        logging.getLogger("from_kubernetes").warning(
             "Annotation interlink.eu/cluster-cidr not set. "
             f"Assuming {net_build_cfg['cluster_cidr']}."
         )
@@ -274,12 +379,13 @@ def _make_network_config(
         finalization=build_config.network.tunnel_finalization,
     )
 
+
 def from_kubernetes(
-        pod_raw: Dict[str, Any],
-        containers_raw: Optional[List[Dict[str, Any]]] = None,
-        use_fake_volumes: bool = False,
-        build_config: BuildConfig = None,
-        setup_network: bool = True
+    pod_raw: Dict[str, Any],
+    containers_raw: Optional[List[Dict[str, Any]]] = None,
+    use_fake_volumes: bool = False,
+    build_config: BuildConfig = None,
+    setup_network: bool = True,
 ) -> ApptainerCmdBuilder:
     """
     :param pod_raw:
@@ -318,8 +424,8 @@ def from_kubernetes(
     :return:
         An instance of ApptainerCmdBuilder representing the pod
     """
-    if 'kind' in pod_raw.keys() and 'apiVersion' in pod_raw.keys():
-        if pod_raw['kind'] != 'Pod' and pod_raw['apiVersion'] != 'v1':
+    if "kind" in pod_raw.keys() and "apiVersion" in pod_raw.keys():
+        if pod_raw["kind"] != "Pod" and pod_raw["apiVersion"] != "v1":
             raise ValueError("Invalid pod description")
 
     _clean_keys_of_none_values(pod_raw)
@@ -327,14 +433,24 @@ def from_kubernetes(
     if build_config is None:
         build_config = BuildConfig()
 
-    pod = deserialize_kubernetes(pod_raw, 'V1Pod')
-    pod_volumes = _make_pod_volume_struct(pod, containers_raw if containers_raw is not None else [], build_config)
+    pod = deserialize_kubernetes(pod_raw, "V1Pod")
+    pod_volumes = _make_pod_volume_struct(
+        pod,
+        containers_raw if containers_raw is not None else [],
+        setup_network,
+        build_config,
+    )
 
     # Special paths
-    scratch_area = os.path.join(build_config.volumes.scratch_area, f".interlink.{pod.metadata.uid}")
+    scratch_area = os.path.join(
+        build_config.volumes.scratch_area, f".interlink.{pod.metadata.uid}"
+    )
     user_cache = (
-        os.path.join(build_config.volumes.apptainer_cachedir, pod.metadata.labels['user'])
-        if pod.metadata.labels is not None and 'user' in pod.metadata.labels.keys() else None
+        os.path.join(
+            build_config.volumes.apptainer_cachedir, pod.metadata.labels["user"]
+        )
+        if pod.metadata.labels is not None and "user" in pod.metadata.labels.keys()
+        else None
     )
 
     return ApptainerCmdBuilder(
@@ -364,4 +480,3 @@ def from_kubernetes(
             annotations=pod.metadata.annotations,
         ),
     )
-
