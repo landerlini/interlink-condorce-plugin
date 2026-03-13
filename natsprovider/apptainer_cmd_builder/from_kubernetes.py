@@ -202,7 +202,7 @@ def _make_pod_volume_struct(
             fuse_mount_script=ann_val, **build_config.base_volume_config()
         )
         for ann_key, ann_val in (pod.metadata.annotations or {}).items()
-        for vol_name in re.findall("fuse.vk.io/([\w-]+)", ann_key)
+        for vol_name in re.findall(r"fuse.vk.io/([\w-]+)", ann_key)
     }
 
     cvmfs = {
@@ -210,7 +210,7 @@ def _make_pod_volume_struct(
             host_path_override="/cvmfs", **build_config.base_volume_config()
         )
         for ann_key, ann_val in (pod.metadata.annotations or {}).items()
-        for vol_name in re.findall("cvmfs.vk.io/([\w-]+)", ann_key)
+        for vol_name in re.findall(r"cvmfs.vk.io/([\w-]+)", ann_key)
     }
 
     _provide_token = all(
