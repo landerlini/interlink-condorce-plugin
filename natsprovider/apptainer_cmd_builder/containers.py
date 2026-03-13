@@ -387,7 +387,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
             embed_ascii_file(
                 path=self.env_file_path,
                 file_content="\n".join(
-                    [f'{k}="{v.replace('"', '\\"')}"' for k, v in env_dict.items()]
+                    [f'{k}="{v.replace("\"", "\\\"")}"' for k, v in env_dict.items()]
                 ),
                 executable=False,
             ),
