@@ -379,7 +379,7 @@ class BuildConfig(BaseModel):
             description="Allow using port forwarding for enabling networking with the origin cluster",
         )
 
-        mount_tokens: bool = Field(
+        mount_token: bool = Field(
             default=True,
             description="Mount the token file used to authenticate to the origin cluster in the container to allow running kubectl commands",
         )
