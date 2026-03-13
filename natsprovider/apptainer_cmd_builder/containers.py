@@ -27,44 +27,42 @@ ImageFormat = Literal[  # See https://apptainer.org/docs/user/main/cli/apptainer
 
 SPECIAL_CHARS = "'\"$%#\n\r"
 
+
 class ContainerSpec(BaseModel, extra="forbid"):
     uid: str = Field(
         default_factory=generate_uid,
-        description="Unique identifier of the container, mainly used to retrieve logs and status"
+        description="Unique identifier of the container, mainly used to retrieve logs and status",
     )
 
     entrypoint: Union[str, Path, None] = Field(
         default=None,
-        description="Entrypoint of the job to be executed within the container"
+        description="Entrypoint of the job to be executed within the container",
     )
 
     args: List[str] = Field(
-        default = [],
-        description="Arguments to be passed to the command defined in the entrypoint"
+        default=[],
+        description="Arguments to be passed to the command defined in the entrypoint",
     )
 
     executable: Path = Field(
         default=Path("/usr/bin/apptainer"),
-        description="Relative or absolute path to apptainer, singularity or other compatible replacements"
+        description="Relative or absolute path to apptainer, singularity or other compatible replacements",
     )
 
-    image: str = Field(
-        description="Singularity Image or docker image to run the job"
-    )
+    image: str = Field(description="Singularity Image or docker image to run the job")
 
     default_format: ImageFormat = Field(
-        default="docker",
-        description="Default image format, if not provided"
+        default="docker", description="Default image format, if not provided"
     )
 
     environment: Dict[str, str] = Field(
         default=dict(),
-        description="Environment variables {key:value} to be passed to the contained process"
+        description="Environment variables {key:value} to be passed to the contained process",
     )
 
     volume_binds: List[VolumeBind] = Field(
         default=(),
-        description="List of volumes to be bound to the container at runtime"
+        description="List of volumes to be bound to the container at runtime",
     )
 
     scratch_area: str = Field(
@@ -74,17 +72,16 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
     shub_proxy_server: Optional[str] = Field(
         default=cfg.SHUB_PROXY,
-        description="SingularityHub proxy server without protocol"
+        description="SingularityHub proxy server without protocol",
     )
 
     cvmfs_unpacked_path: Optional[str] = Field(
-        default=None,
-        description="SingularityHub proxy server without protocol"
+        default=None, description="SingularityHub proxy server without protocol"
     )
 
     shub_proxy_master_token: Optional[str] = Field(
         default=cfg.SHUB_PROXY_MASTER_TOKEN,
-        description="SingularityHub proxy master token used to generate client tokens"
+        description="SingularityHub proxy master token used to generate client tokens",
     )
 
     shub_cache_seconds: Optional[int] = Field(
@@ -94,12 +91,12 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
     return_code: Optional[int] = Field(
         default=None,
-        description="Return code of the container, once completed. None otherwise."
+        description="Return code of the container, once completed. None otherwise.",
     )
 
     log: Optional[str] = Field(
         default=None,
-        description="Log of the container, once completed. None otherwise."
+        description="Log of the container, once completed. None otherwise.",
     )
 
     readonly_image_dir: str = Field(
@@ -111,7 +108,7 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
     cachedir: str = Field(
         default=cfg.SCRATCH_AREA,
-        description="""Fast writable area shared among multiple instances to store built images"""
+        description="""Fast writable area shared among multiple instances to store built images""",
     )
 
     ################################################################################
@@ -119,108 +116,107 @@ class ContainerSpec(BaseModel, extra="forbid"):
     writable_tmpfs: bool = Field(
         default=True,
         description="Enable an in-memory OverlayFS to mock image file system editing",
-        json_schema_extra=dict(arg='--writable-tmpfs'),
+        json_schema_extra=dict(arg="--writable-tmpfs"),
     )
 
     fakeroot: bool = Field(
         default=cfg.APPTAINER_FAKEROOT,
         description="Enable --fakeroot option in apptainer",
-        json_schema_extra=dict(arg='--fakeroot'),
+        json_schema_extra=dict(arg="--fakeroot"),
     )
 
     userns: bool = Field(
         default=False,
         description="Enable --userns option in apptainer",
-        json_schema_extra=dict(arg='--userns'),
+        json_schema_extra=dict(arg="--userns"),
     )
 
     sharens: bool = Field(
         default=False,
         description="Enable --sharens option in apptainer",
-        json_schema_extra=dict(arg='--sharens'),
+        json_schema_extra=dict(arg="--sharens"),
     )
 
     uts: bool = Field(
         default=False,
         description="Enable --uts option in apptainer",
-        json_schema_extra=dict(arg='--uts'),
+        json_schema_extra=dict(arg="--uts"),
     )
 
     containall: bool = Field(
         default=cfg.APPTAINER_CONTAINALL,
         description="Contain not only file systems, but also PID, IPC, and environment",
-        json_schema_extra=dict(arg='--containall'),
+        json_schema_extra=dict(arg="--containall"),
     )
 
     no_init: bool = Field(
         default=True,
         description="Do NOT start shim process with --pid",
-        json_schema_extra=dict(arg='--no-init'),
+        json_schema_extra=dict(arg="--no-init"),
     )
 
     no_umask: bool = Field(
         default=True,
         description="Do not propagate umask to the container, set default 0022 umask",
-        json_schema_extra=dict(arg='--no-umask'),
+        json_schema_extra=dict(arg="--no-umask"),
     )
 
     no_eval: bool = Field(
         default=True,
         description="Do not shell evaluate env vars or OCI container CMD/ENTRYPOINT/ARGS",
-        json_schema_extra=dict(arg='--no-eval'),
+        json_schema_extra=dict(arg="--no-eval"),
     )
 
     no_home: bool = Field(
         default=True,
         description="Do not bind home by default",
-        json_schema_extra=dict(arg='--no-home'),
+        json_schema_extra=dict(arg="--no-home"),
     )
-
 
     no_privs: bool = Field(
         default=True,
         description="Drop all privileges from root user in container",
-        json_schema_extra=dict(arg='--no-privs'),
+        json_schema_extra=dict(arg="--no-privs"),
     )
 
     nvidia_support: bool = Field(
         default=False,
         description="Enable nVidia support",
-        json_schema_extra=dict(arg='--nv'),
+        json_schema_extra=dict(arg="--nv"),
     )
 
     memory: int = Field(
         default=None,
         description="Memory limit in bytes",
-        json_schema_extra = dict(arg='--memory %d', requires=['cgroups']),
+        json_schema_extra=dict(arg="--memory %d", requires=["cgroups"]),
     )
 
     memory_reservation: int = Field(
         default=None,
         description="Memory reservation in bytes",
-        json_schema_extra = dict(arg='--memory-reservation %d', requires=['cgroups']),
+        json_schema_extra=dict(arg="--memory-reservation %d", requires=["cgroups"]),
     )
 
     working_dir: str = Field(
         default=None,
         description="Initial working directory for payload process inside the container",
-        json_schema_extra = dict(arg='--cwd %s'),
+        json_schema_extra=dict(arg="--cwd %s"),
     )
 
     cleanenv: bool = Field(
         default=True,
         description="Clean the environment of the spawned container",
-        json_schema_extra = dict(arg='--cleanenv'),
+        json_schema_extra=dict(arg="--cleanenv"),
     )
 
     unsquash: bool = Field(
         default=False,
         description="Convert SIF file to temporary sandbox before running",
-        json_schema_extra = dict(arg='--unsquash'),
+        json_schema_extra=dict(arg="--unsquash"),
     )
 
-    tmp_dir_mode: Literal['bind', 'scratch', 'none'] = Field(
-        default='scratch',
+    tmp_dir_mode: Literal["bind", "scratch", "none"] = Field(
+        default="scratch",
         description="Technique to make /tmp and /var/tmp available to the contained application",
     )
 
@@ -242,28 +238,29 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
     @property
     def log_path(self):
-        return os.path.join(self.workdir, f'{self.uid}.out')
+        return os.path.join(self.workdir, f"{self.uid}.out")
 
     @property
     def return_code_path(self):
-        return os.path.join(self.workdir, f'{self.uid}.status')
+        return os.path.join(self.workdir, f"{self.uid}.status")
 
     @property
     def env_file_path(self):
-        return os.path.join(self.workdir, '.env')
+        return os.path.join(self.workdir, ".env")
 
     @property
     def executable_path(self):
-        return os.path.join(self.workdir, 'run')
+        return os.path.join(self.workdir, "run")
 
-    @property 
+    @property
     def execution_full_cmd(self):
-        return self.entrypoint + ' ' + ' '.join([shlex.quote(arg) for arg in self.args])
+        return self.entrypoint + " " + " ".join([shlex.quote(arg) for arg in self.args])
 
     @property
     def is_simple_cmd(self):
-        return not any(special_char in self.execution_full_cmd for special_char in SPECIAL_CHARS)
-
+        return not any(
+            special_char in self.execution_full_cmd for special_char in SPECIAL_CHARS
+        )
 
     def __hash__(self):
         return make_uid_numeric(self.uid)
@@ -274,21 +271,26 @@ class ContainerSpec(BaseModel, extra="forbid"):
         if self.shub_proxy_server is None or self.shub_proxy_server == "":
             return None
 
-        if _GLOBAL_SHUB_PROXY_TOKEN is not None and (datetime.now() - _GLOBAL_SHUB_PROXY_TOKEN[0]).seconds > 300:
-            _GLOBAL_SHUB_PROXY_TOKEN = None   # Expired!
+        if (
+            _GLOBAL_SHUB_PROXY_TOKEN is not None
+            and (datetime.now() - _GLOBAL_SHUB_PROXY_TOKEN[0]).seconds > 300
+        ):
+            _GLOBAL_SHUB_PROXY_TOKEN = None  # Expired!
 
         if _GLOBAL_SHUB_PROXY_TOKEN is None and _GLOBAL_SHUB_PROXY_TOKEN != "":
-            response = requests.get(f"http://{self.shub_proxy_server}/token", auth=("admin", self.shub_proxy_master_token))
+            response = requests.get(
+                f"http://{self.shub_proxy_server}/token",
+                auth=("admin", self.shub_proxy_master_token),
+            )
             response.raise_for_status()
 
             _GLOBAL_SHUB_PROXY_TOKEN = (datetime.now(), response.text)
 
-        return  _GLOBAL_SHUB_PROXY_TOKEN[1]
-
+        return _GLOBAL_SHUB_PROXY_TOKEN[1]
 
     @property
     def formatted_image(self):
-        if '://' in self.image or self.default_format in ['none']:
+        if "://" in self.image or self.default_format in ["none"]:
             return self.image
 
         return f"{self.default_format}://{self.image}"
@@ -298,32 +300,42 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret = []
 
         # Configurations
-        for prop_name, prop_schema in self.model_json_schema()['properties'].items():
-            if 'arg' in prop_schema.keys():
-                if prop_schema['type'] == 'boolean' and getattr(self, prop_name):
-                    ret.append(prop_schema['arg'])
-                elif prop_schema['type'] in ('integer', 'string') and getattr(self, prop_name) is not None:
-                    ret.append(prop_schema['arg'] % getattr(self, prop_name))
+        for prop_name, prop_schema in self.model_json_schema()["properties"].items():
+            if "arg" in prop_schema.keys():
+                if prop_schema["type"] == "boolean" and getattr(self, prop_name):
+                    ret.append(prop_schema["arg"])
+                elif (
+                    prop_schema["type"] in ("integer", "string")
+                    and getattr(self, prop_name) is not None
+                ):
+                    ret.append(prop_schema["arg"] % getattr(self, prop_name))
 
         # Environment
-        ret += [f'--env-file {self.env_file_path}']
-        
+        ret += [f"--env-file {self.env_file_path}"]
+
         # Mounts termination log
         # ret += [f'--bind {self.termination_log}:/dev/termination-log']
 
         # Volumes
-        if self.tmp_dir_mode == 'bind':
-            ret += [f'--bind {self.tmp_dir}:/tmp', f'--bind {self.var_tmp_dir}:/var/tmp']
-        elif self.tmp_dir_mode == 'scratch':
-            ret += [f'--scratch /tmp', f'--scratch /var/tmp', f'--workdir {self.tmp_dir}']
-        elif self.tmp_dir_mode == 'none':
+        if self.tmp_dir_mode == "bind":
+            ret += [
+                f"--bind {self.tmp_dir}:/tmp",
+                f"--bind {self.var_tmp_dir}:/var/tmp",
+            ]
+        elif self.tmp_dir_mode == "scratch":
+            ret += [
+                f"--scratch /tmp",
+                f"--scratch /var/tmp",
+                f"--workdir {self.tmp_dir}",
+            ]
+        elif self.tmp_dir_mode == "none":
             pass
 
         ret += [str(vb) for vb in set(self.volume_binds)]
 
         # Executable
         if self.entrypoint and not self.is_simple_cmd:
-            ret += [f'--bind {self.executable_path}:/mnt/apptainer_cmd_builder/run']
+            ret += [f"--bind {self.executable_path}:/mnt/apptainer_cmd_builder/run"]
 
         return list(set(ret))
 
@@ -336,30 +348,37 @@ class ContainerSpec(BaseModel, extra="forbid"):
 
         if self.entrypoint is not None:
             # Execute a custom entrypoint
-            return " \\\n    ".join(proxy_cmd + [
-                str(self.executable),
-                "exec",
-                *self.flags,
-                f"$IMAGE_{uid}",
-                self.execution_full_cmd if self.is_simple_cmd else '/mnt/apptainer_cmd_builder/run ',
-                f"&> {self.log_path}"
-                ])
+            return " \\\n    ".join(
+                proxy_cmd
+                + [
+                    str(self.executable),
+                    "exec",
+                    *self.flags,
+                    f"$IMAGE_{uid}",
+                    self.execution_full_cmd
+                    if self.is_simple_cmd
+                    else "/mnt/apptainer_cmd_builder/run ",
+                    f"&> {self.log_path}",
+                ]
+            )
         else:
             # Execute the default entrypoint
-            return " \\\n    ".join(proxy_cmd + [
-                str(self.executable),
-                "run",
-                *self.flags,
-                f"$IMAGE_{uid}",
-                ' '.join(['"%s"' % a for a in self.args]) + ' &> ',
-                self.log_path
-            ])
-
+            return " \\\n    ".join(
+                proxy_cmd
+                + [
+                    str(self.executable),
+                    "run",
+                    *self.flags,
+                    f"$IMAGE_{uid}",
+                    " ".join(['"%s"' % a for a in self.args]) + " &> ",
+                    self.log_path,
+                ]
+            )
 
     def initialize(self):
         uid = sanitize_uid(self.uid).upper()
         env_dict = dict(
-            GENERATED_WITH='ApptainerCmdBuilder',
+            GENERATED_WITH="ApptainerCmdBuilder",
             ACB_UID=self.uid,
             **self.environment,
         )
@@ -367,7 +386,9 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret = [
             embed_ascii_file(
                 path=self.env_file_path,
-                file_content='\n'.join([f'{k}="{v}"' for k, v in env_dict.items()]),
+                file_content="\n".join(
+                    [f'{k}="{v.replace('"', '\\"')}"' for k, v in env_dict.items()]
+                ),
                 executable=False,
             ),
         ]
@@ -375,32 +396,39 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [
             f"mkdir -p {self.tmp_dir}",
             f"mkdir -p {self.var_tmp_dir}",
-            f"touch {self.termination_log}"
+            f"touch {self.termination_log}",
         ]
 
         if self.entrypoint and not self.is_simple_cmd:
             ret += [
                 embed_ascii_file(
                     path=self.executable_path,
-                    file_content='\n'.join([
-                        '#!/bin/sh',
-                        self.entrypoint + ' ' + ' '.join([shlex.quote(arg) for arg in self.args])
-                    ]),
+                    file_content="\n".join(
+                        [
+                            "#!/bin/sh",
+                            self.entrypoint
+                            + " "
+                            + " ".join([shlex.quote(arg) for arg in self.args]),
+                        ]
+                    ),
                     executable=True,
                 )
             ]
 
-        local_image = os.path.join(self.readonly_image_dir, self.image.replace(":", "_"))
+        local_image = os.path.join(
+            self.readonly_image_dir, self.image.replace(":", "_")
+        )
         cached_image = os.path.join(self.cachedir, self.image.replace(":", "_"))
         cvmfs_enable, cvmfs_image = (
             (1, os.path.join(self.cvmfs_unpacked_path, self.image))
-            if self.cvmfs_unpacked_path is not None else
-            (0, None)
+            if self.cvmfs_unpacked_path is not None
+            else (0, None)
         )
 
         rndid = generate_uid()
         if self.shub_token is not None and self.formatted_image.startswith("docker"):
-            ret += [dedent(f"""
+            ret += [
+                dedent(f"""
                 # Image retrival: static-local (override) -> cvmfs -> locally-cached (shub) -> remotely-cached (shub) -> build
                 if [ -e {local_image} ]; then
                     echo "Using local static image from {local_image}"
@@ -444,8 +472,8 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 fi
 
                 echo "Selected image for container {uid}: $IMAGE_{uid}"
-                """
-            )]
+                """)
+            ]
         else:
             ret += [
                 f"if [ -f {local_image} ]; then",
@@ -459,4 +487,4 @@ class ContainerSpec(BaseModel, extra="forbid"):
                 f"fi",
             ]
 
-        return '\n'+'\n'.join(ret)
+        return "\n" + "\n".join(ret)
