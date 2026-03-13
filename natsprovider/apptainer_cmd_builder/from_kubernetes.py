@@ -24,6 +24,9 @@ from natsprovider.interlink import deserialize_kubernetes
 
 StaticVolKey = Literal["volume_name", "items"]
 
+# Initialize the connection to the local cluster
+k8s.config.load_incluster_config()
+
 
 def _create_static_volume_dict(
     volume_source_by_name: Dict[str, Dict[StaticVolKey, Any]],
