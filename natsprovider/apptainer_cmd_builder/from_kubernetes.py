@@ -85,6 +85,7 @@ def _create_token_volume_dict(
     """
     Internal. Creates a token volume, retrieving information from the cluster itself.
     """
+    global KUBERNETES_WAS_CONFIGURED
     if KUBERNETES_WAS_CONFIGURED is False:
         k8scfg.load_incluster_config()
         KUBERNETES_WAS_CONFIGURED = True
