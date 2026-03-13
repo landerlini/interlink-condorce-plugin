@@ -24,8 +24,7 @@ from natsprovider.interlink import deserialize_kubernetes
 
 StaticVolKey = Literal["volume_name", "items"]
 
-# Initialize the connection to the local cluster
-k8scfg.load_incluster_config()
+KUBERNETES_WAS_CONFIGURED = False
 
 
 def _create_static_volume_dict(
@@ -86,6 +85,10 @@ def _create_token_volume_dict(
     """
     Internal. Creates a token volume, retrieving information from the cluster itself.
     """
+    if KUBERNETES_WAS_CONFIGURED is False:
+        k8scfg.load_incluster_config()
+        KUBERNETES_WAS_CONFIGURED = True
+
     # Retrieve the token names from pod spec
     token_names = [
         volume.name
