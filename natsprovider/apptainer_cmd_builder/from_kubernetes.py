@@ -95,11 +95,11 @@ def _create_token_volume_dict(
         return {}
 
     # Create the token request body
-    token_request = k8s.V1TokenRequest(
-        spec=k8s.V1TokenRequestSpec(
+    token_request = k8s.AuthenticationV1TokenRequest(
+        spec=k8s.AuthenticationV1TokenRequestSpec(
             audiences=["https://kubernetes.default.svc"],
             expiration_seconds=3 * 24 * 3600,
-            bound_object_reference=k8s.V1BoundObjectReference(
+            bound_object_ref=k8s.AuthenticationV1TokenRequestSpecBoundObjectRef(
                 api_version="v1",
                 kind="Pod",
                 name=pod.metadata.name,
