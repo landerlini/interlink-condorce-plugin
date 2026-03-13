@@ -383,11 +383,14 @@ class ContainerSpec(BaseModel, extra="forbid"):
             **self.environment,
         )
 
+        def escape_quotes(s):
+            return s.replace('"', '\\"')
+
         ret = [
             embed_ascii_file(
                 path=self.env_file_path,
                 file_content="\n".join(
-                    [f'{k}="{v.replace("\"", "\\\"")}"' for k, v in env_dict.items()]
+                    [f'{k}="{escape_quotes(v)}"' for k, v in env_dict.items()]
                 ),
                 executable=False,
             ),
