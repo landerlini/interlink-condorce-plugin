@@ -5,7 +5,7 @@ import textwrap
 import base64
 import re
 
-from kubernetes import client as k8s
+from kubernetes import config as k8scfg, client as k8s
 from typing import Dict, Any, List, Mapping, Optional, Union, Literal
 from pprint import pprint
 import logging
@@ -25,7 +25,7 @@ from natsprovider.interlink import deserialize_kubernetes
 StaticVolKey = Literal["volume_name", "items"]
 
 # Initialize the connection to the local cluster
-k8s.config.load_incluster_config()
+k8scfg.load_incluster_config()
 
 
 def _create_static_volume_dict(
