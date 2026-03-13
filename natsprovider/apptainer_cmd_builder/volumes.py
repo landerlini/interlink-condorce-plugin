@@ -490,10 +490,10 @@ def make_token_volume(
     with open("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt") as f:
         certificate = f.read()
 
-    config: Dict[str, AsciiFileSpec] = dict(
-        token=AsciiFileSpec(content=token),
-        certificate=AsciiFileSpec(content=certificate),
-        namespace=AsciiFileSpec(content=namespace),
-    )
+    config: Dict[str, AsciiFileSpec] = {
+        "token": AsciiFileSpec(content=token),
+        "ca.crt": AsciiFileSpec(content=certificate),
+        "namespace": AsciiFileSpec(content=namespace),
+    }
 
     return StaticVolume(**build_config.base_volume_config(), config=config)
