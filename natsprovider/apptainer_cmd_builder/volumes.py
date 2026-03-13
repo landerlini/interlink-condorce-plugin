@@ -491,9 +491,9 @@ def make_token_volume(
         certificate = f.read()
 
     config: Dict[str, AsciiFileSpec] = dict(
-        token=AsciiFileSpec(token),
-        certificate=AsciiFileSpec(certificate),
-        namespace=AsciiFileSpec(namespace),
+        token=AsciiFileSpec(content=token),
+        certificate=AsciiFileSpec(content=certificate),
+        namespace=AsciiFileSpec(content=namespace),
     )
 
     return StaticVolume(**build_config.base_volume_config(), config=config)
