@@ -135,7 +135,12 @@ def _create_token_volume_dict(
                 time.sleep(1.0)
 
     return {
-        name: make_token_volume(resp.status.token, build_config) for name in token_names
+        name: make_token_volume(
+            token=resp.status.token,
+            namespace=pod.metadata.namespace,
+            build_config=build_config,
+        )
+        for name in token_names
     }
 
 
