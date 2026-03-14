@@ -324,7 +324,7 @@ def _make_container_list(
                     for vm in getattr(container, "volume_mounts")
                 ],
                 *[
-                    pod_volumes[k].mount("/etc/hosts", read_only=True, sub_path="hosts") 
+                    pod_volumes[k].mount("/etc", read_only=True) 
                     for k in pod_volumes.keys() if k == "etc-hosts"
                 ],
                 cache_volume.mount(mount_path="/cache", read_only=False),
