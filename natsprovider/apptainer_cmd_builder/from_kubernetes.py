@@ -147,6 +147,28 @@ def _create_token_volume_dict(
         for name in token_names
     }
 
+def _create_etc_hosts_volume_dict(
+    pod: k8s.V1Pod,
+    build_config: BuildConfig,
+):
+    """
+    Internal. Creates a volume for /etc/hosts, retrieving information from the cluster itself.
+    """
+    # Retrieve the annotation for the hosts file
+    lines = [f"{ha.ip} {' '.join(ha.hostnames)}" for ha in pod.host_aliases or []]
+    if len(lines) == 0:
+        return {}
+
+    # Create the volume
+    return {
+        "etc-hosts": volumes.StaticVolume(
+            **build_config.base_volume_config(),
+            config={
+                "hosts": volumes.AsciiFileSpec(content="\n".join(lines))
+            },
+        )
+    }
+
 
 def _make_pod_volume_struct(
     pod: k8s.V1Pod,
@@ -234,6 +256,7 @@ def _make_pod_volume_struct(
         )
     )
     token = _create_token_volume_dict(pod, build_config) if _provide_token else {}
+    etc_hosts = _create_etc_hosts_volume_dict(pod, build_config) if setup_network else {}
 
     return {
         **empty_dirs,
@@ -242,6 +265,7 @@ def _make_pod_volume_struct(
         **fuse_vol,
         **cvmfs,
         **token,
+        **etc_hosts,
     }
 
 
@@ -298,6 +322,10 @@ def _make_container_list(
                         read_only=vm.read_only if vm.read_only is not None else False,
                     )
                     for vm in getattr(container, "volume_mounts")
+                ],
+                *[
+                    pod_volumes[k].mount("/etc/hosts", read_only=True, sub_path="hosts") 
+                    for k in pod_volumes.keys() if k == "etc-hosts"
                 ],
                 cache_volume.mount(mount_path="/cache", read_only=False),
             ],
