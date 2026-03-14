@@ -155,7 +155,7 @@ def _create_etc_hosts_volume_dict(
     Internal. Creates a volume for /etc/hosts, retrieving information from the cluster itself.
     """
     # Retrieve the annotation for the hosts file
-    lines = [f"{ha.ip} {' '.join(ha.hostnames)}" for ha in pod.host_aliases or []]
+    lines = [f"{ha.ip} {' '.join(ha.hostnames)}" for ha in pod.spec.host_aliases or []]
     if len(lines) == 0:
         return {}
 
