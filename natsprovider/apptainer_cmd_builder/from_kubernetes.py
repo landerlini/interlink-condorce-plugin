@@ -164,7 +164,7 @@ def _create_etc_hosts_volume_dict(
         "etc-hosts": volumes.StaticVolume(
             **build_config.base_volume_config(),
             config={
-                "hosts": volumes.AsciiFileSpec(content="\n".join(lines))
+                "hosts": volumes.AsciiFileSpec(content="\n".join(lines + [""]))
             },
         )
     }
