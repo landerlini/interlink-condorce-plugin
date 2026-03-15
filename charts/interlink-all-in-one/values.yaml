@@ -62,6 +62,11 @@ virtualKubeletMemoryLimit: "1500Mi"
 virtualKubeletCpuRequest: "150m"
 virtualKubeletMemoryRequest: "100Mi"
 
+# virtualKubeletKubernetesApiAddr and virtualKubeletKubernetesApiPort are the address and port of the kubernetes api server as seen from the virtual kubelet container. 
+# If not specified, it defaults to "kubernetes.default.svc" and "443" respectively, which are the typical values for in-cluster communication.
+virtualKubeletKubernetesApiAddr: "kubernetes.default.svc"
+virtualKubeletKubernetesApiPort: "443"
+
 virtualKubeletNodeLabels: []
 virtualKubeletNodeTaints: []
 virtualKubeletNetworkConfig:

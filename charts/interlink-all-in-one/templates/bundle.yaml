@@ -20,8 +20,8 @@ data:
   virtual-kubelet.yaml: |
     InterlinkURL: "http://localhost"
     InterlinkPort: 55457
-    KubernetesApiAddr: "kubernetes.default.svc.cluster.local"                                                                                                                        
-    KubernetesApiPort: "443"                                                                                                                                                         
+    KubernetesApiAddr: {{ .Values.virtualKubeletKubernetesApiAddr | default "kubernetes.default.svc" | quote }}
+    KubernetesApiPort: {{ .Values.virtualKubeletKubernetesApiPort | default "443" | quote }}
     DisableProjectedVolumes: true                                                                                                                                                    
     CommandPrefix: {{ .Values.virtualKubeletCommandPrefix | default "" | quote }}
     ExportPodData: {{ .Values.virtualKubeletExportPodData | default true }}
