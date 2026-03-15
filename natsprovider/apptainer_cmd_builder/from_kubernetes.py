@@ -111,8 +111,9 @@ def _create_token_volume_dict(
     with open("/var/run/secrets/kubernetes.io/serviceaccount/token") as token_file:
         token = token_file.read().strip()
         _, payload, _ = token.split(".")
+        padding = "=" * (-len(payload) % 4)  # Add padding if necessary
         payload_decoded = json.loads(
-            base64.urlsafe_b64decode(payload + "===").decode("utf-8")
+            base64.urlsafe_b64decode(payload + padding).decode("utf-8")
         )
         audiences = payload_decoded.get("aud", ["https://kubernetes.default.svc.cluster.local"])
     
