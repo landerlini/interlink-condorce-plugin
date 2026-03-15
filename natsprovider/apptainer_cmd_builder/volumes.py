@@ -484,11 +484,10 @@ class VolumeBind(BaseModel, extra="forbid"):
 def make_token_volume(
     build_config: BuildConfig,
     token: str,
+    certificate: str,
     namespace: str = "default",
 ):
 
-    with open("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt") as f:
-        certificate = f.read()
 
     config: Dict[str, AsciiFileSpec] = {
         "token": AsciiFileSpec(content=token),

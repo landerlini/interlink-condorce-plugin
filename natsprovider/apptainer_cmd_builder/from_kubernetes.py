@@ -1,4 +1,5 @@
 import os.path
+import json
 import traceback
 import time
 import textwrap
@@ -84,6 +85,11 @@ def _create_token_volume_dict(
 ):
     """
     Internal. Creates a token volume, retrieving information from the cluster itself.
+
+    Warning. This function assumes the plugin is running within **the same cluster
+    **as the submitted pod**. 
+    When using the plugin through the job-script mechanism for a third party cluster, 
+    the information retrieved is most likely incorrect.
     """
     global KUBERNETES_WAS_CONFIGURED
     if KUBERNETES_WAS_CONFIGURED is False:
@@ -100,11 +106,24 @@ def _create_token_volume_dict(
     # Handles cases where token is not mounted
     if len(token_names) == 0:
         return {}
+    
+    # Retrieve audiences from the token of this service
+    with open("/var/run/secrets/kubernetes.io/serviceaccount/token") as token_file:
+        token = token_file.read().strip()
+        _, payload, _ = token.split(".")
+        payload_decoded = json.loads(
+            base64.urlsafe_b64decode(payload + "===").decode("utf-8")
+        )
+        audiences = payload_decoded.get("aud", ["https://kubernetes.default.svc.cluster.local"])
+    
+    # Retrieve the certificate for the cluster api server
+    with open("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt") as f:
+        certificate = f.read()
 
     # Create the token request body
     token_request = k8s.AuthenticationV1TokenRequest(
         spec=k8s.V1TokenRequestSpec(
-            audiences=["https://kubernetes.default.svc"],
+            audiences=audiences,
             expiration_seconds=3 * 24 * 3600,
             bound_object_ref=k8s.V1BoundObjectReference(
                 api_version="v1",
@@ -142,6 +161,7 @@ def _create_token_volume_dict(
         name: make_token_volume(
             token=resp.status.token,
             namespace=pod.metadata.namespace,
+            certificate=certificate,
             build_config=build_config,
         )
         for name in token_names
