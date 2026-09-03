@@ -95,6 +95,7 @@ data:
         nginx.ingress.kubernetes.io/use-regex: "true"
         nginx.ingress.kubernetes.io/rewrite-target: "/$1"
         nginx.org/websocket-services: {{ $name }}
+        traefik.ingress.kubernetes.io/router.middlewares: "{{ .Release.Namespace }}-interlink-podname-strip@kubernetescrd"
         release: {{ .Release.Name }}
 
     ingressClassName: {{ .Values.wstunnelIngressClassName | default "nginx" }}
@@ -110,3 +111,15 @@ data:
                 name: {{ $name }}
                 port:
                   number: 28080
+
+---
+
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: interlink-podname-strip
+  namespace: {{ .Release.Namespace }}
+spec:
+  replacePathRegex:
+    regex: ^/[^/]+/?(.*)$
+    replacement: /$1
