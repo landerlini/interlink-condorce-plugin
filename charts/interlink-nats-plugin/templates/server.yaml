@@ -213,7 +213,7 @@ metadata:
   name: interlink
   namespace: {{ .Release.Namespace }}
 spec:
-  ingressClassName: nginx
+  ingressClassName: {{ .Values.builderIngressClassName | default "nginx" }}
   rules:
     - host: {{ .Values.hostname }}
       http:
@@ -247,7 +247,7 @@ metadata:
   name: interlink-nats
   namespace: {{ .Release.Namespace }}
 spec:
-  ingressClassName: nginx
+  ingressClassName: {{ .Values.natsIngressClassName | default "nginx" }}
   rules:
   - host: {{ .Values.hostname }} 
     http:

@@ -466,7 +466,7 @@ metadata:
   name: interlink-build
   namespace: {{ .Release.Namespace }}
 spec:
-  ingressClassName: nginx
+  ingressClassName: {{ .Values.builderIngressClassName | default "nginx" }}
   rules:
     - host: {{ .Values.hostname }}
       http:

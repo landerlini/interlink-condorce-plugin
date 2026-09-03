@@ -95,9 +95,9 @@ data:
         nginx.ingress.kubernetes.io/use-regex: "true"
         nginx.ingress.kubernetes.io/rewrite-target: "/$1"
         nginx.org/websocket-services: {{ $name }}
-        kubernetes.io/ingress.class: "nginx"
         release: {{ .Release.Name }}
 
+    ingressClassName: {{ .Values.wstunnelIngressClassName | default "nginx" }}
     spec:
       rules:
       - host: {{ .Values.hostname }}

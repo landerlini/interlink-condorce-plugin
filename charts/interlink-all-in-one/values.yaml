@@ -139,6 +139,9 @@ natsClusterIssuerEmail: null
 # natsClusterACMEServer is the url of the ACME server used for the certification process
 natsClusterIssuerACMEServer: "https://acme-v02.api.letsencrypt.org/directory"
 
+# natsIngressClassName is the ingress class name to be used for the nats ingress websocket interface.
+natsIngressClassName: nginx
+
 ################################################################################
 ## Redis configuration
 
@@ -213,6 +216,14 @@ shubProxyNodeRole: db
 # shubProxyBaseUrl is the ingress-defined base URL to access shub-proxy
 shubProxyBaseUrl: shub-proxy
 
+# shubProxyIngressClassName is the ingress class name to be used for the shub-proxy ingress
+shubProxyIngressClassName: nginx
+
+# builderIngressClassName is the ingress class name to be used for the interlink-build ingress
+builderIngressClassName: nginx
+
+# wstunnelIngressClassName is the ingress class name to be used for the wstunnel ingress
+wstunnelIngressClassName: nginx
 
 
 

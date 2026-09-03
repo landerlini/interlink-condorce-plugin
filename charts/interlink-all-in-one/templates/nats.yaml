@@ -167,7 +167,7 @@ metadata:
   name: interlink-nats
   namespace: {{ .Release.Namespace }}
 spec:
-  ingressClassName: nginx
+  ingressClassName: {{ .Values.natsIngressClassName | default "nginx" }}
   rules:
   - host: {{ .Values.hostname }} 
     http:

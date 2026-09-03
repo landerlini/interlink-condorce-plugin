@@ -85,7 +85,7 @@ metadata:
   name: shub-proxy
   namespace: {{ .Release.Namespace }}
 spec:
-  ingressClassName: nginx
+  ingressClassName: {{ .Values.shubProxyIngressClassName }}
   rules:
   - host: {{ .Values.hostname }} 
     http:
