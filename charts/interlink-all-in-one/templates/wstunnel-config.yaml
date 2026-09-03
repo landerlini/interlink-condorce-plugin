@@ -104,8 +104,8 @@ data:
       - host: {{ .Values.hostname }}
         http:
           paths:
-          - path: /{{ $name }}/(.*)
-            pathType: ImplementationSpecific
+          - path: /{{ $name }}
+            pathType: Prefix
             backend:
               service:
                 name: {{ $name }}
