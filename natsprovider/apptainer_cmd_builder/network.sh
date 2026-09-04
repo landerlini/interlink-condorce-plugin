@@ -192,7 +192,7 @@ interlink_make_tap_device \
     "$INTERLINK_NETNS_PID"
 
 # Forward ports used to communicate with the host
-for port in 6818 6819 6820; do
+for port in %(localhost_ports)s; do
   interlink_forward_port "$port" "$port" || true
 done
 
