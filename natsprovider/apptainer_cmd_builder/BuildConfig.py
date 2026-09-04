@@ -62,6 +62,10 @@ class BuildConfig(BaseModel):
             * empty: do not mount, create an empty directory in the container instead;
             * sshfs: mount with SFTP over SSH (assuming ai-infn setup)
             """)
+        slurm_volumes: List[str] = Field(
+            default_factory=list,
+            description="List of paths to mount in the container for SLURM jobs."
+        )
 
     class NodeOptions(BaseModel, extra="forbid"):
         """

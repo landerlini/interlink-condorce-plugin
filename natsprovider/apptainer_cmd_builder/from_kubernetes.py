@@ -268,6 +268,13 @@ def _make_pod_volume_struct(
         for vol_name in re.findall(r"cvmfs.vk.io/([\w-]+)", ann_key)
     }
 
+    slurm_vol = {
+        f"slurm_vol_{i_path}": volumes.BaseVolume(
+            host_path_override=path, **build_config.base_volume_config()
+        )
+        for i_path, path in enumerate(build_config.volumes.slurm_paths)
+    }
+
     _provide_token = all(
         (
             pod.spec.service_account_name is not None,
@@ -285,6 +292,7 @@ def _make_pod_volume_struct(
         **secrets,
         **fuse_vol,
         **cvmfs,
+        **slurm_vol,
         **token,
         **etc_hosts,
     }
@@ -349,6 +357,12 @@ def _make_container_list(
                     for k in pod_volumes.keys() if k == "etc-hosts"
                 ],
                 cache_volume.mount(mount_path="/cache", read_only=False),
+                *[
+                    pod_volumes[k].mount(v.host_path_override) 
+                    for k, v in pod_volumes.items()
+                    if k.startswith("slurm_vol_") and 
+                        v.host_path_override in build_config.volumes.slurm_paths
+                ]
             ],
             [],
         )
