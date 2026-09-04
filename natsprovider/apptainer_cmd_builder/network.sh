@@ -193,7 +193,8 @@ interlink_make_tap_device \
 
 # Forward ports used to communicate with the host
 for port in %(localhost_ports)s; do
-  interlink_forward_port "$port" "$port" || true
+  interlink_forward_port "$port" "$port" \
+    || echo "[network] Warning: failed to forward port $port"
 done
 
 echo "[network] Configuring a new TUN device and run tun2socks"
