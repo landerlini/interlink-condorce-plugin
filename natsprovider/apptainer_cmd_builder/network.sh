@@ -126,29 +126,6 @@ interlink_proxy_cmd_bg() {
   [ "$INTERLINK_HAVE_CG" -eq 1 ] && echo "$pid" > "$INTERLINK_CG/cgroup.procs" 2>/dev/null || true
 }
 
-# Forward a host port to a port inside the network namespace using only socat.
-# Listens on host 127.0.0.1:HOST_PORT and forwards connections into the netns
-# to 127.0.0.1:NS_PORT by running `socat` inside the namespace via `nsenter`.
-interlink_forward_port() {
-  local HOST_PORT="$1"
-  local NS_PORT="$2"
-  if [ -z "$INTERLINK_NETNS_PID" ]; then
-    echo "[network] Netns not ready; cannot forward port $HOST_PORT"
-    return 1
-  fi
-
-  # Start a host-side socat listener that for each connection executes an
-  # nsenter command which runs socat inside the namespace to connect to the
-  # target port. This avoids using `nc`.
-  %(socat_binary)s TCP-LISTEN:"$HOST_PORT",bind=127.0.0.1,reuseaddr,fork \
-    EXEC:"nsenter --target=$INTERLINK_NETNS_PID --net -- %(socat_binary)s - TCP:127.0.0.1:$NS_PORT" &
-
-  local pid=$!
-  INTERLINK_JOBS+=("$pid")
-  [ "$INTERLINK_HAVE_CG" -eq 1 ] && echo "$pid" > "$INTERLINK_CG/cgroup.procs" 2>/dev/null || true
-  echo "[network] Forwarding host:127.0.0.1:$HOST_PORT -> netns:127.0.0.1:$NS_PORT (pid $pid)"
-}
-
 # Create the WS tunnel
 interlink_ws_connect() {
   local AUTH_TOKEN="$1"
@@ -190,12 +167,6 @@ echo "[network] Making TAP device"
 interlink_make_tap_device \
     "%(tap_cidr)s" "%(tap_mtu)s" \
     "$INTERLINK_NETNS_PID"
-
-# Forward ports used to communicate with the host
-for port in %(localhost_ports)s; do
-  interlink_forward_port "$port" "$port" \
-    || echo "[network] Warning: failed to forward port $port"
-done
 
 echo "[network] Configuring a new TUN device and run tun2socks"
 
