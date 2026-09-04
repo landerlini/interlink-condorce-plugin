@@ -274,6 +274,9 @@ def _make_pod_volume_struct(
         )
         for i_path, path in enumerate(build_config.volumes.slurm_paths)
     }
+    logging.getLogger("from_kubernetes").debug(
+        f"SLURM volumes: { {k: v.host_path_override for k, v in slurm_vol.items()} }"
+    )
 
     _provide_token = all(
         (
