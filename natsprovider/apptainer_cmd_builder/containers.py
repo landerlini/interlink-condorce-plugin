@@ -111,6 +111,11 @@ class ContainerSpec(BaseModel, extra="forbid"):
         description="""Fast writable area shared among multiple instances to store built images""",
     )
 
+    mount_termination_log: bool = Field(
+        default=False,
+        description="Mount a termination log file to the container, useful for Kubernetes",
+    )
+
     ################################################################################
     # Flags
     writable_tmpfs: bool = Field(
@@ -314,7 +319,8 @@ class ContainerSpec(BaseModel, extra="forbid"):
         ret += [f"--env-file {self.env_file_path}"]
 
         # Mounts termination log
-        # ret += [f'--bind {self.termination_log}:/dev/termination-log']
+        if self.mount_termination_log:
+            ret += [f"--bind {self.termination_log}:/dev/termination-log"]
 
         # Volumes
         if self.tmp_dir_mode == "bind":

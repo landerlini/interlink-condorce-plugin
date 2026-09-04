@@ -364,6 +364,7 @@ def _make_container_list(
             + (c.args if c.args is not None else []),
             image=c.image,
             volume_binds=_volumes_for_container(c),
+            mount_termination_log=(len(containers) > 1),
             environment={
                 env.name: env.value for env in (c.env or []) if env.value is not None
             },

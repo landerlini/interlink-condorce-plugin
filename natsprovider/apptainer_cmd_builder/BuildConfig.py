@@ -56,6 +56,12 @@ class BuildConfig(BaseModel):
             the probability that the job starts before the volumes are available. 
             """,
         )
+        nfs_mount_mode: Literal["empty", "sshfs", ] = Field(
+            default="empty",
+            description="""Technique to mount NFS volumes in the container.
+            * empty: do not mount, create an empty directory in the container instead;
+            * sshfs: mount with SFTP over SSH (assuming ai-infn setup)
+            """)
 
     class NodeOptions(BaseModel, extra="forbid"):
         """
