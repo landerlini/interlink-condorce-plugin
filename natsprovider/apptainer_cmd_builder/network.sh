@@ -178,8 +178,21 @@ interlink_proxy_cmd_bg /bin/bash -c "
   ip addr add %(tun_ip)s/24 dev tun0
   ip link set dev tun0 up
   ip route del default
-  ip route add default via %(tun_ip)s dev tun0
-  ip route add 10.0.0.0/8 via \$DEFAULT_GATEWAY dev tap0
+  ip route add default via \$DEFAULT_GATEWAY dev %(default_gateway_device)s
+
+  ### Additional routing commands defined in BuildConfig
+  %(routing_commands)s
+  ####
+
+  # This depends on remote cluster network config. 
+  # Padova version (only tunnel to the cluster):
+  #   ip route add default via \$DEFAULT_GATEWAY dev tap0
+  # 
+  # CINECA version (tunnel everything, except traffic to other CINECA machines):
+  # ip route add default via %(tun_ip)s dev tun0
+  # ip route add 10.0.0.0/8 via \$DEFAULT_GATEWAY dev tap0
+  ### 
+
   ip route add %(cluster_cidr)s via %(tun_ip)s dev tun0
   mount --bind $TMP_RESOLV_CONF /etc/resolv.conf
   exec \"%(tun2socks_binary)s\" -device tun0 -proxy \"socks5://localhost:$DPORT\" -interface tap0

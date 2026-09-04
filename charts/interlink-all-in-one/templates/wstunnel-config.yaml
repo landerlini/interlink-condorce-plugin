@@ -96,6 +96,8 @@ data:
         nginx.ingress.kubernetes.io/rewrite-target: "/$1"
         nginx.org/websocket-services: {{ $name }}
         traefik.ingress.kubernetes.io/router.middlewares: "{{ .Release.Namespace }}-interlink-podname-strip@kubernetescrd"
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
         release: {{ .Release.Name }}
 
     ingressClassName: {{ .Values.wstunnelIngressClassName | default "nginx" }}

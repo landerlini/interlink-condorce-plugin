@@ -7,6 +7,7 @@ from typing import Collection, Dict, List, Literal, Union, Optional
 from pydantic import BaseModel, Field
 
 from tomli import load as toml_load, TOMLDecodeError
+import textwrap
 
 from ..utils import Resources
 
@@ -435,6 +436,16 @@ class BuildConfig(BaseModel):
         tunnel_finalization: str = Field(
             default="interlink_cleanup",
             description="Finalize the tunnel",
+        )
+
+        default_gateway_device: Literal['tap0', 'tun0'] = Field(
+            default="tap0",
+            description="Default routing device. `tap0`: without tunnel, `tun0`: within tunnel.",
+        )
+
+        routing_commands: str = Field(
+            default="",
+            description="Commands to setup routing in the container",
         )
 
     volumes: Volumes = Field(default=Volumes(), description=Volumes.__doc__)
