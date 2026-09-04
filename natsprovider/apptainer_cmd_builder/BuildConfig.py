@@ -395,6 +395,11 @@ class BuildConfig(BaseModel):
             description="Mount the token file used to authenticate to the origin cluster in the container to allow running kubectl commands",
         )
 
+        socat_binary: str = Field(
+            default="$HOME/bin/socat",
+            description="Local path of the socat executable",
+        )
+
         wstunnel_binary: str = Field(
             default="$HOME/bin/wstunnel",
             description="Local path of the wstunnel executable",
