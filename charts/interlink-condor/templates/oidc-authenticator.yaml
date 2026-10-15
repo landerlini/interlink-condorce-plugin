@@ -28,9 +28,9 @@ spec:
           command: ["sleep", "infinity"]
           env:
             - name: CLIENT_ID
-              value: {{ .Values.oidcAuthenticator.clientId | default "" | quote }}
+              value: {{ .Values.secret.clientId | default "" | quote }}
             - name: CLIENT_SECRET
-              value: {{ .Values.oidcAuthenticator.clientSecret | default "" | quote }}
+              value: {{ .Values.secret.clientSecret | default "" | quote }}
             - name: DEVICECODE_URL
               value: "{{ .Values.oidcAuthenticator.issuerUrl | default "https://iam.cloud.infn.it" }}/devicecode"
             - name: TOKEN_URL

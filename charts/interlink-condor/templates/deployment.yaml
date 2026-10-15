@@ -54,9 +54,9 @@ spec:
             - name: IAM_TOKEN_ENDPOINT
               value: {{ .Values.htcondor.refreshToken.tokenEndpoint | default "https://iam.cloud.infn.it/token" | quote }}
             - name: IAM_CLIENT_ID
-              value: {{ .Values.htcondor.refreshToken.clientId | required "Please provide `htcondor.refreshToken.clientId`" | quote }}
+              value: {{ .Values.secret.clientId | required "Please provide `secret.clientId`" | quote }}
             - name: IAM_CLIENT_SECRET
-              value: {{ .Values.htcondor.refreshToken.clientSecret | required "Please provide `htcondor.refreshToken.clientSecret`" | quote }}
+              value: {{ .Values.secret.clientSecret | required "Please provide `secret.clientSecret`" | quote }}
             - name: IAM_GRANT_TYPE
               value: {{ .Values.htcondor.refreshToken.grantType | default "authorization_code" | quote }}
             - name: IAM_REFRESH_TOKEN
