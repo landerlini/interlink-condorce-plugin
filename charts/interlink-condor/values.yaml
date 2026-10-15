@@ -3,7 +3,8 @@ htcondor:
     repository: "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor"
     tag: "dev"
     pullPolicy: "IfNotPresent"
-  host: "htcondor"
+  host: "htcondor-overlay-ce2.wp6.cloud.infn.it:9619"
+  schedd: "htcondor-overlay-ce2.cloudcnaf"
   resources:
     requests:
       cpu: "100m"
@@ -13,8 +14,8 @@ htcondor:
       memory: "512Mi"
   refreshToken:
     image:
-      repository: "ghcr.io/interlink-hq/interlink/virtual-kubelet-inttw:0.6.2"
-      tag: "latest"
+      repository: "ghcr.io/interlink-hq/interlink/virtual-kubelet-inttw"
+      tag: "0.6.2"
       pullPolicy: "IfNotPresent"
     tokenEndpoint: "https://iam.cloud.infn.it/token"
     grantType: "authorization_code"
@@ -57,4 +58,4 @@ secret:
   clientId: ""
   clientSecret: ""
   name: "oidc-authenticator-token"
-  key: "refresh-token"
+  key: "refresh_token"

@@ -31,6 +31,12 @@ spec:
           env:
             - name: CONDOR_HOST
               value: {{ .Values.htcondor.host | default "htcondor" | quote }}
+            - name: BEARER_TOKEN_FILE
+              value: /run/secrets/infn.it/token
+            - name: _CONDOR_COLLECTOR_HOST
+              value: {{ .Values.htcondor.host | default "htcondor" | quote }}
+            - name: _CONDOR_SCHEDD_NAME
+              value: {{ .Values.htcondor.schedd | default "htcondor" | quote }}
           ports:
             - name: condor
               containerPort: 9618
