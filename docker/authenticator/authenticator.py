@@ -34,7 +34,9 @@ def initialize_k8s() -> None:
 
     try:
         k8s.config.load_incluster_config()
-    except k8s.config.ConfigException as exc:  # pragma: no cover - depends on runtime environment
+    except (
+        k8s.config.ConfigException
+    ) as exc:  # pragma: no cover - depends on runtime environment
         raise RuntimeError(
             "Unable to configure Kubernetes client. Set KUBECONFIG or run inside a cluster."
         ) from exc
@@ -50,8 +52,12 @@ def _require_env(name: str) -> str:
 
 def _load_scopes(raw_scopes: str | None) -> list[str]:
     """Parse the configured OAuth scopes, validating that the payload is a list of strings."""
-    parsed = json.loads(raw_scopes or '["offline_access", "profile", "openid", "email", "groups"]')
-    if not isinstance(parsed, list) or not all(isinstance(scope, str) for scope in parsed):
+    parsed = json.loads(
+        raw_scopes or '["offline_access", "profile", "openid", "email", "groups"]'
+    )
+    if not isinstance(parsed, list) or not all(
+        isinstance(scope, str) for scope in parsed
+    ):
         raise ValueError("SCOPES must be a JSON list of non-empty strings.")
     return parsed
 
@@ -75,6 +81,12 @@ def get_refresh_token(
         data={"client_id": client_id, "scope": " ".join(scopes)},
         timeout=timeout,
     )
+    if device_request.status_code // 100 != 2:
+        logger.error(
+            f"Device request failed. Status code: {device_request.status_code}"
+        )
+        logger.error(device_request.text)
+        logger.error(device_request.headers)
     device_request.raise_for_status()
 
     device_data: dict[str, Any] = device_request.json()
@@ -82,10 +94,17 @@ def get_refresh_token(
     user_code = device_data.get("user_code")
     device_code = device_data.get("device_code")
 
-    if not all(isinstance(value, str) and value for value in (verification_uri, user_code, device_code)):
+    if not all(
+        isinstance(value, str) and value
+        for value in (verification_uri, user_code, device_code)
+    ):
         raise ValueError("Device-code response is missing required OAuth fields.")
 
-    logger.info("Open %s and enter code %s to complete authentication.", verification_uri, user_code)
+    logger.info(
+        "Open %s and enter code %s to complete authentication.",
+        verification_uri,
+        user_code,
+    )
 
     poll_interval = 1
     while True:
@@ -124,7 +143,9 @@ def get_refresh_token(
         token_response.raise_for_status()
 
 
-def write_refresh_token_secret(namespace: str, secret_name: str, refresh_token: str) -> None:
+def write_refresh_token_secret(
+    namespace: str, secret_name: str, refresh_token: str
+) -> None:
     """Persist a refresh token in a Kubernetes Secret using the client's namespace."""
     api = k8s.client.CoreV1Api()
     secret = k8s.client.V1Secret(
@@ -168,7 +189,9 @@ def main() -> int:
         client_secret=client_secret,
         scopes=scopes,
     )
-    write_refresh_token_secret(namespace=namespace, secret_name=secret_name, refresh_token=refresh_token)
+    write_refresh_token_secret(
+        namespace=namespace, secret_name=secret_name, refresh_token=refresh_token
+    )
     logger.info("Stored refresh token in secret %s/%s.", namespace, secret_name)
     return 0
 

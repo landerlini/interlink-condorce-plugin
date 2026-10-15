@@ -24,8 +24,15 @@ oidcAuthenticator:
     - "offline_access"
     - "profile"
     - "openid"
+    - "wlcg"
+    - "wlcg.groups"
+    - "address"
+    - "compute.cancel"
+    - "compute.create"
+    - "compute.modify"
+    - "compute.read"
     - "email"
-    - "groups"
+
   secret:
     namespace: ""
     name: "oidc-authenticator-token"

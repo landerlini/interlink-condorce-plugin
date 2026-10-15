@@ -36,7 +36,7 @@ spec:
             - name: TOKEN_URL
               value: "{{ .Values.oidcAuthenticator.issuerUrl | default "https://iam.cloud.infn.it" }}/token"
             - name: SCOPES
-              value: {{ .Values.oidcAuthenticator.scopes | default (list "offline_access" "profile" "openid" "email" "groups") | toJson | squote }}
+              value: {{ .Values.oidcAuthenticator.scopes | default (list "offline_access" "profile" "openid" "email" "wlcg" "wlcg.groups") | toJson | squote }}
             - name: SECRET_NAMESPACE
               value: {{ .Values.oidcAuthenticator.secret.namespace | default .Release.Namespace | quote }}
             - name: SECRET_NAME
