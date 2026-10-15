@@ -1,7 +1,7 @@
 htcondor:
   image:
-    repository: "htcondor/mini"
-    tag: "latest"
+    repository: "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor"
+    tag: "dev"
     pullPolicy: "IfNotPresent"
   host: "htcondor"
   resources:
@@ -11,3 +11,28 @@ htcondor:
     limits:
       cpu: "500m"
       memory: "512Mi"
+
+oidcAuthenticator:
+  image:
+    repository: "landerlini/interlink-virtual-node-authenticator"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+  issuerUrl: "https://iam.cloud.infn.it"
+  clientId: ""
+  clientSecret: ""
+  scopes:
+    - "offline_access"
+    - "profile"
+    - "openid"
+    - "email"
+    - "groups"
+  secret:
+    namespace: ""
+    name: "oidc-authenticator-token"
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "250m"
+      memory: "256Mi"

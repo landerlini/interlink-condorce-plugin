@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: htcondor-client
-          image: {{ .Values.htcondor.image.repository | default "htcondor/mini" }}:{{ .Values.htcondor.image.tag | default "latest" }}
+          image: {{ .Values.htcondor.image.repository | default "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor" }}:{{ .Values.htcondor.image.tag | default "latest" }}
           imagePullPolicy: {{ .Values.htcondor.image.pullPolicy | default "IfNotPresent" }}
           env:
             - name: CONDOR_HOST

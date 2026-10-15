@@ -21,6 +21,10 @@ jobs:
             dockerfile: docker/pilot.Dockerfile
             imagename: interlink-nats-pilot
 
+          - contextdir: docker/authenticator
+            dockerfile: docker/authenticator/Dockerfile
+            imagename: interlink-nats-authenticator
+
           - contextdir: kueue-nats/docker/
             dockerfile: kueue-nats/docker/Dockerfile
             imagename: kueue-nats-controller

@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-oidc-authenticator
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: oidc-authenticator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: oidc-authenticator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: oidc-authenticator
+    spec:
+      serviceAccountName: {{ .Release.Name }}-oidc-authenticator
+      containers:
+        - name: oidc-authenticator
+          image: {{ .Values.oidcAuthenticator.image.repository | default "landerlini/interlink-virtual-node-authenticator" }}:{{ .Values.oidcAuthenticator.image.tag | default "latest" }}
+          imagePullPolicy: {{ .Values.oidcAuthenticator.image.pullPolicy | default "IfNotPresent" }}
+          command: ["sleep", "infinity"]
+          env:
+            - name: CLIENT_ID
+              value: {{ .Values.oidcAuthenticator.clientId | default "" | quote }}
+            - name: CLIENT_SECRET
+              value: {{ .Values.oidcAuthenticator.clientSecret | default "" | quote }}
+            - name: DEVICECODE_URL
+              value: "{{ .Values.oidcAuthenticator.issuerUrl | default "https://iam.cloud.infn.it" }}/devicecode"
+            - name: TOKEN_URL
+              value: "{{ .Values.oidcAuthenticator.issuerUrl | default "https://iam.cloud.infn.it" }}/token"
+            - name: SCOPES
+              value: {{ .Values.oidcAuthenticator.scopes | default (list "offline_access" "profile" "openid" "email" "groups") | toJson | squote }}
+            - name: SECRET_NAMESPACE
+              value: {{ .Values.oidcAuthenticator.secret.namespace | default .Release.Namespace | quote }}
+            - name: SECRET_NAME
+              value: {{ .Values.oidcAuthenticator.secret.name | default (printf "%s-oidc-token" .Release.Name) | quote }}
+          resources:
+            requests:
+              cpu: {{ .Values.oidcAuthenticator.resources.requests.cpu | default "50m" | quote }}
+              memory: {{ .Values.oidcAuthenticator.resources.requests.memory | default "64Mi" | quote }}
+            limits:
+              cpu: {{ .Values.oidcAuthenticator.resources.limits.cpu | default "250m" | quote }}
+              memory: {{ .Values.oidcAuthenticator.resources.limits.memory | default "256Mi" | quote }}
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-oidc-authenticator
+  namespace: {{ .Release.Namespace }}
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-oidc-authenticator
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - create
+      - patch
+      - update
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-oidc-authenticator
+  namespace: {{ .Release.Namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}-oidc-authenticator
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}-oidc-authenticator
+
