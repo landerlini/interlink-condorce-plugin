@@ -4,7 +4,7 @@ description: A Helm cart for deploying an interlink endpoint for a condorce back
 
 type: application
 
-version: 0.0.3
+version: 0.0.4
 
 appVersion: "0.0.0"
 
