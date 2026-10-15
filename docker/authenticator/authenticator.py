@@ -155,14 +155,21 @@ def write_refresh_token_secret(
     )
 
     try:
-        api.read_namespaced_secret(name=secret_name, namespace=namespace)
-    except k8s.client.exceptions.ApiException as exc:
-        if exc.status == 404:
-            api.create_namespaced_secret(namespace=namespace, body=secret)
-            return
-        raise
-
-    api.patch_namespaced_secret(name=secret_name, namespace=namespace, body=secret)
+        api.create_namespaced_secret(
+            namespace=namespace,
+            body=secret,
+        )
+        print("Token created.")
+    except k8s.client.exceptions.ApiException as e:
+        if e.status == 409:  # resource exists
+            api.patch_namespaced_secret(
+                name=secret_name,
+                namespace=namespace,
+                body=secret,
+            )
+            print("Token updated.")
+        else:
+            raise e
 
 
 def main() -> int:
