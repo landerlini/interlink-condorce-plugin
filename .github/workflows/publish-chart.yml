@@ -1,4 +1,4 @@
-name: Publish Helm chart to GHCR (OCI)
+name: Publish Helm charts to GHCR (OCI)
 
 on:
   push:
@@ -13,12 +13,20 @@ permissions:
 env:
   REGISTRY: ghcr.io
   OWNER: ${{ github.repository_owner }}
-  CHART_DIR: charts/interlink-all-in-one
-  CHART_NAME: interlink-with-nats
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        chart:
+          - dir: charts/interlink-all-in-one
+            name: interlink-with-nats
+
+          - dir: charts/interlink-condor
+            name: interlink-condor
+
 
     steps:
       - name: Checkout
@@ -38,19 +46,19 @@ jobs:
               --username "${{ github.actor }}" \
               --password-stdin
 
-
       - name: Package chart
-        working-directory: ${{ env.CHART_DIR }}
+        working-directory: ${{ matrix.chart.dir }}
         run: |
-          helm package . 
+          helm package .
 
       - name: Push to GHCR as OCI
-        working-directory: ${{ env.CHART_DIR }}
+        working-directory: ${{ matrix.chart.dir }}
         env:
           HELM_EXPERIMENTAL_OCI: 1
         run: |
-          CHART_PKG=$( find . | grep \.tgz$ )
-          REPO="oci://${{ env.REGISTRY }}/${{ github.repository }}/charts/${{ env.CHART_NAME }}-${{ github.ref_name }}"
+          CHART_PKG=$(find . -name '*.tgz' | head -1)
+
+          REPO="oci://${{ env.REGISTRY }}/${{ github.repository }}/charts/${{ matrix.chart.name }}-${{ github.ref_name }}"
+
           echo "Pushing $CHART_PKG to $REPO"
           helm push "$CHART_PKG" "$REPO"
-
