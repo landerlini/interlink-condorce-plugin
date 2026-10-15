@@ -1,0 +1,11 @@
+apiVersion: v2
+name: interlink-condorce-plugin
+description: A Helm cart for deploying an interlink endpoint for a condorce backend
+
+type: application
+
+version: 0.0.1
+
+appVersion: "0.0.0"
+
+
