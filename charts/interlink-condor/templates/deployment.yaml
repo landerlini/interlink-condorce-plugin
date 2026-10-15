@@ -20,6 +20,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: htcondor-client
     spec:
+      volumes:
+        - name: infn-it-token
+          emptyDir: {}
+
       containers:
         - name: htcondor-client
           image: {{ .Values.htcondor.image.repository | default "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor" }}:{{ .Values.htcondor.image.tag | default "latest" }}
@@ -38,3 +42,43 @@ spec:
             limits:
               cpu: {{ .Values.htcondor.resources.limits.cpu | default "500m" | quote }}
               memory: {{ .Values.htcondor.resources.limits.memory | default "512Mi" | quote }}
+          volumeMounts:
+            - name: infn-it-token
+              mountPath: /run/secrets/infn.it
+              readOnly: true
+
+        - name: refresh-token
+          image: {{ .Values.htcondor.refreshToken.image.repository | default "ghcr.io/intertwin-eu/virtual-kubelet-inttw-refresh" }}:{{ .Values.htcondor.refreshToken.image.tag | default "latest" }}
+          imagePullPolicy: {{ .Values.htcondor.refreshToken.image.pullPolicy | default "IfNotPresent" }}
+          env:
+            - name: IAM_TOKEN_ENDPOINT
+              value: {{ .Values.htcondor.refreshToken.tokenEndpoint | default "https://iam.cloud.infn.it/token" | quote }}
+            - name: IAM_CLIENT_ID
+              value: {{ .Values.htcondor.refreshToken.clientId | required "Please provide `htcondor.refreshToken.clientId`" | quote }}
+            - name: IAM_CLIENT_SECRET
+              value: {{ .Values.htcondor.refreshToken.clientSecret | required "Please provide `htcondor.refreshToken.clientSecret`" | quote }}
+            - name: IAM_GRANT_TYPE
+              value: {{ .Values.htcondor.refreshToken.grantType | default "authorization_code" | quote }}
+            - name: IAM_REFRESH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name | default (printf "%s-token" .Release.Name) }}
+                  key: {{ .Values.secret.key | default "refresh-token" }}
+            - name: IAM_VK_AUD
+              value: {{ .Values.htcondor.refreshToken.audience | default "users" | quote }}
+            - name: TOKEN_PATH
+              value: /run/secrets/infn.it/token
+          command:
+            - python3
+            - /opt/refresh.py
+          volumeMounts:
+            - name: infn-it-token
+              mountPath: /run/secrets/infn.it
+              readOnly: false
+          resources:
+            requests:
+              cpu: {{ .Values.htcondor.refreshToken.resources.requests.cpu | default "10m" | quote }}
+              memory: {{ .Values.htcondor.refreshToken.resources.requests.memory | default "100Mi" | quote }}
+            limits:
+              cpu: {{ .Values.htcondor.refreshToken.resources.limits.cpu | default "200m" | quote }}
+              memory: {{ .Values.htcondor.refreshToken.resources.limits.memory | default "500Mi" | quote }}

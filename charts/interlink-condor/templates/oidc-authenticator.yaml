@@ -38,9 +38,9 @@ spec:
             - name: SCOPES
               value: {{ .Values.oidcAuthenticator.scopes | default (list "offline_access" "profile" "openid" "email" "wlcg" "wlcg.groups") | toJson | squote }}
             - name: SECRET_NAMESPACE
-              value: {{ .Values.oidcAuthenticator.secret.namespace | default .Release.Namespace | quote }}
+              value: {{ .Release.Namespace | quote }}
             - name: SECRET_NAME
-              value: {{ .Values.oidcAuthenticator.secret.name | default (printf "%s-oidc-token" .Release.Name) | quote }}
+              value: {{ .Values.secret.name | default (printf "%s-token" .Release.Name) | quote }}
           resources:
             requests:
               cpu: {{ .Values.oidcAuthenticator.resources.requests.cpu | default "50m" | quote }}
