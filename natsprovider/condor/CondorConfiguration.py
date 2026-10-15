@@ -2,7 +2,6 @@ import sys
 from datetime import datetime
 import io
 
-from google.oauth2.reauth import refresh_grant
 from pydantic import BaseModel, Field
 import subprocess
 import os
@@ -18,6 +17,8 @@ from natsprovider.utils import generate_uid, TokenManager
 from natsprovider.condor import configuration as cfg
 
 from enum import Enum
+
+
 class JobStatus(Enum):
     unexpanded = 0
     idle = 1
@@ -27,8 +28,9 @@ class JobStatus(Enum):
     held = 5
     error = 6
 
-    def __str__ (self):
-        return Enum.__str__(self).split('.')[1]
+    def __str__(self):
+        return Enum.__str__(self).split(".")[1]
+
 
 CONDOR_ATTEMPTS = 3
 
@@ -41,22 +43,29 @@ token_manager = TokenManager(
     bearer_token_path=cfg.BEARER_TOKEN_PATH,
 )
 
+
 class HTCondorException(IOError):
     pass
 
+
 async def _shell(cmd: str):
     proc = await asyncio.create_subprocess_exec(
-        "/bin/bash", '-c', cmd,
+        "/bin/bash",
+        "-c",
+        cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
     stdout, stderr = await proc.communicate()
 
     if proc.returncode > 0:
-        print(str(stderr, 'utf-8'), file=sys.stderr)
-        raise subprocess.CalledProcessError(returncode=proc.returncode, cmd="/bin/bash", stderr=str(stderr))
+        print(str(stderr, "utf-8"), file=sys.stderr)
+        raise subprocess.CalledProcessError(
+            returncode=proc.returncode, cmd="/bin/bash", stderr=str(stderr)
+        )
 
     return str(stdout)
+
 
 class CondorSubmit(BaseModel):
     job_name: Optional[str] = Field(
@@ -65,52 +74,38 @@ class CondorSubmit(BaseModel):
     )
 
     executable: Optional[str] = Field(
-        default="/bin/bash",
-        description="Path to the executable"
+        default="/bin/bash", description="Path to the executable"
     )
 
-    log: str = Field(
-        default="output.log",
-        description="Log file"
-    )
+    log: str = Field(default="output.log", description="Log file")
 
-    stdout: str = Field(
-        default="stdout.txt",
-        description="Standard output stream"
-    )
+    stdout: str = Field(default="stdout.txt", description="Standard output stream")
 
-    stderr: str = Field(
-        default="stderr.txt",
-        description="Standard error stream"
-    )
+    stderr: str = Field(default="stderr.txt", description="Standard error stream")
 
     when_to_transfer_output: Literal["ON_EXIT", "ON_EXIT_OR_EVICT", "NEVER"] = Field(
-        default="ON_EXIT",
-        description="Define the policy for returning data file"
+        default="ON_EXIT", description="Define the policy for returning data file"
     )
 
     should_transfer_files: Literal["Yes", "No"] = Field(
-        default="Yes",
-        description="Enable transferring data files"
+        default="Yes", description="Enable transferring data files"
     )
 
     transfer_output_files: List[str] = Field(
         default=[],
-        description="List of files to be downloaded at the end of the job (basename, without path)"
+        description="List of files to be downloaded at the end of the job (basename, without path)",
     )
 
     request_cpus: Optional[int] = Field(
-        default=None,
-        description="Total amount of CPU requested to run the job"
+        default=None, description="Total amount of CPU requested to run the job"
     )
 
     request_memory: Optional[int] = Field(
-        default=None,
-        description="Total amount of CPU requested to run the job in MB"
+        default=None, description="Total amount of CPU requested to run the job in MB"
     )
 
     def submit_file(self, command: str, condor_dir: str):
-        optional_field_keys = ['request_memory', 'request_cpus']
+        optional_field_keys = ["request_memory", "request_cpus"]
 
         return textwrap.dedent(f"""
             scitokens_file = /dev/null
@@ -128,12 +123,16 @@ class CondorSubmit(BaseModel):
             when_to_transfer_output     = {self.when_to_transfer_output}
             should_transfer_files       = {self.should_transfer_files}
             transfer_input_files        = {os.path.abspath(command)}
-            transfer_output_files       = {','.join(self.transfer_output_files)}
+            transfer_output_files       = {",".join(self.transfer_output_files)}
             
             queue
         """) % dict(
-            optional_fields='\n'.join(
-                [f"{k} = {getattr(self, k)}" for k in optional_field_keys if getattr(self, k) is not None]
+            optional_fields="\n".join(
+                [
+                    f"{k} = {getattr(self, k)}"
+                    for k in optional_field_keys
+                    if getattr(self, k) is not None
+                ]
             )
         )
 
@@ -156,34 +155,36 @@ class CondorConfiguration(BaseModel):
 
     last_token_refresh: Optional[datetime] = Field(
         default=None,
-        description="Internal field storing the last update of the authentication token"
+        description="Internal field storing the last update of the authentication token",
     )
 
     @staticmethod
     def initialize_htcondor():
-        os.environ['CONDOR_CONFIG'] = os.environ.get('CONDOR_CONFIG', '/dev/null')
-        os.environ['_condor_SEC_CLIENT_AUTHENTICATION_METHODS'] = os.environ.get(
-            '_condor_SEC_CLIENT_AUTHENTICATION_METHODS', 'SCITOKENS'
+        os.environ["CONDOR_CONFIG"] = os.environ.get("CONDOR_CONFIG", "/dev/null")
+        os.environ["_condor_SEC_CLIENT_AUTHENTICATION_METHODS"] = os.environ.get(
+            "_condor_SEC_CLIENT_AUTHENTICATION_METHODS", "SCITOKENS"
         )
 
-        os.environ['BEARER_TOKEN'] = token_manager.token
+        os.environ["BEARER_TOKEN"] = token_manager.token
 
-        htcondor.param['SEC_CLIENT_AUTHENTICATION_METHODS'] = 'SCITOKENS'
+        htcondor.param["SEC_CLIENT_AUTHENTICATION_METHODS"] = "SCITOKENS"
         htcondor.reload_config()
 
     @staticmethod
     def _ensure_token():
-        os.environ['BEARER_TOKEN'] = token_manager.token
-        os.environ['SEC_TOKEN'] = token_manager.token
+        os.environ["BEARER_TOKEN"] = token_manager.token
+        os.environ["SEC_TOKEN"] = token_manager.token
 
     async def get_schedd(self):
         self._ensure_token()
-        if not hasattr(self, '_schedd'):
+        if not hasattr(self, "_schedd"):
             collector = htcondor.Collector(self.pool)
-            for attempt in range(CONDOR_ATTEMPTS+1):
+            for attempt in range(CONDOR_ATTEMPTS + 1):
                 try:
-                    schedd_ad = collector.locate(htcondor.DaemonTypes.Schedd, self.scheduler_name)
-                    setattr(self, '_schedd', htcondor.Schedd(schedd_ad))
+                    schedd_ad = collector.locate(
+                        htcondor.DaemonTypes.Schedd, self.scheduler_name
+                    )
+                    setattr(self, "_schedd", htcondor.Schedd(schedd_ad))
                 except htcondor.HTCondorIOError as e:
                     if attempt == CONDOR_ATTEMPTS:
                         raise e
@@ -193,10 +194,10 @@ class CondorConfiguration(BaseModel):
         return self._schedd
 
     async def query(self, job_id: Optional[int] = None):
-        for attempt in range(CONDOR_ATTEMPTS+1):
+        for attempt in range(CONDOR_ATTEMPTS + 1):
             try:
                 schedd = await self.get_schedd()
-                ret = {int(j['ClusterId']): j for j in schedd.query()}
+                ret = {int(j["ClusterId"]): j for j in schedd.query()}
                 if job_id is None:
                     return ret
                 return ret[job_id]
@@ -208,7 +209,7 @@ class CondorConfiguration(BaseModel):
                 continue
 
     async def query_by_name(self, job_name: str):
-        for attempt in range(CONDOR_ATTEMPTS+1):
+        for attempt in range(CONDOR_ATTEMPTS + 1):
             try:
                 schedd = await self.get_schedd()
                 ret = schedd.query(constraint=f'JobBatchName == "{job_name}"')
@@ -230,7 +231,7 @@ class CondorConfiguration(BaseModel):
 
     async def submit(self, job: str, submit: Optional[CondorSubmit] = None):
         self._ensure_token()
-        htcondor.param['COLLECTOR_HOST'] = self.pool
+        htcondor.param["COLLECTOR_HOST"] = self.pool
         if submit is None:
             submit = CondorSubmit()
 
@@ -242,39 +243,50 @@ class CondorConfiguration(BaseModel):
         script_file_path = os.path.join(condor_dir, "command.sh")
 
         with open(submit_file_path, "w") as submit_file:
-            print (submit.submit_file(script_file_path, condor_dir=condor_dir), file=submit_file)
+            print(
+                submit.submit_file(script_file_path, condor_dir=condor_dir),
+                file=submit_file,
+            )
 
         with open(script_file_path, "w") as script_file:
-            print (job, file=script_file)
+            print(job, file=script_file)
 
-        ret = await _shell(f"cd {condor_dir}\n" + ' '.join([
-            "condor_submit",
-            f"-pool {self.pool}",
-            f"-name {self.scheduler_name}",
-            f"-spool {submit_file_path}",
-            ])
+        ret = await _shell(
+            f"cd {condor_dir}\n"
+            + " ".join(
+                [
+                    "condor_submit",
+                    f"-pool {self.pool}",
+                    f"-name {self.scheduler_name}",
+                    f"-spool {submit_file_path}",
+                ]
+            )
         )
 
         job_ids = [
             int(job_id)
-            for job_id in ', '.join(re.findall(r"submitted to cluster ([\d, ]+).", ret)).split(", ")
+            for job_id in ", ".join(
+                re.findall(r"submitted to cluster ([\d, ]+).", ret)
+            ).split(", ")
         ]
 
         if len(job_ids) > 0:
             return job_ids[0]
 
-        print (ret)
+        print(ret)
         raise HTCondorException("Failed to submit job to cluster")
 
     async def status(self, job_id: int):
         jobs = await self.query()
-        return JobStatus(jobs[job_id]['JobStatus'])
+        return JobStatus(jobs[job_id]["JobStatus"])
 
     async def status_by_name(self, job_name: str):
         job = await self.query_by_name(job_name)
-        return JobStatus(job['JobStatus'])
+        return JobStatus(job["JobStatus"])
 
-    async def retrieve_by_name(self, job_name: str, cleanup: bool = True) -> Dict[str, str]:
+    async def retrieve_by_name(
+        self, job_name: str, cleanup: bool = True
+    ) -> Dict[str, str]:
         job = await self.query_by_name(job_name)
         files = await self._retrieve_job_output(job, cleanup=cleanup)
         if cleanup:
@@ -290,11 +302,13 @@ class CondorConfiguration(BaseModel):
 
     async def _retrieve_job_output(self, job, cleanup: bool) -> Dict[str, str]:
         self._ensure_token()
-        condor_dir = os.path.dirname(job['JobSubmitFile'])
+        condor_dir = os.path.dirname(job["JobSubmitFile"])
         await _shell(f"mkdir -p {condor_dir}; chmod a+w {condor_dir}")
-        for attempt in range(CONDOR_ATTEMPTS+1):
+        for attempt in range(CONDOR_ATTEMPTS + 1):
             try:
-                await _shell(f"condor_transfer_data -pool {self.pool} -name {self.scheduler_name} {job['ClusterId']}")
+                await _shell(
+                    f"condor_transfer_data -pool {self.pool} -name {self.scheduler_name} {job['ClusterId']}"
+                )
             except subprocess.CalledProcessError as e:
                 if attempt == CONDOR_ATTEMPTS:
                     raise e
@@ -304,17 +318,22 @@ class CondorConfiguration(BaseModel):
             else:
                 break
 
-        files = {f.split("=")[0]: open(f.split("=")[1]).read() for f in job['SUBMIT_TransferOutputRemaps'].split(";")}
+        files = {
+            f.split("=")[0]: open(f.split("=")[1]).read()
+            for f in job["SUBMIT_TransferOutputRemaps"].split(";")
+        }
         if self.verbose:
             for lfn, content in files.items():
                 print(f"""=== {lfn} ===\n{content}\n=============""")
 
-        if 'TransferOutput' in job.keys():
-            job_dir = job['SUBMIT_Iwd']
-            files.update({
-                k: io.BytesIO(open(os.path.join(job_dir, k), 'rb').read())
-                for k in job['TransferOutput'].split(',')
-            })
+        if "TransferOutput" in job.keys():
+            job_dir = job["SUBMIT_Iwd"]
+            files.update(
+                {
+                    k: io.BytesIO(open(os.path.join(job_dir, k), "rb").read())
+                    for k in job["TransferOutput"].split(",")
+                }
+            )
 
         if cleanup:
             await _shell(f"rm -rf {condor_dir}")
@@ -323,9 +342,11 @@ class CondorConfiguration(BaseModel):
 
     async def delete(self, job_id: int):
         self._ensure_token()
-        for attempt in range(CONDOR_ATTEMPTS+1):
+        for attempt in range(CONDOR_ATTEMPTS + 1):
             try:
-                return await _shell(f"condor_rm -pool {self.pool} -name {self.scheduler_name} {job_id:d}")
+                return await _shell(
+                    f"condor_rm -pool {self.pool} -name {self.scheduler_name} {job_id:d}"
+                )
             except subprocess.CalledProcessError as e:
                 if attempt == CONDOR_ATTEMPTS:
                     raise e
@@ -333,16 +354,18 @@ class CondorConfiguration(BaseModel):
                     await asyncio.sleep(0.2)
                     continue
 
-
     async def delete_by_name(self, job_name: str):
         self._ensure_token()
         return await _shell(
-            ' '.join([
-                "condor_rm",
-                f"-pool {self.pool}",
-                f"-name {self.scheduler_name}",
-                f"""-constraint 'JobBatchName == "{job_name}"'""",
-            ])
+            " ".join(
+                [
+                    "condor_rm",
+                    f"-pool {self.pool}",
+                    f"-name {self.scheduler_name}",
+                    f"""-constraint 'JobBatchName == "{job_name}"'""",
+                ]
+            )
         )
+
 
 CondorConfiguration.initialize_htcondor()
