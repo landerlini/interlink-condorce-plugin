@@ -14,7 +14,7 @@ htcondor:
       memory: "512Mi"
   refreshToken:
     image:
-      repository: "ghcr.io/interlink-hq/interlink/virtual-kubelet-inttw"
+      repository: "ghcr.io/interlink-hq/interlink/virtual-kubelet-inttw-refresh"
       tag: "0.6.2"
       pullPolicy: "IfNotPresent"
     tokenEndpoint: "https://iam.cloud.infn.it/token"

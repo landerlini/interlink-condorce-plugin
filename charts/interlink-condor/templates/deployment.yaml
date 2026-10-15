@@ -54,7 +54,7 @@ spec:
               readOnly: true
 
         - name: refresh-token
-          image: {{ .Values.htcondor.refreshToken.image.repository | default "ghcr.io/interlink-hq/interlink/virtual-kubelet-inttw:0.6.2" }}:{{ .Values.htcondor.refreshToken.image.tag | default "latest" }}
+          image: {{ .Values.htcondor.refreshToken.image.repository | default "ghcr.io/interlink-hq/interlink/virtual-kubelet-inttw-refresh:0.6.2" }}:{{ .Values.htcondor.refreshToken.image.tag | default "latest" }}
           imagePullPolicy: {{ .Values.htcondor.refreshToken.image.pullPolicy | default "IfNotPresent" }}
           env:
             - name: IAM_TOKEN_ENDPOINT
