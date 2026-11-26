@@ -8,7 +8,7 @@ import os
 import textwrap
 from typing import Dict, Optional, Literal, List
 import re
-import htcondor
+import htcondor2 as htcondor
 
 import requests
 import asyncio

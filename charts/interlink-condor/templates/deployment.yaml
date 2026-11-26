@@ -44,7 +44,7 @@ spec:
       containers:
         - name: htcondor-client
           image: {{ .Values.htcondor.image.repository | default "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor" }}:{{ .Values.htcondor.image.tag | default "latest" }}
-          imagePullPolicy: {{ .Values.htcondor.image.pullPolicy | default "IfNotPresent" }}
+          imagePullPolicy: {{ .Values.htcondor.image.pullPolicy | default "Always" }}
           env:
             - name: CONDOR_HOST
               value: {{ .Values.htcondor.host | default "htcondor" | quote }}
@@ -54,6 +54,16 @@ spec:
               value: {{ .Values.htcondor.host | default "htcondor" | quote }}
             - name: _CONDOR_SCHEDD_NAME
               value: {{ .Values.htcondor.schedd | default "htcondor" | quote }}
+            - name: DEBUG
+              value: {{ .Values.htcondor.debug | default "false" | quote }}
+            - name: BEARER_TOKEN_PATH
+              value: /run/secrets/infn.it/token
+          command:
+            - interlink
+            - condor
+            - --build-config=/etc/interlink/condor.cfg
+            - --server={{ .Values.htcondor.natsServer | default "nats://nats.{{ .Release.Namespace }}.svc:4222" | quote }}
+            - --pool={{ .Values.htcondor.pool | default "condor" | quote }}
           ports:
             - name: condor
               containerPort: 9618

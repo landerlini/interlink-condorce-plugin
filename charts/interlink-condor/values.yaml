@@ -2,9 +2,11 @@ htcondor:
   image:
     repository: "ghcr.io/landerlini/interlink-condorce-plugin/interlink-nats-condor"
     tag: "dev"
-    pullPolicy: "IfNotPresent"
+    pullPolicy: "Always"
   host: "htcondor-overlay-cm.wp6.cloud.infn.it:9619"
   schedd: "htcondor-overlay-ce1.cloudcnaf"
+  pool: "condor"
+  natsServer: "nats://nats.{{ .Release.Namespace }}.svc:4222"
   resources:
     requests:
       cpu: "100m"
@@ -12,6 +14,7 @@ htcondor:
     limits:
       cpu: "500m"
       memory: "512Mi"
+  debug: "false"
   refreshToken:
     image:
       repository: "ghcr.io/interlink-hq/interlink/virtual-kubelet-inttw-refresh"
