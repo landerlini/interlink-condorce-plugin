@@ -90,7 +90,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.secret.iamClientSecretName | default (printf "%s-token" .Release.Name) | quote }}
                   key: clientSecret
-              value: {{ .Values.secret.clientSecret | required "Please provide `secret.clientSecret`" | quote }}
             - name: IAM_GRANT_TYPE
               value: {{ .Values.htcondor.refreshToken.grantType | default "authorization_code" | quote }}
             - name: IAM_REFRESH_TOKEN
