@@ -1,3 +1,14 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-htcondor-config
+type: Opaque
+stringData:
+  condor.cfg: |-
+    {{- .Values.interlinkConfig | nindent 4 }}
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,6 +34,12 @@ spec:
       volumes:
         - name: infn-it-token
           emptyDir: {}
+        - name: htcondor-config
+          secret:
+            secretName: {{ .Release.Name }}-htcondor-config
+            items:
+              - key: condor.cfg
+                path: condor.cfg
 
       containers:
         - name: htcondor-client
@@ -51,6 +68,10 @@ spec:
           volumeMounts:
             - name: infn-it-token
               mountPath: /run/secrets/infn.it
+              readOnly: true
+            - name: htcondor-config
+              mountPath: /etc/interlink/condor.cfg
+              subPath: condor.cfg
               readOnly: true
 
         - name: refresh-token

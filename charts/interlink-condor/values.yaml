@@ -19,7 +19,7 @@ htcondor:
       pullPolicy: "IfNotPresent"
     tokenEndpoint: "https://iam.cloud.infn.it/token"
     grantType: "authorization_code"
-    audience: "users"
+    audience: "https://wlcg.cern.ch/jwt/v1/any"
     resources:
       requests:
         cpu: "10m"
@@ -55,7 +55,65 @@ oidcAuthenticator:
       memory: "256Mi"
 
 secret:
-  clientId: ""
-  clientSecret: ""
+  iamClientSecretName: iam-client   # must contain keys clientId and clientSecret 
   name: "oidc-authenticator-token"
   key: "refresh_token"
+
+interlinkConfig: |
+  # Volumes and directories configuring access to executor-local data
+  [volumes]
+
+  ### Area in the executor filesystem to be used for temporary files
+  scratch_area = "$TMP_DIR"
+
+  ### Location to cache singularity images in the executor filesystem
+  apptainer_cachedir = "/tmp"
+
+  ### Location where to look for pre-built images
+  image_dir = "/tmp"
+
+  ### Colon-separated list of directories to include in $PATH to look for executables
+  additional_directories_in_path = []
+
+  ### Time in seconds between fuse mount and job execution
+  fuse_sleep_seconds = 15
+
+  ### Unpacked CVMFS path for resolving cached images
+  cvmfs_unpacked_path = "/cvmfs/unpacked.infn.it"
+
+  # Options configuring the behavior of apptainer runtime
+  [apptainer]
+
+  ### Relative or absolute path to apptainer, singularity or other compatible replacements
+  executable = "/usr/bin/singularity"
+
+  ### Enables --fakeroot in apptainer exec/run commands
+  fakeroot = false
+  userns = false
+
+  ### Enables --containall flag in apptainer exec/run commands
+  containall = false
+
+  ### Define the technique to mount fuse volumes to adopt on the host.
+  fuse_mode = "container"
+
+  ### Do not propagate umask to the container, set default 0022 umask
+  no_init = false
+
+  ### Do not bind home by default
+  no_home = true
+
+  ### Drop all privileges from root user in container
+  no_privs = false
+
+  ### Enable nVidia GPU support
+  nvidia_support = true
+
+  ### Clean the environment of the spawned container
+  cleanenv = true
+
+  ### Unsquash
+  unsquash = false
+
+  [resources]
+  pods = 10
