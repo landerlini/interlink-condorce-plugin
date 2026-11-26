@@ -139,12 +139,12 @@ class CondorSubmit(BaseModel):
 
 class CondorConfiguration(BaseModel):
     pool: str = Field(
-        default=cfg.CONDOR_POOL,
+        default=cfg.CONDOR_COLLECTOR_HOST,
         description="Schedd central manager (e.g. ce01t-htc.cr.cnaf.infn.it:9619)",
     )
 
     scheduler_name: str = Field(
-        default=cfg.CONDOR_SCHEDULER_NAME,
+        default=cfg.CONDOR_SCHEDD_NAME,
         description="Name of the scheduler (e.g. ce01t-htc.cr.cnaf.infn.it)",
     )
 
