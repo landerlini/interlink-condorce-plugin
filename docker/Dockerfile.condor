@@ -20,7 +20,7 @@ RUN pip install \
   "orjson" \
   "pytest" \
   "kubernetes" \
-  "htcondor" \
+  "htcondor<25" \
   "podman" \
   "pytest" \
   "aiohttp" \
