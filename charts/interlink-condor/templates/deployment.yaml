@@ -62,8 +62,8 @@ spec:
             - interlink
             - condor
             - --build-config=/etc/interlink/condor.cfg
-            - --server={{ .Values.htcondor.natsServer | default "nats://nats.{{ .Release.Namespace }}.svc:4222" | quote }}
-            - --pool={{ .Values.htcondor.pool | default "condor" | quote }}
+            - {{ printf "--server=%s" (.Values.htcondor.natsServer | default (printf "nats://nats.%s.svc:4222" .Release.Namespace)) | quote }}
+            - --pool={{ .Values.htcondor.pool | default "condor" }}
           ports:
             - name: condor
               containerPort: 9618
