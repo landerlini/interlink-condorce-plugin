@@ -133,24 +133,25 @@ class ApptainerCmdBuilder(BaseModel, extra="forbid"):
                 f"echo '=== Working directory of container {container.uid} ==='\nls -blrt {container.workdir}"
             ]
 
+        ret += ["WDIR=$PWD"]
         ret += [
             "tar cvf $SANDBOX/logs "
             + " ".join(
                 [
                     *[
-                        f"-C $STARTING_DIR/{c.workdir} {os.path.basename(c.log_path)}"
+                        f"-C $WDIR/{c.workdir} {os.path.basename(c.log_path)}"
                         for c in self.init_containers
                     ],
                     *[
-                        f"-C $STARTING_DIR/{c.workdir} {os.path.basename(c.return_code_path)}"
+                        f"-C $WDIR/{c.workdir} {os.path.basename(c.return_code_path)}"
                         for c in self.init_containers
                     ],
                     *[
-                        f"-C $STARTING_DIR/{c.workdir} {os.path.basename(c.log_path)}"
+                        f"-C $WDIR/{c.workdir} {os.path.basename(c.log_path)}"
                         for c in self.containers
                     ],
                     *[
-                        f"-C $STARTING_DIR/{c.workdir} {os.path.basename(c.return_code_path)}"
+                        f"-C $WDIR/{c.workdir} {os.path.basename(c.return_code_path)}"
                         for c in self.containers
                     ],
                 ]
@@ -195,7 +196,7 @@ class ApptainerCmdBuilder(BaseModel, extra="forbid"):
 
     def dump(self):
         script = textwrap.dedent("""
-        #!/bin/bash  ## <-- bring this back to sh!
+        #!/bin/bash
         set -Eeuxv -o pipefail
         
         ################################################################################
