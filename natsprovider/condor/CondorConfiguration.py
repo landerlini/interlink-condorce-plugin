@@ -102,8 +102,13 @@ class CondorSubmit(BaseModel):
         default=None, description="Total amount of CPU requested to run the job"
     )
 
+    request_gpus: Optional[int] = Field(
+        default=None, description="Total amount of GPU requested to run the job"
+    )
+
     request_memory: Optional[int] = Field(
-        default=None, description="Total amount of CPU requested to run the job in MB"
+        default=None,
+        description="Total amount of memory requested to run the job in MB",
     )
 
     @property
@@ -113,7 +118,7 @@ class CondorSubmit(BaseModel):
         return logger
 
     def submit_file(self, command: str, condor_dir: str):
-        optional_field_keys = ["request_memory", "request_cpus"]
+        optional_field_keys = ["request_memory", "request_cpus", "request_gpus"]
 
         ret = textwrap.dedent(f"""
             scitokens_file = /dev/null

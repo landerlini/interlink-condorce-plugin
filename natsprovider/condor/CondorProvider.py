@@ -1,27 +1,31 @@
-
 from . import CondorConfiguration, CondorSubmit, CondorJobStatus
 from .CondorConfiguration import HTCondorException
 from .. import interlink
-from ..utils import  compute_pod_resource, JobStatus, Resources
+from ..utils import compute_pod_resource, JobStatus, Resources
 from ..BaseNatsProvider import BaseNatsProvider
 from ..apptainer_cmd_builder import BuildConfig
 
 CondorConfiguration.initialize_htcondor()
+
 
 class CondorProvider(BaseNatsProvider):
     def __init__(self, **kwargs):
         BaseNatsProvider.__init__(self, **kwargs)
         self.condor = CondorConfiguration()
 
-    async def create_pod(self, job_name: str, job_sh: str, pod: interlink.PodRequest) -> str:
+    async def create_pod(
+        self, job_name: str, job_sh: str, pod: interlink.PodRequest
+    ) -> str:
         """
         Submit the job to condor CE
         """
+        request_gpu = compute_pod_resource(pod, resource="nvidia.com/gpu")
         condor_options = CondorSubmit(
             job_name=job_name,
-            transfer_output_files=['logs'],
-            request_cpus=compute_pod_resource(pod, resource='cpu'),
-            request_memory=compute_pod_resource(pod, resource='memory'),
+            transfer_output_files=["logs"],
+            request_cpus=compute_pod_resource(pod, resource="cpu"),
+            request_memory=compute_pod_resource(pod, resource="memory"),
+            request_gpus=request_gpu if (request_gpu and request_gpu > 0) else None,
         )
         await self.condor.submit(job_sh, condor_options)
 
@@ -46,7 +50,7 @@ class CondorProvider(BaseNatsProvider):
             output_struct = await self.condor.retrieve_by_name(job_name, cleanup=False)
             return JobStatus(
                 phase="succeeded",
-                logs_tarball=output_struct['logs'].read(),
+                logs_tarball=output_struct["logs"].read(),
             )
 
         return JobStatus(phase="unknown")
