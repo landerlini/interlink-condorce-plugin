@@ -110,6 +110,13 @@ class ApptainerCmdBuilder(BaseModel, extra="forbid"):
                 f"pids[{i_container}]=$!",
             ]
 
+        # Initialize the status file with a default return code (888) for each container
+        ret += [
+            "echo -n 888 > %s" % container.return_code_path
+            for container in self.containers
+        ]
+
+        # Overwrite the status file with the actual return code after each container finishes
         ret += [
             "wait ${pids[%d]}; echo -n $? > %s"
             % (i_container, container.return_code_path)
@@ -120,6 +127,11 @@ class ApptainerCmdBuilder(BaseModel, extra="forbid"):
             f"echo '=== Output of container {container.uid} ==='\ncat {container.log_path}"
             for container in (self.init_containers or []) + (self.containers or [])
         ]
+
+        for container in (self.init_containers or []) + (self.containers or []):
+            ret += [
+                f"echo '=== Working directory of container {container.uid} ==='\nls -lrt {container.workdir}"
+            ]
 
         ret += [
             "tar cvf $SANDBOX/logs "
