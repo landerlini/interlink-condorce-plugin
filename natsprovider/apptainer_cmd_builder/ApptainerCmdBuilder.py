@@ -171,7 +171,7 @@ class ApptainerCmdBuilder(BaseModel, extra="forbid"):
             return ""
 
         ret = ["\n## Creating symbolic links to mask symbols (e.g. colon) in PATH"]
-        link = f"{os.path.join(self.workdir, 'bin')}%02d"
+        link = f"$STARTING_DIR/{os.path.join(self.workdir, 'bin')}%02d"
         links = []
         for i_path, path in enumerate(self.additional_directories_in_path):
             ret.append(f"ln -s {path} {link % i_path}")
