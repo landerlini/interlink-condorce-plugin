@@ -105,10 +105,11 @@ class CondorSubmit(BaseModel):
         default=None, description="Total amount of CPU requested to run the job in MB"
     )
 
-    logger: logging.Logger = Field(
-        default_factory=lambda: logging.getLogger("CondorSubmit"),
-        description="Logger instance for the CondorSubmit class",
-    )
+    @property
+    def logger(self) -> logging.Logger:
+        logger = logging.getLogger("CondorSubmit")
+        logger.setLevel(logging.DEBUG if cfg.DEBUG else logging.INFO)
+        return logger
 
     def submit_file(self, command: str, condor_dir: str):
         optional_field_keys = ["request_memory", "request_cpus"]
@@ -166,10 +167,11 @@ class CondorConfiguration(BaseModel):
         description="Internal field storing the last update of the authentication token",
     )
 
-    logger: logging.Logger = Field(
-        default_factory=lambda: logging.getLogger("CondorConfig"),
-        description="Logger instance for the CondorConfiguration class",
-    )
+    @property
+    def logger(self) -> logging.Logger:
+        logger = logging.getLogger("CondorConfig")
+        logger.setLevel(logging.DEBUG if cfg.DEBUG else logging.INFO)
+        return logger
 
     @staticmethod
     def initialize_htcondor():
