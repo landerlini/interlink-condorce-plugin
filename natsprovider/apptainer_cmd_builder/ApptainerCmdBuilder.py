@@ -195,7 +195,7 @@ class ApptainerCmdBuilder(BaseModel, extra="forbid"):
 
     def dump(self):
         script = textwrap.dedent("""
-        #!/bin/sh
+        #!/bin/bash  ## <-- bring this back to sh!
         set -Eeuxv -o pipefail
         
         ################################################################################
