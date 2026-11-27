@@ -130,7 +130,7 @@ class ApptainerCmdBuilder(BaseModel, extra="forbid"):
 
         for container in (self.init_containers or []) + (self.containers or []):
             ret += [
-                f"echo '=== Working directory of container {container.uid} ==='\nls -lrt {container.workdir}"
+                f"echo '=== Working directory of container {container.uid} ==='\nls -blrt {container.workdir}"
             ]
 
         ret += [
@@ -138,19 +138,19 @@ class ApptainerCmdBuilder(BaseModel, extra="forbid"):
             + " ".join(
                 [
                     *[
-                        f"-C {c.workdir} {os.path.basename(c.log_path)}"
+                        f"-C $STARTING_DIR/{c.workdir} {os.path.basename(c.log_path)}"
                         for c in self.init_containers
                     ],
                     *[
-                        f"-C {c.workdir} {os.path.basename(c.return_code_path)}"
+                        f"-C $STARTING_DIR/{c.workdir} {os.path.basename(c.return_code_path)}"
                         for c in self.init_containers
                     ],
                     *[
-                        f"-C {c.workdir} {os.path.basename(c.log_path)}"
+                        f"-C $STARTING_DIR/{c.workdir} {os.path.basename(c.log_path)}"
                         for c in self.containers
                     ],
                     *[
-                        f"-C {c.workdir} {os.path.basename(c.return_code_path)}"
+                        f"-C $STARTING_DIR/{c.workdir} {os.path.basename(c.return_code_path)}"
                         for c in self.containers
                     ],
                 ]
