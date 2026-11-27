@@ -139,15 +139,20 @@ class CondorSubmit(BaseModel):
             transfer_output_files       = {",".join(self.transfer_output_files)}
             
             queue
-        """) % dict(
-            optional_fields="\n".join(
+        """) % {
+            "optional_fields": "\n".join(
                 [
                     f"{k} = {getattr(self, k)}"
                     for k in optional_field_keys
                     if getattr(self, k) is not None
                 ]
+                + (
+                    ['requirements = TARGET.Site == "%s"' % cfg.TARGET_SITE]
+                    if cfg.TARGET_SITE
+                    else []
+                )
             )
-        )
+        }
         self.logger.debug("Generated submit file:\n%s", ret)
         return ret
 

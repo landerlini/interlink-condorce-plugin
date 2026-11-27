@@ -56,6 +56,8 @@ spec:
               value: {{ .Values.htcondor.schedd | default "htcondor" | quote }}
             - name: DEBUG
               value: {{ .Values.htcondor.debug | default "false" | quote }}
+            - name: TARGET_SITE
+              value: {{ .Values.htcondor.targetSite | default "INFN-Padova-HPC" | quote }}
             - name: BEARER_TOKEN_PATH
               value: /run/secrets/infn.it/token
           command:
@@ -63,6 +65,8 @@ spec:
             - condor
             - --build-config=/etc/interlink/condor.cfg
             - {{ printf "--server=%s" (.Values.htcondor.natsServer | default (printf "nats://nats.%s.svc:4222" .Release.Namespace)) | quote }}
+            - --cpu={{ .Values.htcondor.max_cpu | default "128" }}
+            - --memory={{ .Values.htcondor.max_mem | default "1Ti" }}
             - --pool={{ .Values.htcondor.pool | default "condor" }}
             - --non-interactive
           ports:
