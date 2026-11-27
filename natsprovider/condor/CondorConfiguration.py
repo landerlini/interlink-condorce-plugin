@@ -1,3 +1,4 @@
+from pprint import pformat
 import sys
 from datetime import datetime
 import io
@@ -60,7 +61,7 @@ async def _shell(cmd: str):
     stdout, stderr = await proc.communicate()
 
     if proc.returncode > 0:
-        print(str(stderr, "utf-8"), file=sys.stderr)
+        logging.getLogger("CondorShell").error(str(stderr, "utf-8"))
         raise subprocess.CalledProcessError(
             returncode=proc.returncode, cmd="/bin/bash", stderr=str(stderr)
         )
@@ -267,7 +268,7 @@ class CondorConfiguration(BaseModel):
 
         uid = generate_uid()
         submit.job_name = submit.job_name if submit.job_name is not None else uid
-        condor_dir = f"/tmp/.condor.{uid}"
+        condor_dir = f"/tmp/condor.{uid}"
         await _shell(f"mkdir -p {condor_dir}; chmod a+w {condor_dir}")
         submit_file_path = os.path.join(condor_dir, "condor.sub")
         script_file_path = os.path.join(condor_dir, "command.sh")
@@ -308,10 +309,20 @@ class CondorConfiguration(BaseModel):
 
     async def status(self, job_id: int):
         jobs = await self.query()
+        self.logger.debug(
+            "Checking status for job with ID %s: \n%s",
+            job_id,
+            pformat(jobs),
+        )
         return JobStatus(jobs[job_id]["JobStatus"])
 
     async def status_by_name(self, job_name: str):
         job = await self.query_by_name(job_name)
+        self.logger.debug(
+            "Checking status for job with name %s: \n%s",
+            job_name,
+            pformat(job),
+        )
         return JobStatus(job["JobStatus"])
 
     async def retrieve_by_name(
@@ -334,6 +345,11 @@ class CondorConfiguration(BaseModel):
 
     async def _retrieve_job_output(self, job, cleanup: bool) -> Dict[str, str]:
         self._ensure_token()
+        self.logger.info(
+            "Retrieving job output for job %s into %s",
+            job["ClusterId"],
+            os.path.dirname(job["JobSubmitFile"]),
+        )
         condor_dir = os.path.dirname(job["JobSubmitFile"])
         await _shell(f"mkdir -p {condor_dir}; chmod a+w {condor_dir}")
         for attempt in range(CONDOR_ATTEMPTS + 1):
@@ -398,16 +414,23 @@ class CondorConfiguration(BaseModel):
 
     async def delete_by_name(self, job_name: str):
         self._ensure_token()
-        return await _shell(
-            " ".join(
-                [
-                    "condor_rm",
-                    f"-pool {self.pool}",
-                    f"-name {self.scheduler_name}",
-                    f"""-constraint 'JobBatchName == "{job_name}"'""",
-                ]
+        try:
+            return await _shell(
+                " ".join(
+                    [
+                        "condor_rm",
+                        f"-pool {self.pool}",
+                        f"-name {self.scheduler_name}",
+                        f"""-constraint 'JobBatchName == "{job_name}"'""",
+                    ]
+                )
             )
-        )
+        except subprocess.CalledProcessError as e:
+            self.logger.error(
+                "Failed to delete job with name %s",
+                job_name,
+            )
+            raise e
 
 
 CondorConfiguration.initialize_htcondor()
