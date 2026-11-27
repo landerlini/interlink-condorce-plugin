@@ -56,15 +56,19 @@ class BuildConfig(BaseModel):
             the probability that the job starts before the volumes are available. 
             """,
         )
-        nfs_mount_mode: Literal["empty", "sshfs", ] = Field(
+        nfs_mount_mode: Literal[
+            "empty",
+            "sshfs",
+        ] = Field(
             default="empty",
             description="""Technique to mount NFS volumes in the container.
             * empty: do not mount, create an empty directory in the container instead;
             * sshfs: mount with SFTP over SSH (assuming ai-infn setup)
-            """)
+            """,
+        )
         slurm_paths: List[str] = Field(
             default_factory=list,
-            description="List of paths to mount in the container for SLURM jobs."
+            description="List of paths to mount in the container for SLURM jobs.",
         )
 
     class NodeOptions(BaseModel, extra="forbid"):
@@ -433,11 +437,6 @@ class BuildConfig(BaseModel):
             description="Local path to tun2socks binary",
         )
 
-        slirp4netns_binary: str = Field(
-            default="$HOME/bin/slirp4netns",
-            description="Local path to slirp4netns binary",
-        )
-
         proxy_cmd: str = Field(
             default="interlink_proxy_cmd",
             description="How to start the proxy command (if any) in front of apptainer",
@@ -448,7 +447,7 @@ class BuildConfig(BaseModel):
             description="Finalize the tunnel",
         )
 
-        default_gateway_device: Literal['tap0', 'tun0'] = Field(
+        default_gateway_device: Literal["tap0", "tun0"] = Field(
             default="tap0",
             description="Default routing device. `tap0`: without tunnel, `tun0`: within tunnel.",
         )
