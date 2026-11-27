@@ -9,6 +9,7 @@ import textwrap
 from typing import Dict, Optional, Literal, List
 import re
 import htcondor
+import logging
 
 import requests
 import asyncio
@@ -104,10 +105,15 @@ class CondorSubmit(BaseModel):
         default=None, description="Total amount of CPU requested to run the job in MB"
     )
 
+    logger: logging.Logger = Field(
+        default_factory=lambda: logging.getLogger("CondorSubmit"),
+        description="Logger instance for the CondorSubmit class",
+    )
+
     def submit_file(self, command: str, condor_dir: str):
         optional_field_keys = ["request_memory", "request_cpus"]
 
-        return textwrap.dedent(f"""
+        ret = textwrap.dedent(f"""
             scitokens_file = /dev/null
             +Owner = undefined
             +JobBatchName               = "{self.job_name}"
@@ -135,6 +141,8 @@ class CondorSubmit(BaseModel):
                 ]
             )
         )
+        self.logger.debug("Generated submit file:\n%s", ret)
+        return ret
 
 
 class CondorConfiguration(BaseModel):
@@ -158,6 +166,11 @@ class CondorConfiguration(BaseModel):
         description="Internal field storing the last update of the authentication token",
     )
 
+    logger: logging.Logger = Field(
+        default_factory=lambda: logging.getLogger("CondorConfig"),
+        description="Logger instance for the CondorConfiguration class",
+    )
+
     @staticmethod
     def initialize_htcondor():
         os.environ["CONDOR_CONFIG"] = os.environ.get("CONDOR_CONFIG", "/dev/null")
@@ -169,6 +182,9 @@ class CondorConfiguration(BaseModel):
 
         htcondor.param["SEC_CLIENT_AUTHENTICATION_METHODS"] = "SCITOKENS"
         htcondor.reload_config()
+
+        logger = logging.getLogger("CondorConfig")
+        logger.info("HTCondor initialized")
 
     @staticmethod
     def _ensure_token():
@@ -198,6 +214,9 @@ class CondorConfiguration(BaseModel):
             try:
                 schedd = await self.get_schedd()
                 ret = {int(j["ClusterId"]): j for j in schedd.query()}
+                self.logger.debug(
+                    "Queried %d jobs (after %d failures)", len(ret), attempt
+                )
                 if job_id is None:
                     return ret
                 return ret[job_id]
@@ -209,6 +228,7 @@ class CondorConfiguration(BaseModel):
                 continue
 
     async def query_by_name(self, job_name: str):
+        self.logger.debug("Querying job by name: %s", job_name)
         for attempt in range(CONDOR_ATTEMPTS + 1):
             try:
                 schedd = await self.get_schedd()
@@ -230,6 +250,14 @@ class CondorConfiguration(BaseModel):
                 continue
 
     async def submit(self, job: str, submit: Optional[CondorSubmit] = None):
+        uid = generate_uid()
+        self.logger.debug(
+            "Submitting to %s/%s job %s with UID %s",
+            self.pool,
+            self.scheduler_name,
+            job,
+            uid,
+        )
         self._ensure_token()
         htcondor.param["COLLECTOR_HOST"] = self.pool
         if submit is None:
@@ -273,7 +301,7 @@ class CondorConfiguration(BaseModel):
         if len(job_ids) > 0:
             return job_ids[0]
 
-        print(ret)
+        self.logger.error(f"Failed to submit job {job}, condor output: \n{ret}")
         raise HTCondorException("Failed to submit job to cluster")
 
     async def status(self, job_id: int):
@@ -290,6 +318,7 @@ class CondorConfiguration(BaseModel):
         job = await self.query_by_name(job_name)
         files = await self._retrieve_job_output(job, cleanup=cleanup)
         if cleanup:
+            self.logger.info("Cleaning up job %s with name %s", job, job_name)
             await self.delete_by_name(job_name)
         return files
 
@@ -297,6 +326,7 @@ class CondorConfiguration(BaseModel):
         job = await self.query(job_id)
         files = await self._retrieve_job_output(job, cleanup=cleanup)
         if cleanup:
+            self.logger.info("Cleaning up job %s with ID %s", job, job_id)
             await self.delete(job_id)
         return files
 
@@ -311,6 +341,11 @@ class CondorConfiguration(BaseModel):
                 )
             except subprocess.CalledProcessError as e:
                 if attempt == CONDOR_ATTEMPTS:
+                    self.logger.error(
+                        "Failed to transfer data for job %s after %d attempts",
+                        job["ClusterId"],
+                        attempt,
+                    )
                     raise e
                 else:
                     await asyncio.sleep(1)
@@ -349,6 +384,11 @@ class CondorConfiguration(BaseModel):
                 )
             except subprocess.CalledProcessError as e:
                 if attempt == CONDOR_ATTEMPTS:
+                    self.logger.error(
+                        "Failed to delete job %d after %d attempts",
+                        job_id,
+                        attempt,
+                    )
                     raise e
                 else:
                     await asyncio.sleep(0.2)
